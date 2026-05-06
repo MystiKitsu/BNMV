@@ -22,7 +22,7 @@ jobs:
         if [ ! -f "gradlew" ]; then
           echo "Gradle wrapper missing, generating..."
           wget https://services.gradle.org/distributions/gradle-9.4.1-bin.zip
-          unzip -q gradle-9.4.1-bin.zip
+          unzip -q gradle-9.4.1/bin.zip
           ./gradle-9.4.1/bin/gradle wrapper --gradle-version 9.4.1
         else
           echo "Gradle wrapper already exists"
@@ -37,6 +37,16 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
@@ -45,7 +55,6 @@ jobs:
         rm -rf beta-builds
         mkdir -p beta-builds
 
-    # UPDATED STEP: Uses find to locate the APK even if it's in a subdirectory
     - name: Find and Copy APK
       run: |
         find app/build/outputs/apk/debug -name "*.apk" -exec cp {} beta-builds/app-debug.apk \;
