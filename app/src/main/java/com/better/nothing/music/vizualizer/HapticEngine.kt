@@ -17,17 +17,18 @@ class BeatDetectionHapticEngine(context: Context) {
     private var waveform: VibrationEffect? = null
     private var hapticMultiplier = 1.0f
 
-    private val deltaHistory = FloatArray(31)
-    private val sortedHistory = FloatArray(31)
+    private val deltaHistory = FloatArray(61)
+    private val sortedHistory = FloatArray(61)
 
     private var deltaIndex = 0
     private var deltaCount = 0
 
     private var prevEnergy = 0f
     private var lastTriggerMs = 0L
+    private var thresholdMask = 0f
 
     // Lower cooldown = tighter beat following
-    private val cooldownMs = 80L
+    private val cooldownMs = 60L
 
     init {
         val appContext = context.applicationContext
@@ -82,7 +83,8 @@ class BeatDetectionHapticEngine(context: Context) {
 
         pushDelta(delta)
 
-        val threshold = medianDelta() * 2f
+        // Use adaptive threshold with a decaying mask to prevent double-triggering
+        val threshold = max(medianDelta() * 2.2f, thresholdMask)
 
         val now = SystemClock.elapsedRealtime()
         val cooldownPassed = now - lastTriggerMs >= cooldownMs
@@ -90,13 +92,17 @@ class BeatDetectionHapticEngine(context: Context) {
         // Main trigger condition
         if (
             delta > threshold &&
-            delta > 0.015f &&
+            delta > 0.025f &&
             cooldownPassed
         ) {
 
             triggerWaveform()
             lastTriggerMs = now
+            thresholdMask = delta * 0.8f
         }
+
+        // Decay the mask over time
+        thresholdMask *= 0.85f
     }
 
     private fun pushDelta(delta: Float) {
@@ -175,10 +181,11 @@ class BeatDetectionHapticEngine(context: Context) {
 
     private fun buildWaveform(): VibrationEffect {
 
-        val durationMs = 700
-        val stepMs = 5
+        val sustainMs = 80
+        val decayMs = 1220
+        val stepMs = 10
 
-        val count = durationMs / stepMs
+        val count = (sustainMs + decayMs) / stepMs
 
         val timings =
             LongArray(count) { stepMs.toLong() }
@@ -187,18 +194,17 @@ class BeatDetectionHapticEngine(context: Context) {
 
         for (i in 0 until count) {
 
-            val t = i * stepMs.toFloat()
+            val t = i * stepMs
 
-            val x =
-                1f - (t / durationMs.toFloat())
+            val amp = if (t < sustainMs) {
+                255f
+            } else {
+                // Decay starts after 80ms sustain
+                val x = 1f - ((t - sustainMs).toFloat() / decayMs.toFloat())
+                255f * x.coerceIn(0f, 1f).pow(4f)
+            }
 
-            val amp =
-                if (x <= 0f) 0f
-                else 255f * x.pow(4f) * hapticMultiplier
-
-            amplitudes[i] =
-                if (amp < 20f) 0
-                else amp.toInt().coerceIn(0, 255)
+            amplitudes[i] = (amp * hapticMultiplier).toInt().coerceIn(0, 255)
         }
 
         return VibrationEffect.createWaveform(
@@ -248,6 +254,7 @@ class BeatDetectionHapticEngine(context: Context) {
         deltaCount = 0
         prevEnergy = 0f
         lastTriggerMs = 0L
+        thresholdMask = 0f
         deltaHistory.fill(0f)
     }
 
