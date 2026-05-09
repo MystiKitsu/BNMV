@@ -34,8 +34,8 @@ public class VisualizerTileService extends TileService {
     private void refresh(boolean on) {
         Tile t=getQsTile(); if(t==null) return;
         t.setState(on?Tile.STATE_ACTIVE:Tile.STATE_INACTIVE);
-        t.setLabel("Glyph Visualizer");
-        t.setSubtitle(on?"Running":"Inactive");
+        t.setLabel("BNMV");
+        t.setSubtitle(on?"Running":"Better Nothing Music Vizualiser");
         t.setIcon(Icon.createWithResource(this, R.drawable.app_icon));
         t.updateTile();
     }
