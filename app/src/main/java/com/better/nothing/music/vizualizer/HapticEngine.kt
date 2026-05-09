@@ -1,4 +1,3 @@
-```kotlin
 package com.better.nothing.music.vizualizer
 
 import android.content.Context
@@ -15,7 +14,8 @@ class BeatDetectionHapticEngine(context: Context) {
     private val vibrator: Vibrator?
     private val vibratorManager: VibratorManager?
 
-    private val waveform: VibrationEffect?
+    private var waveform: VibrationEffect? = null
+    private var hapticMultiplier = 1.0f
 
     private val deltaHistory = FloatArray(31)
     private val sortedHistory = FloatArray(31)
@@ -194,7 +194,7 @@ class BeatDetectionHapticEngine(context: Context) {
 
             val amp =
                 if (x <= 0f) 0f
-                else 255f * x.pow(4f)
+                else 255f * x.pow(4f) * hapticMultiplier
 
             amplitudes[i] =
                 if (amp < 20f) 0
@@ -242,5 +242,19 @@ class BeatDetectionHapticEngine(context: Context) {
     fun stopHaptics() {
         cancelVibration()
     }
+
+    fun resetDetectionState() {
+        deltaIndex = 0
+        deltaCount = 0
+        prevEnergy = 0f
+        lastTriggerMs = 0L
+        deltaHistory.fill(0f)
+    }
+
+    fun setHapticMultiplier(multiplier: Float) {
+        if (hapticMultiplier != multiplier) {
+            hapticMultiplier = multiplier
+            waveform = buildWaveform()
+        }
+    }
 }
-```
