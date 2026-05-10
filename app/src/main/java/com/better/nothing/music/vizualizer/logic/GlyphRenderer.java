@@ -79,7 +79,7 @@ public class GlyphRenderer {
         mBreathingEnvelope = 0f;
     }
 
-    public int[] processFrame(float[] uniquePeaks, AudioProcessor.VisualizerConfig config, long nowMs) {
+    public int[] processFrame(float[] uniqueMagnitudes, AudioProcessor.VisualizerConfig config, long nowMs) {
         if (config == null) {
             return new int[0];
         }
@@ -89,12 +89,12 @@ public class GlyphRenderer {
 
         ensureStateArrays(zoneCount, config.uniqueRanges.length);
 
-        float[] nextLightState = computeNextLightState(uniquePeaks, config, zoneCount);
+        float[] nextLightState = computeNextLightState(uniqueMagnitudes, config, zoneCount);
 
         if (nowMs - mLastNotificationFlashMs < FLASH_DURATION_MS) {
             Arrays.fill(nextLightState, 1.0f);
         } else {
-            applyIdleBreathing(nextLightState, uniquePeaks, nowMs);
+            applyIdleBreathing(nextLightState, uniqueMagnitudes, nowMs);
         }
 
         System.arraycopy(nextLightState, 0, mCurrentLightState, 0, nextLightState.length);
@@ -120,8 +120,8 @@ public class GlyphRenderer {
         return mCurrentLightState != null ? Arrays.copyOf(mCurrentLightState, mCurrentLightState.length) : new float[0];
     }
 
-    private float[] computeNextLightState(float[] uniquePeaks, AudioProcessor.VisualizerConfig config, int totalCount) {
-        float[] decayedFrequencyState = computeDecayedFrequencyState(uniquePeaks, config);
+    private float[] computeNextLightState(float[] uniqueMagnitudes, AudioProcessor.VisualizerConfig config, int totalCount) {
+        float[] decayedFrequencyState = computeDecayedFrequencyState(uniqueMagnitudes, config);
         float[] nextState = new float[totalCount];
 
         for (int i = 0; i < config.zones.length; i++) {
@@ -147,10 +147,10 @@ public class GlyphRenderer {
         return nextState;
     }
 
-    private float[] computeDecayedFrequencyState(float[] uniquePeaks, AudioProcessor.VisualizerConfig config) {
+    private float[] computeDecayedFrequencyState(float[] uniqueMagnitudes, AudioProcessor.VisualizerConfig config) {
         float[] next = new float[mDecayedFrequencyState.length];
         for (int i = 0; i < next.length; i++) {
-            float current = (i < uniquePeaks.length ? uniquePeaks[i] : 0f) * SPECTRUM_GAIN;
+            float current = (i < uniqueMagnitudes.length ? uniqueMagnitudes[i] : 0f) * SPECTRUM_GAIN;
             float risen = Math.max(mDecayedFrequencyState[i], current);
             float decayed = (config.decay * risen) + ((1f - config.decay) * current);
             next[i] = decayed < EPSILON ? 0f : decayed;
@@ -159,12 +159,12 @@ public class GlyphRenderer {
         return next;
     }
 
-    private void applyIdleBreathing(float[] nextState, float[] uniquePeaks, long nowMs) {
+    private void applyIdleBreathing(float[] nextState, float[] uniqueMagnitudes, long nowMs) {
         long deltaMs = (mLastFrameMs > 0) ? (nowMs - mLastFrameMs) : 16;
         mLastFrameMs = nowMs;
 
         boolean isSilent = true;
-        for (float peak : uniquePeaks) {
+        for (float peak : uniqueMagnitudes) {
             if (peak * SPECTRUM_GAIN > SILENCE_THRESHOLD) {
                 isSilent = false;
                 break;

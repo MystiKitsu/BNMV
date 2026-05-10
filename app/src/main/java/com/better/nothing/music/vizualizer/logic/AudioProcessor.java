@@ -91,48 +91,48 @@ public class AudioProcessor {
             magnitude[i] = (float) (Math.hypot(re, im) / fftSize);
         }
 
-        // Compute peaks
-        float[] uniquePeaks = computeUniquePeaks(config, magnitude);
-        float hapticPeak = hapticRange != null ? computeRangePeak(hapticRange, magnitude) : 0f;
+        // Compute magnitudes
+        float[] uniqueMagnitudes = computeUniqueMagnitudes(config, magnitude);
+        float hapticPeak = hapticRange != null ? computeRangeMagnitude(hapticRange, magnitude) : 0f;
 
-        return new AudioFrameResult(uniquePeaks, hapticPeak, magnitude);
+        return new AudioFrameResult(uniqueMagnitudes, hapticPeak, magnitude);
     }
 
-    private float[] computeUniquePeaks(VisualizerConfig config, float[] magnitude) {
+    private float[] computeUniqueMagnitudes(VisualizerConfig config, float[] magnitude) {
         if (config == null) return new float[0];
-        float[] uniquePeaks = new float[config.uniqueRanges.length];
-        float dominantPeak = 0f;
+        float[] uniqueMagnitudes = new float[config.uniqueRanges.length];
+        float dominantMagnitude = 0f;
         for (int i = 0; i < config.uniqueRanges.length; i++) {
-            float peak = computeRangePeak(config.uniqueRanges[i], magnitude);
-            uniquePeaks[i] = peak;
-            if (peak > dominantPeak) {
-                dominantPeak = peak;
+            float magnitudeSum = computeRangeMagnitude(config.uniqueRanges[i], magnitude);
+            uniqueMagnitudes[i] = magnitudeSum;
+            if (magnitudeSum > dominantMagnitude) {
+                dominantMagnitude = magnitudeSum;
             }
         }
 
-        if (dominantPeak <= EPSILON) {
-            return uniquePeaks;
+        if (dominantMagnitude <= EPSILON) {
+            return uniqueMagnitudes;
         }
 
-        float leakageFloor = dominantPeak * SPECTRUM_LEAKAGE_FLOOR_RATIO;
-        for (int i = 0; i < uniquePeaks.length; i++) {
-            uniquePeaks[i] = Math.max(0f, uniquePeaks[i] - leakageFloor);
+        float leakageFloor = dominantMagnitude * SPECTRUM_LEAKAGE_FLOOR_RATIO;
+        for (int i = 0; i < uniqueMagnitudes.length; i++) {
+            uniqueMagnitudes[i] = Math.max(0f, uniqueMagnitudes[i] - leakageFloor);
         }
-        return uniquePeaks;
+        return uniqueMagnitudes;
     }
 
-    private float computeRangePeak(FrequencyRange range, float[] magnitude) {
+    private float computeRangeMagnitude(FrequencyRange range, float[] magnitude) {
         if (range == null || magnitude == null || magnitude.length == 0) {
             return 0f;
         }
 
         int start = Math.max(0, Math.min(range.binLo, magnitude.length - 1));
         int end = Math.max(start, Math.min(range.binHi, magnitude.length - 1));
-        float peak = 0f;
+        float sum = 0f;
         for (int bin = start; bin <= end; bin++) {
-            peak = Math.max(peak, magnitude[bin]);
+            sum += magnitude[bin];
         }
-        return peak;
+        return sum;
     }
 
     private static float[] buildHannWindow(int size) {
@@ -204,12 +204,12 @@ public class AudioProcessor {
     }
 
     public static final class AudioFrameResult {
-        public final float[] uniquePeaks;
+        public final float[] uniqueMagnitudes;
         public final float hapticPeak;
         public final float[] magnitude;
 
-        public AudioFrameResult(float[] uniquePeaks, float hapticPeak, float[] magnitude) {
-            this.uniquePeaks = uniquePeaks;
+        public AudioFrameResult(float[] uniqueMagnitudes, float hapticPeak, float[] magnitude) {
+            this.uniqueMagnitudes = uniqueMagnitudes;
             this.hapticPeak = hapticPeak;
             this.magnitude = magnitude;
         }

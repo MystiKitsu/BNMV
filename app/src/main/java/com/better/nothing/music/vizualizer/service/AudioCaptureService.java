@@ -231,14 +231,14 @@ public class AudioCaptureService extends Service {
     };
 
     private static final class PendingFrame {
-        final float[] uniquePeaks;
+        final float[] uniqueMagnitudes;
         final float hapticPeak;
         final AudioProcessor.VisualizerConfig config;
         final int configVersion;
         final long dueAtMs;
 
-        PendingFrame(float[] uniquePeaks, float hapticPeak, AudioProcessor.VisualizerConfig config, int configVersion, long dueAtMs) {
-            this.uniquePeaks = uniquePeaks;
+        PendingFrame(float[] uniqueMagnitudes, float hapticPeak, AudioProcessor.VisualizerConfig config, int configVersion, long dueAtMs) {
+            this.uniqueMagnitudes = uniqueMagnitudes;
             this.hapticPeak = hapticPeak;
             this.config = config;
             this.configVersion = configVersion;
@@ -835,7 +835,7 @@ public class AudioCaptureService extends Service {
             }
 
             pendingFrames.addLast(new PendingFrame(
-                    result.uniquePeaks,
+                    result.uniqueMagnitudes,
                     hapticPeak,
                     config,
                     presetVersion,
@@ -855,11 +855,11 @@ public class AudioCaptureService extends Service {
                 return;
             }
             pendingFrames.removeFirst();
-            processFrame(pendingFrame.uniquePeaks, pendingFrame.hapticPeak, pendingFrame.config, pendingFrame.configVersion);
+            processFrame(pendingFrame.uniqueMagnitudes, pendingFrame.hapticPeak, pendingFrame.config, pendingFrame.configVersion);
         }
     }
 
-    private void processFrame(float[] uniquePeaks, float hapticPeak, AudioProcessor.VisualizerConfig config, int configVersion) {
+    private void processFrame(float[] uniqueMagnitudes, float hapticPeak, AudioProcessor.VisualizerConfig config, int configVersion) {
         if (config == null || configVersion != mPresetConfigVersion) {
             return;
         }
@@ -879,11 +879,11 @@ public class AudioCaptureService extends Service {
             mGlyphRenderer.triggerNotificationFlash(now);
         }
 
-        if (uniquePeaks.length > 0) {
+        if (uniqueMagnitudes.length > 0) {
             mLastAudioActivityMs = now;
         }
 
-        int[] frameColors = mGlyphRenderer.processFrame(uniquePeaks, config, now);
+        int[] frameColors = mGlyphRenderer.processFrame(uniqueMagnitudes, config, now);
         if (frameColors == null) {
             return; // No change
         }
