@@ -22,6 +22,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.nativePaint
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -155,7 +156,7 @@ fun GlyphPreviewContent(
                 drawIntoCanvas { canvas ->
                     glowPaint.color = color
                     glowPaint.alpha = alpha * 0.4f
-                    glowPaint.asFrameworkPaint().maskFilter = android.graphics.BlurMaskFilter(8f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+                    glowPaint.nativePaint.maskFilter = android.graphics.BlurMaskFilter(8f, android.graphics.BlurMaskFilter.Blur.NORMAL)
                     canvas.drawPath(path, glowPaint)
                 }
 
@@ -312,11 +313,11 @@ private fun drawPathAddressable(
 
             paint.color = color
             paint.alpha = alpha * 0.4f
-            paint.asFrameworkPaint().maskFilter = android.graphics.BlurMaskFilter(8f * scale, android.graphics.BlurMaskFilter.Blur.NORMAL)
+            paint.nativePaint.maskFilter = android.graphics.BlurMaskFilter(8f * scale, android.graphics.BlurMaskFilter.Blur.NORMAL)
             canvas.drawPath(path, paint)
 
             paint.alpha = alpha
-            paint.asFrameworkPaint().maskFilter = null
+            paint.nativePaint.maskFilter = null
             canvas.drawPath(path, paint)
 
             canvas.restore()
@@ -347,11 +348,11 @@ private fun drawPathRingSegments(scope: DrawScope, path: Path, color: Color, ind
 
             paint.color = color
             paint.alpha = alpha * 0.4f
-            paint.asFrameworkPaint().maskFilter = android.graphics.BlurMaskFilter(8f * scale, android.graphics.BlurMaskFilter.Blur.NORMAL)
+            paint.nativePaint.maskFilter = android.graphics.BlurMaskFilter(8f * scale, android.graphics.BlurMaskFilter.Blur.NORMAL)
             canvas.drawPath(path, paint)
 
             paint.alpha = alpha
-            paint.asFrameworkPaint().maskFilter = null
+            paint.nativePaint.maskFilter = null
             canvas.drawPath(path, paint)
 
             canvas.restore()
@@ -380,11 +381,11 @@ private fun drawPathVerticalSegments(scope: DrawScope, path: Path, color: Color,
 
             paint.color = color
             paint.alpha = alpha * 0.4f
-            paint.asFrameworkPaint().maskFilter = android.graphics.BlurMaskFilter(8f * scale, android.graphics.BlurMaskFilter.Blur.NORMAL)
+            paint.nativePaint.maskFilter = android.graphics.BlurMaskFilter(8f * scale, android.graphics.BlurMaskFilter.Blur.NORMAL)
             canvas.drawPath(path, paint)
 
             paint.alpha = alpha
-            paint.asFrameworkPaint().maskFilter = null
+            paint.nativePaint.maskFilter = null
             canvas.drawPath(path, paint)
 
             canvas.restore()
