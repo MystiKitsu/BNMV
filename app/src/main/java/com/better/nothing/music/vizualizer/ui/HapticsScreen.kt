@@ -1,5 +1,7 @@
-package com.better.nothing.music.vizualizer
+package com.better.nothing.music.vizualizer.ui
 
+import com.better.nothing.music.vizualizer.R
+import com.better.nothing.music.vizualizer.model.HapticMode
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

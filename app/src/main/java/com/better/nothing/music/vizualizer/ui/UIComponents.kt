@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.better.nothing.music.vizualizer
+package com.better.nothing.music.vizualizer.ui
 
 import com.better.nothing.music.vizualizer.R
 

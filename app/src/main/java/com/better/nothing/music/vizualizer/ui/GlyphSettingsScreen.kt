@@ -1,5 +1,8 @@
-package com.better.nothing.music.vizualizer
+package com.better.nothing.music.vizualizer.ui
 
+import com.better.nothing.music.vizualizer.R
+import com.better.nothing.music.vizualizer.model.DeviceProfile
+import com.better.nothing.music.vizualizer.service.AudioCaptureService
 import android.content.Context
 import android.os.Build
 import android.provider.Settings

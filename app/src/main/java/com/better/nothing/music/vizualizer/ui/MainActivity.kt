@@ -17,7 +17,14 @@
 //
 */
 
-package com.better.nothing.music.vizualizer
+package com.better.nothing.music.vizualizer.ui
+
+import com.better.nothing.music.vizualizer.R
+import com.better.nothing.music.vizualizer.model.HapticMode
+import com.better.nothing.music.vizualizer.model.DeviceProfile
+import com.better.nothing.music.vizualizer.service.AudioCaptureService
+import com.better.nothing.music.vizualizer.service.HapticsTileService
+import com.better.nothing.music.vizualizer.service.VisualizerTileService
 
 import android.Manifest
 import android.app.Application

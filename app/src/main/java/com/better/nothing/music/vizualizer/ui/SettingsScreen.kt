@@ -1,5 +1,7 @@
-package com.better.nothing.music.vizualizer
+package com.better.nothing.music.vizualizer.ui
 
+import com.better.nothing.music.vizualizer.R
+import com.better.nothing.music.vizualizer.model.DeviceProfile
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.animateColorAsState

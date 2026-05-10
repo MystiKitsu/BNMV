@@ -1,4 +1,7 @@
-package com.better.nothing.music.vizualizer
+package com.better.nothing.music.vizualizer.ui
+
+import com.better.nothing.music.vizualizer.R
+import com.better.nothing.music.vizualizer.BuildConfig
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement

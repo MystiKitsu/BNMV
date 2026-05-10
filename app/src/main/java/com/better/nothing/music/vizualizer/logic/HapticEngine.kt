@@ -1,4 +1,4 @@
-package com.better.nothing.music.vizualizer
+package com.better.nothing.music.vizualizer.logic
 
 import android.content.Context
 import android.os.*

@@ -1,5 +1,7 @@
-package com.better.nothing.music.vizualizer;
+package com.better.nothing.music.vizualizer.service;
 
+import com.better.nothing.music.vizualizer.R;
+import com.better.nothing.music.vizualizer.util.PermissionTrampolineActivity;
 import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Intent;

@@ -1,4 +1,14 @@
-package com.better.nothing.music.vizualizer;
+package com.better.nothing.music.vizualizer.service;
+
+import com.better.nothing.music.vizualizer.model.DeviceProfile;
+import com.better.nothing.music.vizualizer.model.HapticMode;
+import com.better.nothing.music.vizualizer.model.AudioRouteInfo;
+import com.better.nothing.music.vizualizer.logic.AudioProcessor;
+import com.better.nothing.music.vizualizer.logic.GlyphRenderer;
+import com.better.nothing.music.vizualizer.logic.AudioDeviceManager;
+import com.better.nothing.music.vizualizer.logic.ContinuousHapticEngine;
+import com.better.nothing.music.vizualizer.logic.BeatDetectionHapticEngine;
+import com.better.nothing.music.vizualizer.ui.MainActivity;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -240,7 +250,7 @@ public class AudioCaptureService extends Service {
         public final String key;
         public final String description;
 
-        PresetInfo(String key, String description) {
+        public PresetInfo(String key, String description) {
             this.key = key;
             this.description = description;
         }

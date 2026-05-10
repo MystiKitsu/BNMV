@@ -1,4 +1,6 @@
-package com.better.nothing.music.vizualizer;
+package com.better.nothing.music.vizualizer.logic;
+
+import com.better.nothing.music.vizualizer.model.DeviceProfile;
 
 import java.util.Arrays;
 

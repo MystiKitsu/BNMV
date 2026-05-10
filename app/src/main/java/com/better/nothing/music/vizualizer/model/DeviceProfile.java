@@ -1,4 +1,4 @@
-package com.better.nothing.music.vizualizer;
+package com.better.nothing.music.vizualizer.model;
 
 import com.nothing.ketchum.Common;
 

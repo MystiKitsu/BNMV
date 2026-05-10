@@ -1,5 +1,6 @@
-package com.better.nothing.music.vizualizer
+package com.better.nothing.music.vizualizer.ui
 
+import com.better.nothing.music.vizualizer.R
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult

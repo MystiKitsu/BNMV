@@ -1,4 +1,6 @@
-package com.better.nothing.music.vizualizer
+package com.better.nothing.music.vizualizer.ui
+
+import com.better.nothing.music.vizualizer.model.DeviceProfile
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background

@@ -1,4 +1,4 @@
-package com.better.nothing.music.vizualizer;
+package com.better.nothing.music.vizualizer.logic;
 
 import org.jtransforms.fft.DoubleFFT_1D;
 
@@ -172,12 +172,12 @@ public class AudioProcessor {
     }
 
     public static final class ZoneSpec {
-        final float lowHz;
-        final float highHz;
-        final float lowPercent;
-        final float highPercent;
+        public final float lowHz;
+        public final float highHz;
+        public final float lowPercent;
+        public final float highPercent;
 
-        ZoneSpec(float lowHz, float highHz, float lowPercent, float highPercent) {
+        public ZoneSpec(float lowHz, float highHz, float lowPercent, float highPercent) {
             this.lowHz = lowHz;
             this.highHz = highHz;
             this.lowPercent = lowPercent;
@@ -190,12 +190,12 @@ public class AudioProcessor {
     }
 
     public static final class FrequencyRange {
-        final float lowHz;
-        final float highHz;
-        final int binLo;
-        final int binHi;
+        public final float lowHz;
+        public final float highHz;
+        public final int binLo;
+        public final int binHi;
 
-        FrequencyRange(float lowHz, float highHz, float hzPerBin, int fftSize) {
+        public FrequencyRange(float lowHz, float highHz, float hzPerBin, int fftSize) {
             this.lowHz = lowHz;
             this.highHz = highHz;
             this.binLo = Math.max(0, (int) Math.ceil(lowHz / hzPerBin));
