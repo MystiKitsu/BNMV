@@ -2,7 +2,6 @@ package com.better.nothing.music.vizualizer.ui
 
 import com.better.nothing.music.vizualizer.R
 import com.better.nothing.music.vizualizer.model.DeviceProfile
-import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
@@ -58,6 +57,14 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.foundation.layout.size
 
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.BorderStroke
+
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,10 +80,7 @@ internal fun SettingsScreen(
 ) {
     val scrollState = rememberScrollState()
 
-    var themeExpanded by remember { mutableStateOf(false) }
     val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
-
-    var fontExpanded by remember { mutableStateOf(false) }
     val selectedFont by viewModel.selectedFont.collectAsStateWithLifecycle()
 
     Column(
@@ -89,40 +93,92 @@ internal fun SettingsScreen(
         Spacer(modifier = Modifier.height(50.dp))
         ScreenTitle(text = stringResource(R.string.settings_title))
 
-        SettingDropdown(
-            title = stringResource(R.string.app_theme),
-            value = selectedTheme,
-            expanded = themeExpanded,
-            onExpandedChange = { themeExpanded = !themeExpanded },
-            onDismiss = { themeExpanded = false },
-            options = listOf(
+        // ── Typography ──────────────────────────────────────────────────────
+        Column {
+            Text(
+                text = stringResource(R.string.typography),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                val fontOptions = listOf("NDot", "NType")
+                fontOptions.forEachIndexed { index, font ->
+                    SegmentedButton(
+                        selected = selectedFont == font,
+                        onClick = { viewModel.setSelectedFont(font) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = fontOptions.size),
+                        label = { Text(font) }
+                    )
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.typography_help_text),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+
+        // ── App Theme ───────────────────────────────────────────────────────
+        Column {
+            Text(
+                text = stringResource(R.string.app_theme),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+
+            val themeOptions = listOf(
                 "OLED Black",
                 "Liquorice Black",
                 "Nothing Light",
                 "Nothing Red",
                 "Material You",
                 "Material You Light"
-            ),
-            onSelect = { theme ->
-                viewModel.setSelectedTheme(theme)
-                themeExpanded = false
-            },
-            helperText = stringResource(R.string.theme_help_text)
-        )
+            )
+            val carouselState = rememberCarouselState { themeOptions.size }
 
-        SettingDropdown(
-            title = stringResource(R.string.typography),
-            value = selectedFont,
-            expanded = fontExpanded,
-            onExpandedChange = { fontExpanded = !fontExpanded },
-            onDismiss = { fontExpanded = false },
-            options = listOf("NDot", "NType"),
-            onSelect = { font ->
-                viewModel.setSelectedFont(font)
-                fontExpanded = false
-            },
-            helperText = stringResource(R.string.typography_help_text)
-        )
+            HorizontalMultiBrowseCarousel(
+                state = carouselState,
+                preferredItemWidth = 140.dp,
+                itemSpacing = 8.dp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(84.dp)
+            ) { index ->
+                val theme = themeOptions[index]
+                val isSelected = selectedTheme == theme
+                Card(
+                    onClick = { viewModel.setSelectedTheme(theme) },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer 
+                                       else MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = theme,
+                            style = MaterialTheme.typography.labelLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.theme_help_text),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
 
         // ── Visualizer Features ──────────────────────────────────────────────
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -384,64 +440,6 @@ private fun FeatureToggle(
                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                 checkedTrackColor = MaterialTheme.colorScheme.primary
             )
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SettingDropdown(
-    title: String,
-    value: String,
-    expanded: Boolean,
-    onExpandedChange: () -> Unit,
-    onDismiss: () -> Unit,
-    options: List<String>,
-    onSelect: (String) -> Unit,
-    helperText: String,
-) {
-    Column {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
-
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { onExpandedChange() },
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = {},
-                readOnly = true,
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                leadingIcon = {
-                    Icon(Icons.Filled.Tune, contentDescription = null)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor(),
-            )
-
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = onDismiss,
-            ) {
-                options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option) },
-                        onClick = { onSelect(option) },
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = helperText,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.Gray,
         )
     }
 }
