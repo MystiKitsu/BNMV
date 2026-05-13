@@ -185,6 +185,7 @@ public class AudioCaptureService extends Service {
 
     private boolean mIdleBreathingEnabled = false;
     private boolean mNotificationFlashEnabled = false;
+    private boolean mDisableGlyphsWhenSilent = false;
     private long mLastNotificationFlashMs = 0;
     private static final long FLASH_DURATION_MS = 200L;
 
@@ -288,6 +289,7 @@ public class AudioCaptureService extends Service {
         SharedPreferences appPrefs = getSharedPreferences(APP_PREFS_NAME, MODE_PRIVATE);
         mIdleBreathingEnabled = appPrefs.getBoolean("idle_breathing_enabled", false);
         mNotificationFlashEnabled = appPrefs.getBoolean("notification_flash_enabled", false);
+        mDisableGlyphsWhenSilent = appPrefs.getBoolean("disable_glyphs_when_silent", false);
 
         mHapticEnabled = appPrefs.getBoolean("haptic_motor_enabled", false);
         String hapticModeName = appPrefs.getString("haptic_mode", HapticMode.BASS_TO_AMPLITUDE.name());
@@ -583,6 +585,14 @@ public class AudioCaptureService extends Service {
         mNotificationFlashEnabled = enabled;
     }
 
+    public void setDisableGlyphsWhenSilent(boolean enabled) {
+        mDisableGlyphsWhenSilent = enabled;
+        if (!enabled && !mSessionOpen && mGM != null) {
+            // Re-open if we just disabled the "silent disable" feature
+            mWorkerHandler.post(this::ensureGlyphSession);
+        }
+    }
+
     public void triggerNotificationFlash() {
         if (mNotificationFlashEnabled) {
             mLastNotificationFlashMs = SystemClock.elapsedRealtime();
@@ -864,12 +874,35 @@ public class AudioCaptureService extends Service {
             return;
         }
 
+        long now = SystemClock.elapsedRealtime();
+
+        boolean hasActivity = false;
+        for (float mag : uniqueMagnitudes) {
+            if (mag > 0f) {
+                hasActivity = true;
+                break;
+            }
+        }
+
+        if (hasActivity) {
+            mLastAudioActivityMs = now;
+            if (!mSessionOpen) {
+                ensureGlyphSession();
+            }
+        } else {
+            // Check for silence timeout if enabled
+            if (mDisableGlyphsWhenSilent && mSessionOpen) {
+                if (now - mLastAudioActivityMs > 2000) { // 2 seconds of silence
+                    clearGlyphSession();
+                }
+            }
+        }
+
         // Haptics are already handled in the capture thread for low latency.
         if (!mSessionOpen || mGM == null) {
             return;
         }
 
-        long now = SystemClock.elapsedRealtime();
         if (now - mLastSendMs < MIN_SEND_INTERVAL_MS) {
             return;
         }
@@ -877,10 +910,6 @@ public class AudioCaptureService extends Service {
         // Check for notification flash
         if (now - mLastNotificationFlashMs < FLASH_DURATION_MS) {
             mGlyphRenderer.triggerNotificationFlash(now);
-        }
-
-        if (uniqueMagnitudes.length > 0) {
-            mLastAudioActivityMs = now;
         }
 
         int[] frameColors = mGlyphRenderer.processFrame(uniqueMagnitudes, config, now);
@@ -1116,6 +1145,19 @@ public class AudioCaptureService extends Service {
         }
     }
 
+    private void ensureGlyphSession() {
+        if (mGM == null || mSessionOpen) {
+            return;
+        }
+        try {
+            mGM.openSession();
+            mSessionOpen = true;
+            Log.d(TAG, "Glyph session opened");
+        } catch (GlyphException e) {
+            Log.e(TAG, "Failed to open Glyph session", e);
+        }
+    }
+
     private void clearGlyphSession() {
         turnOffGlyphs();
         if (mGM != null && mSessionOpen) {
@@ -1245,6 +1287,15 @@ public class AudioCaptureService extends Service {
                 + Math.max(DeviceProfile.DEVICE_UNKNOWN, device)
                 + "_"
                 + sanitizedRouteKey;
+    }
+
+    public static String loadZonesConfigVersion(Context context) {
+        try {
+            JSONObject root = loadZonesConfigRoot(context);
+            return root.optString("version", "Unknown");
+        } catch (Exception e) {
+            return "Unknown";
+        }
     }
 
     private static JSONObject loadZonesConfigRoot(Context context) throws IOException, JSONException {

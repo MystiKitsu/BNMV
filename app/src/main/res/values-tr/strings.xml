@@ -57,6 +57,8 @@
     <string name="idle_breathing_desc">Görselleştirici aktifken ancak ses çalmıyorken Glifler hafifçe yanıp söner.</string>
     <string name="notification_flash_title">Bildirim Flaşı</string>
     <string name="notification_flash_desc">Görselleştirici çalışırken yeni bir bildirim geldiğinde tüm Glifleri kısa süreliğine yakıp söndürür.</string>
+    <string name="disable_glyphs_when_silent_title">Sessizken Glifleri devre dışı bırak</string>
+    <string name="disable_glyphs_when_silent_desc">Ses algılanmadığında Glifleri tamamen kapatın ve oturumu serbest bırakın.</string>
     <string name="settings_update_tip">İpucu: Yapılandırma güncellemelerini kontrol etmek için bu ekrandayken telefonunuzu sallayabilirsiniz!</string>
     <string name="start_visualizer">Görselleştiriciyi başlat</string>
     <string name="stop_visualizer">Görselleştiriciyi durdur</string>
@@ -69,9 +71,9 @@
 
     <!-- About Screen -->
     <string name="about_title">Hakkında ve diğerleri</string>
-    <string name="about_description">ACİLEN ADAMAKILLI BİR HAKKINDA EKRANINA İHTİYACIMIZ VAR!! O zamana kadar lütfen bilgi için GitHub'a göz atın.</string>
-    <string name="about_intro">Better Nothing Müzik Görselleştirici, yüksek kaliteli ve gerçek zamanlı frekans analizi ile Glyph Arayüzü'nün tüm potansiyelini ortaya çıkarır.</string>
-    <string name="about_section_why">Neden Nothing'in uygulamasından daha iyiyiz:</string>
+    <string name="about_description">ACİLEN ADAMAKILLI BİR HAKKINDA EKRANINA İHTİYACIMIZ VAR!! O zamana kadar lütfen bilgi için GitHub\'a göz atın.</string>
+    <string name="about_intro">Better Nothing Müzik Görselleştirici, yüksek kaliteli ve gerçek zamanlı frekans analizi ile Glyph Arayüzü\'nün tüm potansiyelini ortaya çıkarır.</string>
+    <string name="about_section_why">Neden Nothing\'in uygulamasından daha iyiyiz:</string>
     <string name="about_why_1">• 12-bit parlaklık (4096 seviye) vs ~2-bit stok (3 seviye)</string>
     <string name="about_why_2">• 60 FPS akıcı animasyonlar vs ~25 FPS stok</string>
     <string name="about_why_3">• Hassas FFT senkronizasyonu vs yarı-rastgele tepki</string>
@@ -79,6 +81,7 @@
     <string name="github_repository">GitHub Deposu</string>
     <string name="view_source">Kaynağı Görüntüle</string>
     <string name="version_info">Sürüm %s</string>
+    <string name="zones_config_version">Yapılandırma Sürümü: %s</string>
     <string name="media_projection_info">MediaProjection yalnızca gerçek zamanlı görselleştiriciye güç sağlamak için kullanılır. Gereksiz kayıt veya veri depolama işlemi yapılmaz.</string>
     <string name="credits">Emeği Geçenler</string>
     <string name="open_github_profile">GitHub profilini aç</string>

@@ -63,6 +63,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row
 
@@ -78,6 +79,8 @@ internal fun SettingsScreen(
     onIdlePatternChanged: (String) -> Unit,
     notificationFlashEnabled: Boolean,
     onNotificationFlashEnabledChanged: (Boolean) -> Unit,
+    disableGlyphsWhenSilent: Boolean,
+    onDisableGlyphsWhenSilentChanged: (Boolean) -> Unit,
 ) {
     val scrollState = rememberScrollState()
 
@@ -271,6 +274,15 @@ internal fun SettingsScreen(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 
                     FeatureToggle(
+                        title = stringResource(R.string.disable_glyphs_when_silent_title),
+                        description = stringResource(R.string.disable_glyphs_when_silent_desc),
+                        checked = disableGlyphsWhenSilent,
+                        onCheckedChange = onDisableGlyphsWhenSilentChanged
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+
+                    FeatureToggle(
                         title = stringResource(R.string.developer_mode),
                         description = stringResource(R.string.developer_mode_description),
                         checked = devModeEnabled,
@@ -349,7 +361,13 @@ internal fun SettingsScreen(
 
         // ── Zones Configuration ──────────────────────────────────────────────
         val configStatus by viewModel.configUpdateStatus.collectAsStateWithLifecycle()
+        val configVersion by viewModel.configVersion.collectAsStateWithLifecycle()
+        val remoteVersion by viewModel.remoteConfigVersion.collectAsStateWithLifecycle()
         val context = LocalContext.current
+
+        LaunchedEffect(Unit) {
+            viewModel.checkRemoteConfigVersion()
+        }
 
         LaunchedEffect(configStatus) {
             when (val status = configStatus) {
@@ -391,6 +409,37 @@ internal fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray,
                     )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Current: $configVersion",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            if (remoteVersion != null && remoteVersion != "Unknown") {
+                                val isUpdateAvailable = remoteVersion != configVersion
+                                Text(
+                                    text = if (isUpdateAvailable) "Latest: $remoteVersion" else "Up to date",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (isUpdateAvailable) Color(0xFFFF4444) else Color.Gray
+                                )
+                            }
+                        }
+
+                        if (remoteVersion != null && remoteVersion != "Unknown" && remoteVersion != configVersion) {
+                            Text(
+                                text = "Update Available!",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFFF4444),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
 
                     Button(
                         onClick = { viewModel.updateZonesConfig() },

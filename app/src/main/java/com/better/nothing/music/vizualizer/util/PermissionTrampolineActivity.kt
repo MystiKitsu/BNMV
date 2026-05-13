@@ -1,3 +1,9 @@
+//MESSAGE FROM ALEKS
+//
+// qs tile now open just the needed UI rather than the whole app
+//
+//he worked a lot on it apparently
+
 package com.better.nothing.music.vizualizer.util
 
 import com.better.nothing.music.vizualizer.service.AudioCaptureService

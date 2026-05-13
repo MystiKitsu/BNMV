@@ -29,10 +29,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
 @Composable
-fun AboutScreen() {
+internal fun AboutScreen(viewModel: MainViewModel) {
     val scrollState = rememberScrollState()
     val uriHandler = LocalUriHandler.current
+    val configVersion by viewModel.configVersion.collectAsStateWithLifecycle()
+
     val credits = listOf(
         CreditEntry("Aleks-Levet", stringResource(R.string.credit_alekslevet_role), "Aleks-Levet"),
         CreditEntry("rKyzen (aka Shivank Dan)", stringResource(R.string.credit_rkyzen_role), "rKyzen"),
@@ -99,6 +104,11 @@ fun AboutScreen() {
                     text = stringResource(R.string.version_info, BuildConfig.VERSION_NAME),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    text = stringResource(R.string.zones_config_version, configVersion),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
                 )
                 BodyText(
                     text = stringResource(R.string.media_projection_info),

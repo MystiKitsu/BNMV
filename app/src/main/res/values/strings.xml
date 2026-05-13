@@ -61,6 +61,8 @@
     <string name="idle_breathing_desc">Glyphs pulse subtly when the visualizer is active but no audio is playing.</string>
     <string name="notification_flash_title">Notification Flash</string>
     <string name="notification_flash_desc">Flashes all Glyphs briefly when a new notification arrives while the visualizer is running.</string>
+    <string name="disable_glyphs_when_silent_title">Disable Glyphs when silent</string>
+    <string name="disable_glyphs_when_silent_desc">Completely turn off Glyphs and release the session when no audio is detected.</string>
     <string name="settings_update_tip">Tip: You can shake your phone while on this screen to check for configuration updates!</string>
     <string name="start_visualizer">Start visualizer</string>
     <string name="stop_visualizer">Stop visualizer</string>
@@ -83,6 +85,7 @@
     <string name="github_repository">GitHub Repository</string>
     <string name="view_source">View Source</string>
     <string name="version_info">Version %s</string>
+    <string name="zones_config_version">Config Version: %s</string>
     <string name="media_projection_info">MediaProjection is used only to power the real-time visualizer. No unnecessary recording or data storage is performed.</string>
     <string name="credits">Credits</string>
     <string name="open_github_profile">Open GitHub profile</string>

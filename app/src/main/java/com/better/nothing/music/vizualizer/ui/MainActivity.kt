@@ -241,6 +241,15 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private val _notificationFlashEnabled = MutableStateFlow(false)
     val notificationFlashEnabled = _notificationFlashEnabled.asStateFlow()
 
+    private val _configVersion = MutableStateFlow("Unknown")
+    val configVersion = _configVersion.asStateFlow()
+
+    private val _remoteConfigVersion = MutableStateFlow<String?>(null)
+    val remoteConfigVersion = _remoteConfigVersion.asStateFlow()
+
+    private val _disableGlyphsWhenSilent = MutableStateFlow(false)
+    val disableGlyphsWhenSilent = _disableGlyphsWhenSilent.asStateFlow()
+
     // ── Zones Update ──────────────────────────────────────────────────────────
     private val _configUpdateStatus = MutableStateFlow<ConfigUpdateStatus>(ConfigUpdateStatus.Idle)
     val configUpdateStatus = _configUpdateStatus.asStateFlow()
@@ -298,6 +307,10 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 // Refresh presets (file IO)
                 refreshPresetsInternal()
 
+                val newVersion = AudioCaptureService.loadZonesConfigVersion(ctx)
+                _configVersion.value = newVersion
+                _remoteConfigVersion.value = newVersion
+
                 // Force running service to reload its config from disk
                 MainActivity.serviceStatic?.reloadConfig()
                 true
@@ -317,6 +330,26 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 
     fun resetConfigUpdateStatus() {
         _configUpdateStatus.value = ConfigUpdateStatus.Idle
+    }
+
+    fun checkRemoteConfigVersion() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val url = URL("https://raw.githubusercontent.com/Aleks-Levet/better-nothing-music-visualizer/main/zones.config")
+                val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 5000
+                connection.readTimeout = 5000
+
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val content = connection.inputStream.bufferedReader().use { it.readText() }
+                    val json = JSONObject(content)
+                    val remoteVersion = json.optString("version", "Unknown")
+                    _remoteConfigVersion.value = remoteVersion
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to check remote version", e)
+            }
+        }
     }
 
     // ── Theme & Font ─────────────────────────────────────────────────────────
@@ -438,6 +471,14 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    fun setDisableGlyphsWhenSilent(enabled: Boolean) {
+        _disableGlyphsWhenSilent.value = enabled
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putBoolean("disable_glyphs_when_silent", enabled) }
+        }
+    }
+
     fun setAutoDeviceEnabled(enabled: Boolean): Int {
         _autoDeviceEnabled.value = enabled
         viewModelScope.launch(Dispatchers.IO) {
@@ -497,11 +538,13 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 )
                 val presets = AudioCaptureService.loadLatencyPresets(ctx)
                 val infos = AudioCaptureService.loadPresetInfos(ctx, device)
+                val configVersion = AudioCaptureService.loadZonesConfigVersion(ctx)
 
                 // Update UI state once ready
                 _gammaValue.value = gamma
                 _latencyMs.value = latency
                 _latencyPresets.value = presets
+                _configVersion.value = configVersion
                 commitPresetInfos(infos)
                 val prefs = ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 _autoDeviceEnabled.value = prefs.getBoolean("auto_device_enabled", true)
@@ -511,6 +554,8 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 _idleBreathingEnabled.value = prefs.getBoolean("idle_breathing_enabled", false)
                 _idlePattern.value = prefs.getString("idle_pattern", "pulse") ?: "pulse"
                 _notificationFlashEnabled.value = prefs.getBoolean("notification_flash_enabled", false)
+                _configVersion.value = AudioCaptureService.loadZonesConfigVersion(ctx)
+                _disableGlyphsWhenSilent.value = prefs.getBoolean("disable_glyphs_when_silent", false)
 
                 val theme = prefs.getString("selected_theme", "OLED Black") ?: "OLED Black"
                 _selectedTheme.value = if (theme == "Normal") "OLED Black" else theme
@@ -524,6 +569,8 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 _hapticFreqMax.value = prefs.getInt("haptic_freq_max", 250).toFloat()
                 _hapticMultiplier.value = prefs.getFloat("haptic_multiplier", 1.0f)
                 _hapticGamma.value = prefs.getFloat("haptic_gamma", 2.0f)
+
+                checkRemoteConfigVersion()
             }
 
             startRunningStatePoller()
@@ -761,7 +808,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 val idleBreathingEnabled by viewModel.idleBreathingEnabled.collectAsStateWithLifecycle()
                 val idlePattern by viewModel.idlePattern.collectAsStateWithLifecycle()
                 val notificationFlashEnabled by viewModel.notificationFlashEnabled.collectAsStateWithLifecycle()
-
+                val disableGlyphsWhenSilent by viewModel.disableGlyphsWhenSilent.collectAsStateWithLifecycle()
                 val selectedDevice by viewModel.selectedDevice.collectAsStateWithLifecycle()
 
                 if (showProjectionInfoDialog) {
@@ -811,6 +858,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     onIdlePatternChanged = ::onIdlePatternChanged,
                     notificationFlashEnabled = notificationFlashEnabled,
                     onNotificationFlashEnabledChanged = ::onNotificationFlashEnabledChanged,
+                    disableGlyphsWhenSilent = disableGlyphsWhenSilent,
+                    onDisableGlyphsWhenSilentChanged = ::onDisableGlyphsWhenSilentChanged,
                     selectedDevice = selectedDevice,
                 )
             }
@@ -922,6 +971,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         }
         viewModel.setNotificationFlashEnabled(enabled)
         service?.setNotificationFlashEnabled(enabled)
+    }
+
+    private fun onDisableGlyphsWhenSilentChanged(enabled: Boolean) {
+        viewModel.setDisableGlyphsWhenSilent(enabled)
+        service?.setDisableGlyphsWhenSilent(enabled)
     }
 
     private fun isNotificationServiceEnabled(): Boolean {
@@ -1071,6 +1125,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         service?.setHapticFreqRange(viewModel.hapticFreqMin.value, viewModel.hapticFreqMax.value)
         service?.setHapticMultiplier(viewModel.hapticMultiplier.value)
         service?.setHapticGamma(viewModel.hapticGamma.value)
+        service?.setDisableGlyphsWhenSilent(viewModel.disableGlyphsWhenSilent.value)
 
         val preset = viewModel.currentPreset()
         if (preset.isNotBlank()) service?.setPreset(preset)
@@ -1259,6 +1314,8 @@ private fun BetterVizApp(
     onIdlePatternChanged: (String) -> Unit,
     notificationFlashEnabled: Boolean,
     onNotificationFlashEnabledChanged: (Boolean) -> Unit,
+    disableGlyphsWhenSilent: Boolean,
+    onDisableGlyphsWhenSilentChanged: (Boolean) -> Unit,
     selectedDevice: Int,
 ) {
     val autoDeviceEnabled by viewModel.autoDeviceEnabled.collectAsStateWithLifecycle()
@@ -1406,8 +1463,10 @@ private fun BetterVizApp(
                             onIdlePatternChanged = onIdlePatternChanged,
                             notificationFlashEnabled = notificationFlashEnabled,
                             onNotificationFlashEnabledChanged = onNotificationFlashEnabledChanged,
+                            disableGlyphsWhenSilent = disableGlyphsWhenSilent,
+                            onDisableGlyphsWhenSilentChanged = onDisableGlyphsWhenSilentChanged,
                         )
-                        Tab.About -> AboutScreen()
+                        Tab.About -> AboutScreen(viewModel)
                     }
                 }
             }
