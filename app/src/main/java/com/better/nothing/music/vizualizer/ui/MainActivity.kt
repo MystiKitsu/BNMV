@@ -382,8 +382,15 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private val _visualizerState = MutableStateFlow(floatArrayOf())
     val visualizerState = _visualizerState.asStateFlow()
 
+    private val _fftState = MutableStateFlow(floatArrayOf())
+    val fftState = _fftState.asStateFlow()
+
     fun updateVisualizerState(state: FloatArray) {
         _visualizerState.value = state
+    }
+
+    fun updateFftState(state: FloatArray) {
+        _fftState.value = state
     }
 
     private val _isEditingPreset = MutableStateFlow(false)
@@ -1443,11 +1450,13 @@ private fun BetterVizApp(
             while (true) {
                 MainActivity.serviceStatic?.let { s ->
                     viewModel.updateVisualizerState(s.currentLightState)
+                    viewModel.updateFftState(s.latestMagnitudes)
                 }
                 delay(16)
             }
         } else {
             viewModel.updateVisualizerState(floatArrayOf())
+            viewModel.updateFftState(floatArrayOf())
         }
     }
 
@@ -1535,16 +1544,20 @@ private fun BetterVizApp(
                         }
                 ) {
                     when (currentTab) {
-                        Tab.Audio -> AudioScreen(
-                            isRunning = isRunning,
-                            latencyMs = latencyMs,
-                            onLatencyChanged = onLatencyChanged,
-                            latencyPresets = latencyPresets,
-                            onLatencyPresetsChanged = onLatencyPresetsChanged,
-                            autoDeviceEnabled = autoDeviceEnabled,
-                            onAutoDeviceToggle = onAutoDeviceToggle,
-                            connectedDeviceName = connectedDeviceName,
-                        )
+                        Tab.Audio -> {
+                            val fftData by viewModel.fftState.collectAsStateWithLifecycle()
+                            AudioScreen(
+                                isRunning = isRunning,
+                                latencyMs = latencyMs,
+                                onLatencyChanged = onLatencyChanged,
+                                latencyPresets = latencyPresets,
+                                onLatencyPresetsChanged = onLatencyPresetsChanged,
+                                autoDeviceEnabled = autoDeviceEnabled,
+                                onAutoDeviceToggle = onAutoDeviceToggle,
+                                connectedDeviceName = connectedDeviceName,
+                                fftData = fftData,
+                            )
+                        }
                         Tab.Glyphs -> GlyphsScreen(
                             gammaValue = gammaValue,
                             onGammaChanged = onGammaChanged,

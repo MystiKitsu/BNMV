@@ -87,8 +87,13 @@ public class AudioProcessor {
         for (int i = 0; i <= fftSize / 2; i++) {
             double re = fftData[2 * i];
             double im = fftData[2 * i + 1];
-            // Normalize magnitude by fftSize to keep levels consistent across different window sizes
-            magnitude[i] = (float) (Math.hypot(re, im) / fftSize);
+            // Normalize magnitude by fftSize
+            float mag = (float) (Math.hypot(re, im) / fftSize);
+
+            // Amplify high frequencies: linear boost from 1.0x at 0Hz to ~4.0x at 20kHz
+            float freq = i * hzPerBin;
+            float boost = 1f + (freq / 20000f) * 3f;
+            magnitude[i] = mag * boost;
         }
 
         // Compute magnitudes

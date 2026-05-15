@@ -12,6 +12,7 @@
     <string name="manual_mode_global_latency">Manuel mod (Genel gecikme)</string>
     <string name="latency_compensation_description">Gecikme telafisi, özellikle Bluetooth cihazları için kullanışlıdır ve Gliflerin tam olarak ritme göre yanmasını sağlar.</string>
     <string name="latency_compensation">Gecikme Telafisi</string>
+    <string name="live_spectrum">Canlı Ses Spektrumu</string>
 
     <!-- Glyph Screen -->
     <string name="glyph_controls">Glif kontrolleri</string>

@@ -57,6 +57,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlin.math.log10
+import kotlin.math.pow
+import kotlin.math.max
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -72,6 +86,7 @@ fun AudioScreen(
     autoDeviceEnabled: Boolean,
     onAutoDeviceToggle: (Boolean) -> Unit,
     connectedDeviceName: String? = null,
+    fftData: FloatArray = floatArrayOf(),
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -139,6 +154,8 @@ fun AudioScreen(
                     latencyPresets = latencyPresets,
                     onLatencyPresetsChanged = onLatencyPresetsChanged,
                 )
+
+                FFTSpectrumCard(fftData = fftData)
             }
         }
         Spacer(modifier = Modifier.height(70.dp))
@@ -322,6 +339,136 @@ fun LatencyCard(
                             haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                             updateLatency(latencyMs + amount)
                         }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FFTSpectrumCard(fftData: FloatArray) {
+    Card(
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.live_spectrum),
+                color = Color(0xFFE6E1E3),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(150.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            ) {
+                val primaryColor = MaterialTheme.colorScheme.primary
+
+                // --- DECAY LOGIC ---
+                // Instant rise, smoothed fall (using a typical decay alpha of 0.8)
+                val decayedData = remember { mutableStateOf(floatArrayOf()) }
+                LaunchedEffect(fftData) {
+                    if (fftData.isEmpty()) return@LaunchedEffect
+                    
+                    val current = decayedData.value
+                    if (current.size != fftData.size) {
+                        decayedData.value = fftData.copyOf()
+                        return@LaunchedEffect
+                    }
+                    
+                    val decay = 0.8f
+                    val next = FloatArray(fftData.size)
+                    for (i in fftData.indices) {
+                        val newVal = fftData[i]
+                        val prevVal = current[i]
+                        if (newVal > prevVal) {
+                            next[i] = newVal
+                        } else {
+                            next[i] = (decay * prevVal) + ((1f - decay) * newVal)
+                        }
+                    }
+                    decayedData.value = next
+                }
+
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val data = decayedData.value
+                    if (data.isEmpty()) return@Canvas
+
+                    val width = size.width
+                    val height = size.height
+                    val barPath = Path()
+                    
+                    val minFreq = 20f
+                    val maxFreq = 20000f
+                    val sampleRate = 44100f
+                    val numBins = data.size
+                    val hzPerBin = sampleRate / (2 * (numBins - 1))
+
+                    val logMin = log10(minFreq)
+                    val logMax = log10(maxFreq)
+
+                    var first = true
+                    
+                    val gradient = Brush.verticalGradient(
+                        colors = listOf(primaryColor.copy(alpha = 0.5f), Color.Transparent),
+                        startY = 0f,
+                        endY = height
+                    )
+
+                    val points = 200
+                    for (i in 0..points) {
+                        val fraction = i.toFloat() / points
+                        val logFreq = logMin + fraction * (logMax - logMin)
+                        val freq = 10f.pow(logFreq)
+                        
+                        val binIndex = freq / hzPerBin
+                        val lowerBin = binIndex.toInt()
+                        val upperBin = (lowerBin + 1).coerceAtMost(numBins - 1)
+                        val t = binIndex - lowerBin
+                        
+                        val mag = if (lowerBin < numBins) {
+                            (1f - t) * data[lowerBin] + t * data[upperBin]
+                        } else 0f
+
+                        // Adjusted scaling: multiplier reduced to 50f
+                        val scaledMag = (mag * 50f).coerceIn(0f, 1f)
+                        val y = height - (scaledMag * (height - 10f)) - 5f
+
+                        val x = fraction * width
+                        if (first) {
+                            barPath.moveTo(x, y)
+                            first = false
+                        } else {
+                            barPath.lineTo(x, y)
+                        }
+                    }
+
+                    val fillPath = Path().apply {
+                        addPath(barPath)
+                        lineTo(width, height)
+                        lineTo(0f, height)
+                        close()
+                    }
+
+                    drawPath(
+                        path = fillPath,
+                        brush = gradient
+                    )
+
+                    drawPath(
+                        path = barPath,
+                        color = primaryColor,
+                        style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                     )
                 }
             }

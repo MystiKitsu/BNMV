@@ -203,6 +203,14 @@ public class AudioCaptureService extends Service {
     private GlyphRenderer mGlyphRenderer;
     private AudioDeviceManager mAudioDeviceManager;
     private long mLastSendMs = 0L;
+    private float[] mLatestMagnitudes = new float[0];
+    private final Object mFftLock = new Object();
+
+    public float[] getLatestMagnitudes() {
+        synchronized (mFftLock) {
+            return mLatestMagnitudes;
+        }
+    }
     private long mLastAudioActivityMs = 0L;
     private final Handler mMainHandler = new Handler(android.os.Looper.getMainLooper());
     private final Runnable mIdlePulseRunnable = new Runnable() {
@@ -235,13 +243,15 @@ public class AudioCaptureService extends Service {
 
     private static final class PendingFrame {
         final float[] uniqueMagnitudes;
+        final float[] magnitude;
         final float hapticPeak;
         final AudioProcessor.VisualizerConfig config;
         final int configVersion;
         final long dueAtMs;
 
-        PendingFrame(float[] uniqueMagnitudes, float hapticPeak, AudioProcessor.VisualizerConfig config, int configVersion, long dueAtMs) {
+        PendingFrame(float[] uniqueMagnitudes, float[] magnitude, float hapticPeak, AudioProcessor.VisualizerConfig config, int configVersion, long dueAtMs) {
             this.uniqueMagnitudes = uniqueMagnitudes;
+            this.magnitude = magnitude;
             this.hapticPeak = hapticPeak;
             this.config = config;
             this.configVersion = configVersion;
@@ -866,6 +876,7 @@ public class AudioCaptureService extends Service {
 
             pendingFrames.addLast(new PendingFrame(
                     result.uniqueMagnitudes,
+                    result.magnitude.clone(),
                     hapticPeak,
                     config,
                     presetVersion,
@@ -885,6 +896,11 @@ public class AudioCaptureService extends Service {
                 return;
             }
             pendingFrames.removeFirst();
+
+            synchronized (mFftLock) {
+                mLatestMagnitudes = pendingFrame.magnitude;
+            }
+
             processFrame(pendingFrame.uniqueMagnitudes, pendingFrame.hapticPeak, pendingFrame.config, pendingFrame.configVersion);
         }
     }

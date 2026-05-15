@@ -12,6 +12,7 @@
     <string name="manual_mode_global_latency">Manual mode (Global latency)</string>
     <string name="latency_compensation_description">Latency compensation ensures Glyphs hit exactly on the beat, especially useful for Bluetooth devices.</string>
     <string name="latency_compensation">Latency Compensation</string>
+    <string name="live_spectrum">Live Audio Spectrum</string>
 
     <!-- Glyph Screen -->
     <string name="glyph_controls">Glyph controls</string>
