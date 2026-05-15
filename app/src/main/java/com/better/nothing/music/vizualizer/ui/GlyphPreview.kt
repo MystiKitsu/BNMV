@@ -24,7 +24,6 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.nativePaint
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.PathParser
@@ -151,13 +150,14 @@ fun GlyphPreviewContent(
             }
 
             fun drawSmoothPath(path: Path, alpha: Float) {
-                if (alpha <= baseOpacity) return
-
+                // Ensure silhoutte is drawn always
                 drawIntoCanvas { canvas ->
-                    glowPaint.color = color
-                    glowPaint.alpha = alpha * 0.4f
-                    glowPaint.nativePaint.maskFilter = android.graphics.BlurMaskFilter(8f, android.graphics.BlurMaskFilter.Blur.NORMAL)
-                    canvas.drawPath(path, glowPaint)
+                    if (alpha > baseOpacity) {
+                        glowPaint.color = color
+                        glowPaint.alpha = alpha * 0.4f
+                        glowPaint.nativePaint.maskFilter = android.graphics.BlurMaskFilter(8f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+                        canvas.drawPath(path, glowPaint)
+                    }
                 }
 
                 drawPath(path, color.copy(alpha = alpha))
@@ -305,10 +305,10 @@ private fun drawPathAddressable(
             canvas.save()
 
             canvas.clipRect(
-                left = if (vertical) -1000f else b.left + i * step,
-                top = if (vertical) b.top + i * step else -1000f,
-                right = if (vertical) 1000f else b.left + (i + 1) * step,
-                bottom = if (vertical) b.top + (i + 1) * step else 1000f
+                left = if (vertical) b.left else b.left + i * step,
+                top = if (vertical) b.top + i * step else b.top,
+                right = if (vertical) b.right else b.left + (i + 1) * step,
+                bottom = if (vertical) b.top + (i + 1) * step else b.bottom
             )
 
             paint.color = color
@@ -329,20 +329,21 @@ private fun drawPathRingSegments(scope: DrawScope, path: Path, color: Color, ind
     val b = path.getBounds()
     val count = indices.size
     val centerX = b.left + b.width / 2
-    val sliceH = b.height / (count / 2)
+    val rows = count / 2
+    val sliceH = b.height / rows
 
     indices.forEachIndexed { i, idx ->
         val alpha = baseOpacity + (state.getOrElse(idx) { 0f } * (1f - baseOpacity))
-        val isR = i >= count / 2
-        val row = if (isR) i - (count / 2) else i
+        val isR = i >= rows
+        val row = if (isR) i - rows else i
 
         scope.drawIntoCanvas { canvas ->
             canvas.save()
 
             canvas.clipRect(
-                left = if (isR) centerX else -1000f,
+                left = if (isR) centerX else b.left,
                 top = b.top + row * sliceH,
-                right = if (isR) 1000f else centerX,
+                right = if (isR) b.right else centerX,
                 bottom = b.top + (row + 1) * sliceH
             )
 
@@ -373,9 +374,9 @@ private fun drawPathVerticalSegments(scope: DrawScope, path: Path, color: Color,
             canvas.save()
 
             canvas.clipRect(
-                left = -1000f,
+                left = b.left,
                 top = b.bottom - (i + 1) * sliceH,
-                right = 1000f,
+                right = b.right,
                 bottom = b.bottom - i * sliceH
             )
 

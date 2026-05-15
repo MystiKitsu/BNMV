@@ -252,7 +252,7 @@ private fun drawGlyphs(scope: DrawScope, device: Int, selectedIndex: Int, paths:
             paths["p2_1"]?.let { scope.drawPath(it, getColor(1), alpha = getAlpha(1)) }
             paths["p2_2"]?.let { scope.drawPath(it, getColor(2), alpha = getAlpha(2)) }
 
-            paths["p2_ring"]?.let { drawPathSegmented(scope, it, (3..18).toList(), selectedIndex, selectedColor, normalColor, baseAlpha) }
+            paths["p2_ring"]?.let { drawPathRingSegments(scope, it, (3..18).toList(), selectedIndex, selectedColor, normalColor, baseAlpha) }
 
             for (i in 19..24) {
                 paths["p2_$i"]?.let { scope.drawPath(it, getColor(i), alpha = getAlpha(i)) }
@@ -307,10 +307,44 @@ private fun drawPathSegmented(
         val alpha = if (isSelected) 1.0f else baseAlpha
 
         scope.clipRect(
-            left = if (vertical) -1000f else b.left + i * step,
-            top = if (vertical) b.top + i * step else -1000f,
-            right = if (vertical) 1000f else b.left + (i + 1) * step,
-            bottom = if (vertical) b.top + (i + 1) * step else 1000f
+            left = if (vertical) b.left else b.left + i * step,
+            top = if (vertical) b.top + i * step else b.top,
+            right = if (vertical) b.right else b.left + (i + 1) * step,
+            bottom = if (vertical) b.top + (i + 1) * step else b.bottom
+        ) {
+            scope.drawPath(path, color, alpha = alpha)
+        }
+    }
+}
+
+private fun drawPathRingSegments(
+    scope: DrawScope,
+    path: Path,
+    indices: List<Int>,
+    selectedIndex: Int,
+    selectedColor: Color,
+    normalColor: Color,
+    baseAlpha: Float
+) {
+    val b = path.getBounds()
+    val count = indices.size
+    val centerX = b.left + b.width / 2
+    val rows = count / 2
+    val sliceH = b.height / rows
+
+    indices.forEachIndexed { i, idx ->
+        val isSelected = idx == selectedIndex
+        val color = if (isSelected) selectedColor else normalColor
+        val alpha = if (isSelected) 1.0f else baseAlpha
+
+        val isR = i >= rows
+        val row = if (isR) i - rows else i
+
+        scope.clipRect(
+            left = if (isR) centerX else b.left,
+            top = b.top + row * sliceH,
+            right = if (isR) b.right else centerX,
+            bottom = b.top + (row + 1) * sliceH
         ) {
             scope.drawPath(path, color, alpha = alpha)
         }
