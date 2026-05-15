@@ -55,6 +55,10 @@ Even if it technically isn’t, the visual response to music just isn’t very o
 - **Downward-only smoothing** is applied to make the animation smoother while preserving responsiveness (this is the secret sauce)
 - Then it's ready to be displayed on the glyphs!
 
+## 🛠️ Presets
+The visualizer's behavior, from frequency ranges to animation smoothing, is entirely controlled by the `zones.config` file. Whether you want to tweak existing presets or add support for a new phone model, you can find everything you need in our configuration guide.
+### 📖 [**Detailed zones.config Documentation**](ZONES_CONFIG.md)
+
 ## 📖 How to use the App?
 1. **Download the latest APK** from the releases.
 2. **Grant Permissions**: The app needs Screen Capture (Media Projection) and Notification access.
@@ -63,7 +67,7 @@ Even if it technically isn’t, the visual response to music just isn’t very o
 5. **Change Presets**: Explore different visualization styles in the **Glyphs** tab, and tune the values to your liking!
 
 ## 📖 How to use the python script?
-The usage is pretty simple and straightforward. Nevertheless, we made a detailed wiki page which explains the installation, usage, configuration files in detail and a troubleshooting section. You can also find out how to make new presets(not yet tho). [Just click here to see how to use **musicViz.py** as a python script](https://github.com/Aleks-Levet/better-nothing-music-visualizer/wiki/). You know what's cool? You can convert an unlimited number of files in bulk without any trouble!
+We made a detailed wiki page which explains the installation, usage, configuration files in detail and a troubleshooting section. You can also find out how to make new presets(not yet tho). [Just click here to see how to use **musicViz.py** as a python script](https://github.com/Aleks-Levet/better-nothing-music-visualizer/wiki/). You know what's cool? You can convert an unlimited number of files in bulk without any trouble!
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Hand%20gestures/Handshake.png" alt="Handshake" width="25" height="25" /> Join our community
 You want to talk or discuss? *Bugs, feature requests?* [**Feel free to jump in and join us in the official discord thread in the Nothing server!**](https://discord.com/channels/930878214237200394/1434923843239280743)

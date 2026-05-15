@@ -10,7 +10,7 @@ This file is used by both the **Android App** and the **Python Visualizer Script
 
 The file is a JSON document containing global settings and multiple phone-specific **presets**.
 
-### 🌍 Global Parameters
+### 🌍 Global Values
 
 These settings apply to all presets unless overridden locally.
 
@@ -18,14 +18,6 @@ These settings apply to all presets unless overridden locally.
 | :--- | :--- | :--- |
 | `version` | String | Configuration version (displayed in the App's "About" screen). |
 | `decay-alpha` | Number | Controls the "fade-out" speed of the LEDs. Values range from `0.0` to `1.0`. <br> • **Higher values** = Longer, smoother fade. <br> • **Lower values** = Faster, snappier response. <br> *Default: 0.8* |
-| `amp` | Object | Settings for the **Automatic Gain Control** (Auto-Amp). Primarily used by the Python script to keep the visualization from being too dim or too bright. |
-
-#### 🔊 `amp` (Auto-Gain) settings:
-- `min` / `max`: The minimum and maximum allowed brightness multiplier.
-- `initial`: The starting multiplier when the visualizer begins.
-- `up_speed` / `down_speed`: How quickly the gain adjusts to changes in volume.
-
----
 
 ### 🎨 Preset Configuration
 
