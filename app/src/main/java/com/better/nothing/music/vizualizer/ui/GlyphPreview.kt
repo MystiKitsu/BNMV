@@ -194,7 +194,7 @@ fun GlyphPreviewContent(
                         paths["p2_1"]?.let { drawSmoothPath(it, getA(1)) }
                         paths["p2_2"]?.let { drawSmoothPath(it, getA(2)) }
                         paths["p2_ring"]?.let {
-                            drawPathRingSegments(this, it, color, (3..18).toList(), vizState, baseOpacity, scale, glowPaint)
+                            drawPathAddressable(this, it, color, (3..18).toList(), vizState, baseOpacity, scale, glowPaint)
                         }
                         for (i in 19..24) {
                             paths["p2_$i"]?.let { drawSmoothPath(it, getA(i)) }
