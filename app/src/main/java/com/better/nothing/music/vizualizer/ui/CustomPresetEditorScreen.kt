@@ -28,8 +28,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.min
-import kotlin.math.pow
+import kotlin.math.*
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -175,17 +174,16 @@ fun CustomPresetEditorScreen(
                             color = Color.White
                         )
                         
-                        var range by remember(selectedIndex) { 
-                            mutableStateOf(zone.lowHz..zone.highHz) 
-                        }
+                        val currentRange = invLerpLog(zone.lowHz, 20f, 20000f)..invLerpLog(zone.highHz, 20f, 20000f)
                         
                         ExpressiveRangeSlider(
-                            value = range,
-                            onValueChange = { 
-                                range = it
-                                zones[selectedIndex] = AudioProcessor.ZoneSpec(it.start, it.endInclusive, zone.lowPercent, zone.highPercent)
+                            value = currentRange,
+                            onValueChange = { newRange ->
+                                val newLow = lerpLog(newRange.start, 20f, 20000f)
+                                val newHigh = lerpLog(newRange.endInclusive, 20f, 20000f)
+                                zones[selectedIndex] = AudioProcessor.ZoneSpec(newLow, newHigh, zone.lowPercent, zone.highPercent)
                             },
-                            valueRange = 20f..20000f,
+                            valueRange = 0f..1f,
                             modifier = Modifier.fillMaxWidth()
                         )
                         
