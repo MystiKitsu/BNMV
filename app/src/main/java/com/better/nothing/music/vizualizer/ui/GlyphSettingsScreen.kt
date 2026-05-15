@@ -132,6 +132,12 @@ internal fun GlyphsScreen(
                     )
                 }
             }
+
+            NativeFilterChip(
+                label = "+ Create New",
+                selected = false,
+                onClick = { viewModel.showEditor() },
+            )
         }
 
         Card(

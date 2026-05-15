@@ -22,9 +22,11 @@ package com.better.nothing.music.vizualizer.ui
 import com.better.nothing.music.vizualizer.R
 import com.better.nothing.music.vizualizer.model.HapticMode
 import com.better.nothing.music.vizualizer.model.DeviceProfile
+import com.better.nothing.music.vizualizer.logic.AudioProcessor
 import com.better.nothing.music.vizualizer.service.AudioCaptureService
 import com.better.nothing.music.vizualizer.service.HapticsTileService
 import com.better.nothing.music.vizualizer.service.VisualizerTileService
+import com.better.nothing.music.vizualizer.ui.CustomPresetEditorScreen
 
 import android.Manifest
 import android.app.Application
@@ -88,6 +90,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
@@ -381,6 +384,77 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 
     fun updateVisualizerState(state: FloatArray) {
         _visualizerState.value = state
+    }
+
+    private val _isEditingPreset = MutableStateFlow(false)
+    val isEditingPreset = _isEditingPreset.asStateFlow()
+
+    fun showEditor() { _isEditingPreset.value = true }
+    fun hideEditor() { _isEditingPreset.value = false }
+
+    fun saveCustomPreset(name: String, zones: List<AudioProcessor.ZoneSpec>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val file = File(ctx.filesDir, "zones.config")
+                val content = if (file.exists()) {
+                    file.readText()
+                } else {
+                    ctx.assets.open("zones.config").bufferedReader().use { it.readText() }
+                }
+                val json = JSONObject(content)
+
+                val presetJson = JSONObject()
+                presetJson.put("description", "Custom: $name")
+                presetJson.put("phone_model", phoneModelForDevice(selectedDevice.value))
+
+                val zonesArray = JSONArray()
+                for (zone in zones) {
+                    val zoneArray = JSONArray()
+                    zoneArray.put(zone.lowHz.toDouble())
+                    zoneArray.put(zone.highHz.toDouble())
+                    zoneArray.put(0) // legacy amp field
+                    if (java.lang.Float.isNaN(zone.lowPercent)) {
+                        zoneArray.put(JSONObject.NULL)
+                    } else {
+                        zoneArray.put(zone.lowPercent.toDouble())
+                    }
+                    if (java.lang.Float.isNaN(zone.highPercent)) {
+                        zoneArray.put(JSONObject.NULL)
+                    } else {
+                        zoneArray.put(zone.highPercent.toDouble())
+                    }
+                    zonesArray.put(zoneArray)
+                }
+                presetJson.put("zones", zonesArray)
+
+                // Use a sanitized key
+                val key = name.lowercase().replace(Regex("[^a-z0-9]"), "_")
+                json.put(key, presetJson)
+
+                file.writeText(json.toString(2))
+                refreshPresetsInternal()
+                MainActivity.serviceStatic?.reloadConfig()
+
+                withContext(Dispatchers.Main) {
+                    _selectedPreset.value = key
+                    _isEditingPreset.value = false
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to save custom preset", e)
+            }
+        }
+    }
+
+    private fun phoneModelForDevice(device: Int): String {
+        return when (device) {
+            DeviceProfile.DEVICE_NP1 -> "PHONE1"
+            DeviceProfile.DEVICE_NP2 -> "PHONE2"
+            DeviceProfile.DEVICE_NP2A -> "PHONE2A"
+            DeviceProfile.DEVICE_NP3A -> "PHONE3A"
+            DeviceProfile.DEVICE_NP4A -> "PHONE4A"
+            DeviceProfile.DEVICE_NP3 -> "PHONE3"
+            else -> "UNKNOWN"
+        }
     }
 
     // ── Haptic Settings ──────────────────────────────────────────────────────
@@ -810,6 +884,23 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 val notificationFlashEnabled by viewModel.notificationFlashEnabled.collectAsStateWithLifecycle()
                 val disableGlyphsWhenSilent by viewModel.disableGlyphsWhenSilent.collectAsStateWithLifecycle()
                 val selectedDevice by viewModel.selectedDevice.collectAsStateWithLifecycle()
+                val isEditingPreset by viewModel.isEditingPreset.collectAsStateWithLifecycle()
+
+                if (isEditingPreset) {
+                    androidx.compose.ui.window.Dialog(
+                        onDismissRequest = viewModel::hideEditor,
+                        properties = androidx.compose.ui.window.DialogProperties(
+                            usePlatformDefaultWidth = false,
+                            decorFitsSystemWindows = false
+                        )
+                    ) {
+                        CustomPresetEditorScreen(
+                            onDismiss = viewModel::hideEditor,
+                            onSave = viewModel::saveCustomPreset,
+                            selectedDevice = selectedDevice
+                        )
+                    }
+                }
 
                 if (showProjectionInfoDialog) {
                     MediaProjectionInfoDialog(
