@@ -46,12 +46,14 @@
     <string name="haptics_mode_label">Haptic Engine Mode</string>
     <string name="haptics_mode_bass">Bass to Amplitude</string>
     <string name="haptics_mode_beat">Beat Detection</string>
+    <string name="haptics_mode_richtap">RichTap HD (Bass)</string>
     <string name="haptics_beat_detection_desc">Vibrates on detected beats within the selected frequency range. Smoother but sometimes not as stable. It\'s a beta feature.</string>
     <string name="haptics_motor_title">Audio-Reactive Haptics</string>
     <string name="haptics_frequency_label">Frequency: %1$d - %2$d Hz</string>
     <string name="haptics_frequency_desc">Vibrates based on audio amplitude in this range.</string>
     <string name="haptics_amplitude_label">Amplitude: %.1fx</string>
     <string name="haptics_gamma_label">Gamma (Response): %.1f</string>
+    <string name="haptics_richtap_freq_label">RichTap Frequency: %d</string>
     <string name="experimental_features">Experimental Features</string>
     <string name="developer_mode">Developer Mode</string>
     <string name="developer_mode_description">Enable advanced testing and device spoofing features.</string>

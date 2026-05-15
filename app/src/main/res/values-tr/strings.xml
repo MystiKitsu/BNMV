@@ -43,11 +43,17 @@
     <string name="haptics_description">Haptik araçları yakında buraya eklenecek. Bu sayfa titreşim ön ayarları, desen testleri ve olaya özel geri bildirim ayarları için hazır.</string>
     <string name="haptics_header">Haptik</string>
     <string name="haptics_subtitle">Sese duyarlı titreşim ayarları.</string>
+    <string name="haptics_mode_label">Haptik Motor Modu</string>
+    <string name="haptics_mode_bass">Bas Genliği</string>
+    <string name="haptics_mode_beat">Ritim Algılama</string>
+    <string name="haptics_mode_richtap">RichTap HD (Bas)</string>
+    <string name="haptics_beat_detection_desc">Seçilen frekans aralığında algılanan ritimlerde titrer. Daha pürüzsüzdür ancak bazen o kadar kararlı değildir. Beta özelliğidir.</string>
     <string name="haptics_motor_title">Sese Duyarlı Haptik</string>
     <string name="haptics_frequency_label">Frekans: %1$d - %2$d Hz</string>
     <string name="haptics_frequency_desc">Bu aralıktaki ses genliğine göre titreşir.</string>
     <string name="haptics_amplitude_label">Genlik: %.1fx</string>
     <string name="haptics_gamma_label">Gama (Tepki): %.1f</string>
+    <string name="haptics_richtap_freq_label">RichTap Frekansı: %d</string>
     <string name="experimental_features">Deneysel Özellikler</string>
     <string name="developer_mode">Geliştirici Modu</string>
     <string name="developer_mode_description">Gelişmiş test ve cihaz taklidi (spoofing) özelliklerini etkinleştirin.</string>

@@ -7,6 +7,7 @@ import com.better.nothing.music.vizualizer.logic.AudioProcessor;
 import com.better.nothing.music.vizualizer.logic.GlyphRenderer;
 import com.better.nothing.music.vizualizer.logic.AudioDeviceManager;
 import com.better.nothing.music.vizualizer.logic.ContinuousHapticEngine;
+import com.better.nothing.music.vizualizer.logic.RichTapHapticEngine;
 import com.better.nothing.music.vizualizer.logic.BeatDetectionHapticEngine;
 import com.better.nothing.music.vizualizer.ui.MainActivity;
 
@@ -195,6 +196,7 @@ public class AudioCaptureService extends Service {
     private volatile float mHapticMaxHz = 250;
     private volatile AudioProcessor.FrequencyRange mHapticRange;
     private ContinuousHapticEngine mContinuousHapticEngine;
+    private RichTapHapticEngine mRichTapHapticEngine;
     private BeatDetectionHapticEngine mBeatDetectionEngine;
 
     private AudioProcessor mAudioProcessor;
@@ -277,6 +279,7 @@ public class AudioCaptureService extends Service {
         }
 
         mContinuousHapticEngine = new ContinuousHapticEngine(this);
+        mRichTapHapticEngine = new RichTapHapticEngine(this);
         mBeatDetectionEngine = new BeatDetectionHapticEngine(this);
         mAudioProcessor = new AudioProcessor();
         mAudioDeviceManager = new AudioDeviceManager(this, this::refreshLatencyForCurrentAudioRoute);
@@ -303,9 +306,12 @@ public class AudioCaptureService extends Service {
         
         float hapticMultiplier = appPrefs.getFloat("haptic_multiplier", 1.0f);
         float hapticGamma = appPrefs.getFloat("haptic_gamma", 2.0f);
+        int richTapFrequency = appPrefs.getInt("richtap_frequency", 50);
         
         mContinuousHapticEngine.setHapticMultiplier(hapticMultiplier);
         mContinuousHapticEngine.setHapticGamma(hapticGamma);
+        mRichTapHapticEngine.setHapticMultiplier(hapticMultiplier);
+        mRichTapHapticEngine.setHapticFrequency(richTapFrequency);
         mBeatDetectionEngine.setHapticMultiplier(hapticMultiplier);
         
         String idlePattern = appPrefs.getString("idle_pattern", "pulse");
@@ -375,6 +381,9 @@ public class AudioCaptureService extends Service {
         sInstance = null;
         stopCapture();
         clearGlyphSession();
+        if (mRichTapHapticEngine != null) {
+            mRichTapHapticEngine.quit();
+        }
         if (mGM != null) {
             mGM.unInit();
             mGM = null;
@@ -603,6 +612,7 @@ public class AudioCaptureService extends Service {
         mHapticEnabled = enabled;
         if (!enabled) {
             mContinuousHapticEngine.stopHaptics();
+            mRichTapHapticEngine.stopHaptics();
             mBeatDetectionEngine.stopHaptics();
         }
         requestTileRefresh();
@@ -611,6 +621,7 @@ public class AudioCaptureService extends Service {
     public void setHapticMode(HapticMode mode) {
         mHapticMode = mode;
         if (mContinuousHapticEngine != null) mContinuousHapticEngine.stopHaptics();
+        if (mRichTapHapticEngine != null) mRichTapHapticEngine.stopHaptics();
         if (mBeatDetectionEngine != null) {
             mBeatDetectionEngine.stopHaptics();
             mBeatDetectionEngine.resetDetectionState();
@@ -628,11 +639,18 @@ public class AudioCaptureService extends Service {
 
     public void setHapticMultiplier(float multiplier) {
         mContinuousHapticEngine.setHapticMultiplier(multiplier);
+        mRichTapHapticEngine.setHapticMultiplier(multiplier);
         mBeatDetectionEngine.setHapticMultiplier(multiplier);
     }
 
     public void setHapticGamma(float gamma) {
         mContinuousHapticEngine.setHapticGamma(gamma);
+    }
+
+    public void setRichTapFrequency(int frequency) {
+        if (mRichTapHapticEngine != null) {
+            mRichTapHapticEngine.setHapticFrequency(frequency);
+        }
     }
 
     public void startCapture(int resultCode, Intent data) {
@@ -839,6 +857,8 @@ public class AudioCaptureService extends Service {
             if (mHapticEnabled) {
                 if (mHapticMode == HapticMode.BASS_TO_AMPLITUDE) {
                     mContinuousHapticEngine.performHapticFeedback(result.hapticPeak, config);
+                } else if (mHapticMode == HapticMode.RICHTAP_BASS) {
+                    mRichTapHapticEngine.performHapticFeedback(result.hapticPeak, config);
                 } else {
                     mBeatDetectionEngine.performHapticFeedback(result.magnitude, mHapticRange);
                 }
@@ -939,6 +959,7 @@ public class AudioCaptureService extends Service {
 
     private void resetVisualizerState() {
         mContinuousHapticEngine.stopHaptics();
+        mRichTapHapticEngine.stopHaptics();
         mBeatDetectionEngine.stopHaptics();
         mGlyphRenderer.resetState(mVisualizerConfig);
         mLastSendMs = 0L;

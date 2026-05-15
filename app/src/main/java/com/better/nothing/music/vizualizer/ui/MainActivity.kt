@@ -476,6 +476,9 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private val _hapticGamma = MutableStateFlow(2.0f)
     val hapticGamma = _hapticGamma.asStateFlow()
 
+    private val _richTapFrequency = MutableStateFlow(50)
+    val richTapFrequency = _richTapFrequency.asStateFlow()
+
     fun setHapticMotorEnabled(enabled: Boolean) {
         _hapticMotorEnabled.value = enabled
         viewModelScope.launch(Dispatchers.IO) {
@@ -518,6 +521,14 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch(Dispatchers.IO) {
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putFloat("haptic_gamma", gamma) }
+        }
+    }
+
+    fun setRichTapFrequency(frequency: Int) {
+        _richTapFrequency.value = frequency
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putInt("richtap_frequency", frequency) }
         }
     }
 
@@ -643,6 +654,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 _hapticFreqMax.value = prefs.getInt("haptic_freq_max", 250).toFloat()
                 _hapticMultiplier.value = prefs.getFloat("haptic_multiplier", 1.0f)
                 _hapticGamma.value = prefs.getFloat("haptic_gamma", 2.0f)
+                _richTapFrequency.value = prefs.getInt("richtap_frequency", 50)
 
                 checkRemoteConfigVersion()
             }
@@ -878,6 +890,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 val hapticFreqMax by viewModel.hapticFreqMax.collectAsStateWithLifecycle()
                 val hapticMultiplier by viewModel.hapticMultiplier.collectAsStateWithLifecycle()
                 val hapticGamma by viewModel.hapticGamma.collectAsStateWithLifecycle()
+                val richTapFrequency by viewModel.richTapFrequency.collectAsStateWithLifecycle()
 
                 val idleBreathingEnabled by viewModel.idleBreathingEnabled.collectAsStateWithLifecycle()
                 val idlePattern by viewModel.idlePattern.collectAsStateWithLifecycle()
@@ -943,6 +956,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     onHapticMultiplierChanged = ::onHapticMultiplierChanged,
                     hapticGamma = hapticGamma,
                     onHapticGammaChanged = ::onHapticGammaChanged,
+                    richTapFrequency = richTapFrequency,
+                    onRichTapFrequencyChanged = ::onRichTapFrequencyChanged,
                     idleBreathingEnabled = idleBreathingEnabled,
                     onIdleBreathingEnabledChanged = ::onIdleBreathingEnabledChanged,
                     idlePattern = idlePattern,
@@ -1042,6 +1057,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     private fun onHapticGammaChanged(gamma: Float) {
         viewModel.setHapticGamma(gamma)
         service?.setHapticGamma(gamma)
+    }
+
+    private fun onRichTapFrequencyChanged(frequency: Int) {
+        viewModel.setRichTapFrequency(frequency)
+        service?.setRichTapFrequency(frequency)
     }
 
     private fun onIdleBreathingEnabledChanged(enabled: Boolean) {
@@ -1399,6 +1419,8 @@ private fun BetterVizApp(
     onHapticMultiplierChanged: (Float) -> Unit,
     hapticGamma: Float,
     onHapticGammaChanged: (Float) -> Unit,
+    richTapFrequency: Int,
+    onRichTapFrequencyChanged: (Int) -> Unit,
     idleBreathingEnabled: Boolean,
     onIdleBreathingEnabledChanged: (Boolean) -> Unit,
     idlePattern: String,
@@ -1545,6 +1567,8 @@ private fun BetterVizApp(
                             onHapticMultiplierChanged = onHapticMultiplierChanged,
                             hapticGamma = hapticGamma,
                             onHapticGammaChanged = onHapticGammaChanged,
+                            richTapFrequency = richTapFrequency,
+                            onRichTapFrequencyChanged = onRichTapFrequencyChanged,
                         )
                         Tab.Settings -> SettingsScreen(
                             viewModel = viewModel,

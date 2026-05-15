@@ -55,6 +55,8 @@ fun HapticsScreen(
     onHapticMultiplierChanged: (Float) -> Unit,
     hapticGamma: Float,
     onHapticGammaChanged: (Float) -> Unit,
+    richTapFrequency: Int,
+    onRichTapFrequencyChanged: (Int) -> Unit,
 ) {
     val scrollState = rememberScrollState()
 
@@ -120,6 +122,7 @@ fun HapticsScreen(
                                 when (mode) {
                                     HapticMode.BASS_TO_AMPLITUDE -> R.string.haptics_mode_bass
                                     HapticMode.BEAT_DETECTION -> R.string.haptics_mode_beat
+                                    HapticMode.RICHTAP_BASS -> R.string.haptics_mode_richtap
                                 }
                             )
                         },
@@ -167,7 +170,7 @@ fun HapticsScreen(
                 }
             }
 
-            if (hapticMode == HapticMode.BASS_TO_AMPLITUDE) {
+            if (hapticMode == HapticMode.BASS_TO_AMPLITUDE || hapticMode == HapticMode.RICHTAP_BASS) {
                 // Amplitude Multiplier
                 Card(
                     shape = RoundedCornerShape(28.dp),
@@ -192,27 +195,53 @@ fun HapticsScreen(
                     }
                 }
 
-                // Gamma (Curve)
-                Card(
-                    shape = RoundedCornerShape(28.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                if (hapticMode == HapticMode.BASS_TO_AMPLITUDE) {
+                    // Gamma (Curve)
+                    Card(
+                        shape = RoundedCornerShape(28.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
-                        Text(
-                            text = stringResource(R.string.haptics_gamma_label, hapticGamma),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        ExpressiveSlider(
-                            value = hapticGamma,
-                            onValueChange = onHapticGammaChanged,
-                            valueRange = 1f..4.0f,
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.haptics_gamma_label, hapticGamma),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            ExpressiveSlider(
+                                value = hapticGamma,
+                                onValueChange = onHapticGammaChanged,
+                                valueRange = 1f..4.0f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                } else if (hapticMode == HapticMode.RICHTAP_BASS) {
+                    // RichTap Frequency
+                    Card(
+                        shape = RoundedCornerShape(28.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.haptics_richtap_freq_label, richTapFrequency),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            ExpressiveSlider(
+                                value = richTapFrequency.toFloat(),
+                                onValueChange = { onRichTapFrequencyChanged(it.toInt()) },
+                                valueRange = 0f..100f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
                 }
             } else {
