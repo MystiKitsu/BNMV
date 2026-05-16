@@ -5,6 +5,8 @@
   
 [<img height="80" alt="Get it on GitHub" src="./.github/assets/get-it-on-github.png" />](https://github.com/Aleks-Levet/better-nothing-music-visualizer/releases)
    
+# NEW LICENCE, PLEASE READ IT
+
 ## 🌐 Read this in other languages: 
 🇮🇳 [हिन्दी](README_HI.md)
 🇮🇳 [Marathi](README-MR.md)
