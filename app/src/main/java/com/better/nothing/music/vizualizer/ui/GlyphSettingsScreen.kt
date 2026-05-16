@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,13 +27,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +47,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +61,8 @@ import kotlin.math.pow
 internal fun GlyphsScreen(
     gammaValue: Float,
     onGammaChanged: (Float) -> Unit,
+    maxBrightness: Int,
+    onMaxBrightnessChanged: (Int) -> Unit,
     presets: List<AudioCaptureService.PresetInfo>,
     selectedPreset: String,
     onPresetSelected: (String) -> Unit,
@@ -89,11 +97,155 @@ internal fun GlyphsScreen(
             }
         }
 
-        Text(
-            text = stringResource(R.string.gamma_control),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
+
+        // Header with external toggle for glyph visualization
+        val hapticsLocal = androidx.compose.ui.platform.LocalHapticFeedback.current
+        val DEFAULT_BR = 4500
+        val lastNonZero = remember { androidx.compose.runtime.mutableStateOf(if (maxBrightness > 0) maxBrightness else DEFAULT_BR) }
+        androidx.compose.runtime.LaunchedEffect(maxBrightness) {
+            if (maxBrightness > 0) lastNonZero.value = maxBrightness
+        }
+
+        val glyphEnabled = maxBrightness > 0
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Glyph Visualization",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f)
+            )
+            Switch(
+                checked = glyphEnabled,
+                onCheckedChange = { enabled ->
+                    hapticsLocal.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    if (enabled) {
+                        onMaxBrightnessChanged(lastNonZero.value)
+                    } else {
+                        onMaxBrightnessChanged(0)
+                    }
+                }
+            )
+        }
+
+        if (glyphEnabled) {
+            // Brightness card placed above gamma card
+            BrightnessCard(
+                maxBrightness = maxBrightness,
+                enabled = glyphEnabled,
+                lastNonZero = lastNonZero.value,
+                onLastNonZeroChanged = { v -> lastNonZero.value = v },
+                onMaxBrightnessChanged = onMaxBrightnessChanged
+            )
+
+            Text(
+                text = stringResource(R.string.gamma_control),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                GammaPreviewCard(gammaValue = gammaValue)
+                BodyText(
+                    text = stringResource(R.string.gamma_description),
+                    modifier = Modifier.weight(1f),
+                    size = 14.sp,
+                    lineHeight = 22.sp,
+                )
+            }
+
+            GammaCard(gammaValue = gammaValue, onGammaChanged = onGammaChanged)
+
+            Text(
+                text = stringResource(R.string.visualizer_presets),
+                modifier = Modifier.padding(top = 20.dp),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                presets.forEach { preset ->
+                    key(preset.key) {
+                        NativeFilterChip(
+                            label = preset.key,
+                            selected = preset.key == selectedPreset,
+                            onClick = { onPresetSelected(preset.key) },
+                        )
+                    }
+                }
+
+                NativeFilterChip(
+                    label = "+ Create New",
+                    selected = false,
+                    onClick = { viewModel.showEditor() },
+                )
+            }
+
+            Card(
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    ),
+            ) {
+                Crossfade(
+                    targetState = selectedInfo?.description,
+                    label = "desc_fade",
+                    animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                ) { description ->
+                    Text(
+                        text = description ?: stringResource(R.string.glyph_no_config),
+                        style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 22.sp),
+                        color = Color(0xFFFFFFFF),
+                        modifier = Modifier
+                            .padding(20.dp)
+                            .fillMaxWidth(),
+                    )
+                }
+            }
+
+            if (isRunning) {
+                val vizState by viewModel.visualizerState.collectAsStateWithLifecycle()
+                GlyphPreview(
+                    vizState = vizState,
+                    device = selectedDevice,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(400.dp)
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_nav_glyphs),
+                    contentDescription = null,
+                    modifier = Modifier.size(220.dp),
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+                )
+            }
+        }
+
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -240,12 +392,74 @@ private fun isGlyphDebugEnabled(context: Context): Boolean {
 }
 
 @Composable
+fun BrightnessCard(
+    maxBrightness: Int,
+    enabled: Boolean,
+    lastNonZero: Int,
+    onLastNonZeroChanged: (Int) -> Unit,
+    onMaxBrightnessChanged: (Int) -> Unit,
+) {
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+
+    val DEFAULT_BRIGHTNESS = 4500
+    val MIN_BRIGHTNESS = 50
+    val MAX_BRIGHTNESS = 4500
+
+    // Quadratic mapping: slider position (0..1) -> value = min + (max-min) * pos^2
+    fun linearToPos(linear: Int): Float {
+        val clamped = linear.coerceIn(MIN_BRIGHTNESS, MAX_BRIGHTNESS)
+        val ratio = (clamped - MIN_BRIGHTNESS).toFloat() / (MAX_BRIGHTNESS - MIN_BRIGHTNESS).toFloat()
+        return kotlin.math.sqrt(ratio.coerceIn(0f, 1f))
+    }
+
+    fun posToLinear(pos: Float): Int {
+        val p = pos.coerceIn(0f, 1f)
+        val valf = MIN_BRIGHTNESS + (MAX_BRIGHTNESS - MIN_BRIGHTNESS) * (p * p)
+        return kotlin.math.round(valf).toInt()
+    }
+
+    val posValue = remember(maxBrightness, lastNonZero) { linearToPos(if (maxBrightness > 0) maxBrightness else lastNonZero) }
+
+    Card(
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(17.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "${if (maxBrightness > 0) maxBrightness else lastNonZero}/${MAX_BRIGHTNESS}" + (if (maxBrightness == DEFAULT_BRIGHTNESS) " (default)" else ""),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            ExpressiveSlider(
+                value = posValue,
+                onValueChange = { newPos ->
+                    val newLinearValue = posToLinear(newPos)
+                    onLastNonZeroChanged(newLinearValue)
+                    if (enabled) onMaxBrightnessChanged(newLinearValue)
+                },
+                valueRange = 0f..1f,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
 fun GammaCard(
     gammaValue: Float,
     onGammaChanged: (Float) -> Unit,
 ) {
-    val gammaLabel = stringResource(R.string.light_gamma).format(gammaValue)
-
     Card(
         shape    = RoundedCornerShape(28.dp),
         colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -255,12 +469,23 @@ fun GammaCard(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(17.dp),
         ) {
-            Text(
-                text     = gammaLabel,
-                color    = MaterialTheme.colorScheme.primary,
-                style    = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text     = stringResource(R.string.light_gamma),
+                    color    = MaterialTheme.colorScheme.primary,
+                    style    = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text     = gammaValue.toString(),
+                    color    = MaterialTheme.colorScheme.primary,
+                    style    = MaterialTheme.typography.titleMedium
+                )
+            }
             ExpressiveSlider(
                 value = gammaValue,
                 onValueChange = onGammaChanged,

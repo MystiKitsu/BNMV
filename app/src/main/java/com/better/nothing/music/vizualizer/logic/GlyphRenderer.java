@@ -10,7 +10,6 @@ import java.util.Arrays;
 public class GlyphRenderer {
 
     private static final float PEAK_FALLOFF = 0.9995f;
-    private static final float SPECTRUM_GAIN = 4f;
     private static final float EPSILON = 0.000001f;
     private static final float SILENCE_THRESHOLD = 0.005f;
     private static final long BREATH_DELAY_MS = 3000L;
@@ -18,6 +17,8 @@ public class GlyphRenderer {
     private static final long FLASH_DURATION_MS = 200L;
 
     private float mGamma;
+    private float mSpectrumGain = 4f;
+    private int mMaxBrightness = 4095;
     private boolean mIdleBreathingEnabled;
     private final boolean mNotificationFlashEnabled;
     private int mDeviceType = DeviceProfile.DEVICE_UNKNOWN;
@@ -54,6 +55,16 @@ public class GlyphRenderer {
     public void setGamma(float gamma) {
         mGamma = gamma;
         mLastHash = Integer.MIN_VALUE; // Force redraw with new gamma
+    }
+
+    public void setSpectrumGain(float gain) {
+        mSpectrumGain = gain;
+        mLastHash = Integer.MIN_VALUE;
+    }
+
+    public void setMaxBrightness(int brightness) {
+        mMaxBrightness = brightness;
+        mLastHash = Integer.MIN_VALUE;
     }
 
     public void setDeviceType(int deviceType) {
@@ -150,7 +161,7 @@ public class GlyphRenderer {
     private float[] computeDecayedFrequencyState(float[] uniqueMagnitudes, AudioProcessor.VisualizerConfig config) {
         float[] next = new float[mDecayedFrequencyState.length];
         for (int i = 0; i < next.length; i++) {
-            float current = (i < uniqueMagnitudes.length ? uniqueMagnitudes[i] : 0f) * SPECTRUM_GAIN;
+            float current = (i < uniqueMagnitudes.length ? uniqueMagnitudes[i] : 0f) * mSpectrumGain;
             float risen = Math.max(mDecayedFrequencyState[i], current);
             float decayed = (config.decay * risen) + ((1f - config.decay) * current);
             next[i] = decayed < EPSILON ? 0f : decayed;
@@ -165,7 +176,7 @@ public class GlyphRenderer {
 
         boolean isSilent = true;
         for (float peak : uniqueMagnitudes) {
-            if (peak * SPECTRUM_GAIN > SILENCE_THRESHOLD) {
+            if (peak * mSpectrumGain > SILENCE_THRESHOLD) {
                 isSilent = false;
                 break;
             }
@@ -237,8 +248,9 @@ public class GlyphRenderer {
     private int[] buildFrameColors(float[] normalizedLightState, int expectedLength) {
         int[] frameColors = new int[expectedLength];
         int count = Math.min(normalizedLightState.length, expectedLength);
+        float multiplier = (float) mMaxBrightness;
         for (int i = 0; i < count; i++) {
-            frameColors[i] = Math.round(applyGamma(normalizedLightState[i]) * 4095f);
+            frameColors[i] = Math.round(applyGamma(normalizedLightState[i]) * multiplier);
         }
         return frameColors;
     }

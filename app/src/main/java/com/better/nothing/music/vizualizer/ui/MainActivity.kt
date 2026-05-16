@@ -201,6 +201,26 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     val gammaValue = _gammaValue.asStateFlow()
     fun setGammaValue(value: Float) { _gammaValue.value = value }
 
+    private val _spectrumGain = MutableStateFlow(4.0f)
+    val spectrumGain = _spectrumGain.asStateFlow()
+    fun setSpectrumGain(value: Float) {
+        _spectrumGain.value = value
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putFloat("spectrum_gain", value) }
+        }
+    }
+
+    private val _maxBrightness = MutableStateFlow(4095)
+    val maxBrightness = _maxBrightness.asStateFlow()
+    fun setMaxBrightness(value: Int) {
+        _maxBrightness.value = value
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putInt("max_brightness", value) }
+        }
+    }
+
     // ── Running state ─────────────────────────────────────────────────────────
     private val _runningState = MutableStateFlow(false)
     val runningState = _runningState.asStateFlow()
@@ -698,6 +718,8 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 }
 
                 val gamma = AudioCaptureService.loadGamma(ctx)
+                val spectrumGain = prefs.getFloat("spectrum_gain", 4.0f)
+                val maxBrightness = prefs.getInt("max_brightness", 4095)
                 val latency = AudioCaptureService.loadLatencyCompensationMs(
                     ctx,
                     device,
@@ -709,6 +731,8 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 
                 // Update UI state once ready
                 _gammaValue.value = gamma
+                _spectrumGain.value = spectrumGain
+                _maxBrightness.value = maxBrightness
                 _latencyMs.value = latency
                 _latencyPresets.value = presets
                 _configVersion.value = configVersion
@@ -963,6 +987,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 val latencyMs      by viewModel.latencyMs.collectAsStateWithLifecycle()
                 val latencyPresets by viewModel.latencyPresets.collectAsStateWithLifecycle()
                 val gammaValue     by viewModel.gammaValue.collectAsStateWithLifecycle()
+                val maxBrightness  by viewModel.maxBrightness.collectAsStateWithLifecycle()
                 val presets        by viewModel.presetInfos.collectAsStateWithLifecycle()
                 val selectedPreset by viewModel.selectedPreset.collectAsStateWithLifecycle()
 
@@ -1014,6 +1039,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 }
 
                 BetterVizApp(
+                    viewModel = viewModel,
                     tab = tab,
                     onTabSelected = viewModel::selectTab,
                     isRunning = isRunning,
@@ -1023,12 +1049,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     onLatencyPresetsChanged = viewModel::updateLatencyPresets,
                     gammaValue = gammaValue,
                     onGammaChanged = ::onGammaChanged,
+                    maxBrightness = maxBrightness,
+                    onMaxBrightnessChanged = ::onMaxBrightnessChanged,
                     presets = presets,
                     selectedPreset = selectedPreset,
                     onPresetSelected = ::onPresetSelected,
                     onToggleVisualizer = ::toggleVisualizer,
                     onAutoDeviceToggle = ::onAutoDeviceToggle,
-                    viewModel = viewModel,
                     hapticMotorEnabled = hapticMotorEnabled,
                     onHapticMotorEnabledChanged = ::onHapticMotorEnabledChanged,
                     hapticMode = hapticMode,
@@ -1118,6 +1145,20 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         viewModel.setGammaValue(value)
         viewModel.persistGamma(value)            // Dispatchers.IO — never blocks main
         service?.setGamma(value)
+    }
+
+    private fun onSpectrumGainChanged(value: Float) {
+        viewModel.setSpectrumGain(value)
+        viewModel.viewModelScope.launch(Dispatchers.IO) {
+            getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putFloat("spectrum_gain", value) }
+        }
+        service?.setSpectrumGain(value)
+    }
+
+    private fun onMaxBrightnessChanged(value: Int) {
+        viewModel.setMaxBrightness(value)
+        service?.setMaxBrightness(value)
     }
 
     private fun onHapticMotorEnabledChanged(enabled: Boolean) {
@@ -1316,6 +1357,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         service?.setDevice(viewModel.selectedDevice.value)
         service?.setLatencyCompensationMs(viewModel.latencyMs.value)
         service?.setGamma(viewModel.gammaValue.value)
+        service?.setSpectrumGain(viewModel.spectrumGain.value)
 
         service?.setHapticEnabled(viewModel.hapticMotorEnabled.value)
         service?.setHapticMode(viewModel.hapticMode.value)
@@ -1489,6 +1531,8 @@ private fun BetterVizApp(
     onLatencyPresetsChanged: (List<Int>) -> Unit,
     gammaValue: Float,
     onGammaChanged: (Float) -> Unit,
+    maxBrightness: Int,
+    onMaxBrightnessChanged: (Int) -> Unit,
     presets: List<AudioCaptureService.PresetInfo>,
     selectedPreset: String,
     onPresetSelected: (String) -> Unit,
@@ -1642,6 +1686,8 @@ private fun BetterVizApp(
                         Tab.Glyphs -> GlyphsScreen(
                             gammaValue = gammaValue,
                             onGammaChanged = onGammaChanged,
+                            maxBrightness = maxBrightness,
+                            onMaxBrightnessChanged = onMaxBrightnessChanged,
                             presets = presets,
                             selectedPreset = selectedPreset,
                             onPresetSelected = onPresetSelected,

@@ -18,7 +18,7 @@
     <string name="glyph_controls">Glif kontrolleri</string>
     <string name="gamma_control">Gama kontrolü</string>
     <string name="gamma_description">Daha yüksek bir gama değeri, daha az ince ayrıntı ve genel parlaklık ile daha vurucu bir görünüm verir. Daha düşük bir değer ise daha parlak ancak daha az vurucudur.</string>
-    <string name="light_gamma">Işık Gaması: %.1f</string>
+    <string name="light_gamma">Işık Gaması:</string>
     <string name="visualizer_presets">Görselleştirici hazır ayarları</string>
 
     <!-- Settings Screen -->
