@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -281,6 +282,33 @@ private fun drawEditorGlyphs(scope: DrawScope, device: Int, selectedIndex: Int, 
         DeviceProfile.DEVICE_NP4A -> {
             paths["p4a_bar"]?.let { drawPathSegmentedVertical(scope, it, (0..5).toList(), selectedIndex, selectedColor, normalColor, baseAlpha, vertical = false) }
             paths["p4a_dot"]?.let { scope.drawPath(it, getColor(6), alpha = getAlpha(6)) }
+        }
+        DeviceProfile.DEVICE_NP4APRO, DeviceProfile.DEVICE_NP3 -> {
+            val isPro = device == DeviceProfile.DEVICE_NP4APRO
+            val matrixW = if (isPro) 13 else 25
+            val matrixH = if (isPro) 13 else 25
+            val pixelSize = if (isPro) 8f else 4.5f
+            val pixelGap = if (isPro) 1.5f else 1f
+
+            val gridWidth = matrixW * pixelSize + (matrixW - 1) * pixelGap
+            val gridHeight = matrixH * pixelSize + (matrixH - 1) * pixelGap
+
+            val startX = (182f - gridWidth) / 2
+            val startY = (382f - gridHeight) / 2
+
+            for (idx in 0 until (matrixW * matrixH)) {
+                val row = idx / matrixW
+                val col = idx % matrixW
+                val px = startX + col * (pixelSize + pixelGap)
+                val py = startY + row * (pixelSize + pixelGap)
+                
+                scope.drawRect(
+                    color = getColor(idx),
+                    topLeft = Offset(px, py),
+                    size = Size(pixelSize, pixelSize),
+                    alpha = getAlpha(idx)
+                )
+            }
         }
     }
 }

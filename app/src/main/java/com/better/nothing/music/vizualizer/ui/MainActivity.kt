@@ -460,6 +460,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
             DeviceProfile.DEVICE_NP2A -> "PHONE2A"
             DeviceProfile.DEVICE_NP3A -> "PHONE3A"
             DeviceProfile.DEVICE_NP4A -> "PHONE4A"
+            DeviceProfile.DEVICE_NP4APRO -> "PHONE4A_PRO"
             DeviceProfile.DEVICE_NP3 -> "PHONE3"
             else -> "UNKNOWN"
         }

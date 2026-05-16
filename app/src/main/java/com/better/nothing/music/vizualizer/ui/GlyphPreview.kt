@@ -278,20 +278,21 @@ fun GlyphPreviewContent(
                             center = Offset(viewBoxW / 2, 35f)
                         )
 
-                        val gridSize = if (isPro) 13 else 25
+                        val matrixW = if (isPro) 13 else 25
+                        val matrixH = if (isPro) 13 else 25
                         val pixelSize = if (isPro) 8f else 4.5f
                         val pixelGap = if (isPro) 1.5f else 1f
 
-                        val matrixW = gridSize * pixelSize + (gridSize - 1) * pixelGap
-                        val matrixH = matrixW
+                        val gridWidth = matrixW * pixelSize + (matrixW - 1) * pixelGap
+                        val gridHeight = matrixH * pixelSize + (matrixH - 1) * pixelGap
 
-                        val startX = (viewBoxW - matrixW) / 2
-                        val startY = (382f - matrixH) / 2
+                        val startX = (viewBoxW - gridWidth) / 2
+                        val startY = (382f - gridHeight) / 2
 
-                        for (idx in 0 until (gridSize * gridSize)) {
+                        for (idx in 0 until (matrixW * matrixH)) {
                             val a = getA(idx)
-                            val row = idx / gridSize
-                            val col = idx % gridSize
+                            val row = idx / matrixW
+                            val col = idx % matrixW
                             val px = startX + col * (pixelSize + pixelGap)
                             val py = startY + row * (pixelSize + pixelGap)
 

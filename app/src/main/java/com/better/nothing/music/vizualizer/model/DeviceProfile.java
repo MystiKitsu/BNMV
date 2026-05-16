@@ -29,9 +29,9 @@ public final class DeviceProfile {
             return DEVICE_NP2A;
         } else if (Common.is24111()) {
             return DEVICE_NP3A;
-        } else if (Common.is25111()) {
+        }  else if (Common.is25111()) {
             return DEVICE_NP4A;
-        } else if (Common.is25111p()){
+        }  else if (Common.is25111p()){
             return DEVICE_NP4APRO;
         } else if (Common.is23112()) {
             return DEVICE_NP3;
@@ -60,8 +60,24 @@ public final class DeviceProfile {
             case DEVICE_NP2A -> 26;
             case DEVICE_NP3A -> 36;
             case DEVICE_NP4A -> 7;
-            case DEVICE_NP4APRO -> 169;
+            case DEVICE_NP_4APRO -> 169;
             case DEVICE_NP3 -> 625;
+            default -> 0;
+        };
+    }
+
+    public static int getMatrixWidth(int device) {
+        return switch (device) {
+            case DEVICE_NP3 -> 25;
+            case DEVICE_NP4APRO -> 13;
+            default -> 0;
+        };
+    }
+
+    public static int getMatrixHeight(int device) {
+        return switch (device) {
+            case DEVICE_NP3 -> 25;
+            case DEVICE_NP4APRO -> 13;
             default -> 0;
         };
     }

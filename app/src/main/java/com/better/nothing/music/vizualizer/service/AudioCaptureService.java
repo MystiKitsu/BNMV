@@ -102,6 +102,7 @@ public class AudioCaptureService extends Service {
     private static final String PHONE_MODEL_PHONE3A = "PHONE3A";
     private static final String PHONE_MODEL_PHONE3 = "PHONE3";
     private static final String PHONE_MODEL_PHONE4A = "PHONE4A";
+    private static final String PHONE_MODEL_PHONE4A_PRO = "PHONE4A_PRO";
 
     private static final int SAMPLE_RATE = 44100;
     private static final int FPS = 60;
@@ -1211,14 +1212,7 @@ public class AudioCaptureService extends Service {
         if (mVisualizerConfig != null) {
             return mVisualizerConfig.zones.length;
         }
-        return switch (mSelectedDevice) {
-            case DeviceProfile.DEVICE_NP1 -> 15;
-            case DeviceProfile.DEVICE_NP2 -> 33;
-            case DeviceProfile.DEVICE_NP2A -> 26;
-            case DeviceProfile.DEVICE_NP3A -> 36;
-            case DeviceProfile.DEVICE_NP4A -> 7;
-            default -> 0;
-        };
+        return DeviceProfile.getLedCount(mSelectedDevice);
     }
 
     private Notification buildNotification() {
@@ -1476,6 +1470,7 @@ public class AudioCaptureService extends Service {
             case PHONE_MODEL_PHONE3A -> Arrays.asList("np3as", "np3a");
             case PHONE_MODEL_PHONE3 -> Collections.singletonList("np3test");
             case PHONE_MODEL_PHONE4A -> Collections.singletonList("np4a");
+            case PHONE_MODEL_PHONE4A_PRO -> Collections.singletonList("np4ap-test");
             default -> Collections.emptyList();
         };
 
@@ -1494,6 +1489,7 @@ public class AudioCaptureService extends Service {
             case DeviceProfile.DEVICE_NP2A -> PHONE_MODEL_PHONE2A;
             case DeviceProfile.DEVICE_NP3A -> PHONE_MODEL_PHONE3A;
             case DeviceProfile.DEVICE_NP4A -> PHONE_MODEL_PHONE4A;
+            case DeviceProfile.DEVICE_NP4APRO -> PHONE_MODEL_PHONE4A_PRO;
             case DeviceProfile.DEVICE_NP3 -> PHONE_MODEL_PHONE3;
             default -> PHONE_MODEL_UNKNOWN;
         };
@@ -1512,8 +1508,14 @@ public class AudioCaptureService extends Service {
         if (Common.is24111()) {
             return PHONE_MODEL_PHONE3A;
         }
+        if (Common.is25111p()) {
+            return PHONE_MODEL_PHONE4A_PRO;
+        }
         if (Common.is25111()) {
             return PHONE_MODEL_PHONE4A;
+        }
+        if (Common.is23112()) {
+            return PHONE_MODEL_PHONE3;
         }
 
         String buildText = (
@@ -1524,6 +1526,9 @@ public class AudioCaptureService extends Service {
                         + Build.PRODUCT
         ).toLowerCase(Locale.US);
 
+        if (buildText.contains("phone 4a pro")) {
+            return PHONE_MODEL_PHONE4A_PRO;
+        }
         if (buildText.contains("phone 4a")) {
             return PHONE_MODEL_PHONE4A;
         }
