@@ -9,7 +9,7 @@ import java.util.Arrays;
  */
 public class GlyphRenderer {
 
-    private static final int MAX_BRIGHTNESS = 4095;
+    private static final int MAX_BRIGHTNESS = 4500;
     private static final float PEAK_FALLOFF = 0.9995f;
     private static final float EPSILON = 0.000001f;
     private static final float SILENCE_THRESHOLD = 0.002f;
@@ -207,12 +207,12 @@ public class GlyphRenderer {
 
         long silenceDuration = (mSilenceStartTimeMs > 0) ? (nowMs - mSilenceStartTimeMs) : 0;
         boolean shouldBreathe = mIdleBreathingEnabled && (silenceDuration > BREATH_DELAY_MS);
-        float targetEnvelope = shouldBreathe ? 1.0f : 0.0f;
+        float targetEnvelope = shouldBreathe ? .4f : 0.0f;
 
         // Smooth envelope transition
         if (mBreathingEnvelope < targetEnvelope) {
             // Fade in slowly (~1.5s)
-            mBreathingEnvelope += (float) deltaMs / 1500f;
+            mBreathingEnvelope += (float) deltaMs / 2500f;
             if (mBreathingEnvelope > targetEnvelope) mBreathingEnvelope = targetEnvelope;
         } else if (mBreathingEnvelope > targetEnvelope) {
             // Fade out faster (~300ms) for responsiveness
@@ -228,7 +228,7 @@ public class GlyphRenderer {
                     case "wave": {
                         double timeProg = (double) (nowMs % 2000L) / 2000L;
                         float phaseShift = (float) i / Math.max(1, zoneCount);
-                        intensity = (float) (0.5 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg - phaseShift)));
+                        intensity = (float) (0.1 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg - phaseShift)));
                         break;
                     }
                     case "scanner": {
@@ -240,14 +240,14 @@ public class GlyphRenderer {
                         break;
                     }
                     case "static": {
-                        intensity = 0.4f;
+                        intensity = 0.2f;
                         break;
                     }
                     case "pulse":
                     default: {
                         double timeProg = (double) (nowMs % 3000L) / 3000L;
                         float phaseShift = (float) i * 0.02f;
-                        intensity = (float) (0.5 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg + phaseShift) - Math.PI / 2.0));
+                        intensity = (float) (0.2 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg + phaseShift) - Math.PI / 2.0));
                         break;
                     }
                 }
@@ -266,7 +266,8 @@ public class GlyphRenderer {
         float multiplier = (float) mMaxBrightness;
         for (int i = 0; i < count; i++) {
             // Gamma is already applied to music state in processFrame, and breathing bypasses it
-            frameColors[i] = Math.round(normalizedLightState[i] * multiplier);
+            int val = Math.round(normalizedLightState[i] * multiplier);
+            frameColors[i] = Math.max(0, Math.min(4095, val)); // Hard clamp to 12-bit max (4095)
         }
         return frameColors;
     }
