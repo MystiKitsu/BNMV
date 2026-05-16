@@ -1,6 +1,8 @@
 package com.better.nothing.music.vizualizer.logic;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -8,26 +10,35 @@ import androidx.annotation.Nullable;
 
 import com.apprichtap.haptic.RichTapUtils;
 
-import java.util.Objects;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.File;
 
 /**
  * RichTap implementation of the haptic engine for high-fidelity vibration.
- * Uses RichTap SDK to drive the haptic motor with real-time amplitude updates.
+ * Based on provided SDK documentation and official samples.
  */
 public final class RichTapHapticEngine {
 
     private static final String TAG = "RichTapHapticEngine";
 
-    // Matching the cadence and tuning of ContinuousHapticEngine
-    private static final int HAPTIC_STEP_MS = 100;
-    private static final long MIN_RESUBMIT_INTERVAL_MS = 20L;
+    private static final long MIN_RESUBMIT_INTERVAL_MS = 25L;
     private static final int AMPLITUDE_THRESHOLD = 2;
 
     private static final float DEFAULT_DECAY = 0.85f;
     private static final float EPSILON = 0.0001f;
-    private static final float PEAK_FALLOFF = 0.99f;
+    private static final float PEAK_FALLOFF = 0.995f;
     private static final float SPECTRUM_GAIN = 4.0f;
-    private static final int MAX_AMPLITUDE = 255;
+    
+    // SDK uses 0-255 for amplitude scaling
+    private static final int MAX_AMPLITUDE_RICHTAP = 255; 
+    private static final long SILENCE_TIMEOUT_MS = 1000L;
+
+    private static final String HE_ASSET_NAME = "visualizer_loop.he";
+    private static String sHeFilePath = null;
+
+    private static boolean sInitialized = false;
+    private static boolean sIsSupported = false;
 
     private float hapticMultiplier = 1.0f;
     private int hapticFrequency = 50;
@@ -36,16 +47,86 @@ public final class RichTapHapticEngine {
     private float peakTracker = EPSILON;
 
     private int lastAmplitude = -1;
-    private int lastFrequency = -1;
     private long lastSubmitMs = 0L;
+    private long lastNonZeroAmplitudeMs = 0L;
     private boolean isPlaying = false;
 
-    // A simple continuous haptic pattern in RichTap's HE JSON format
-    private static final String CONTINUOUS_HE_JSON = "{\"Metadata\":{\"Version\":1},\"Events\":[{\"Type\":\"Continuous\",\"RelativeTime\":0,\"Duration\":5000,\"Parameters\":{\"Intensity\":100,\"Frequency\":50}}]}";
+    // Test pattern for startup confirmation - matches user example.
+    private static final String STARTUP_TEST_JSON = "{" +
+            "\"Metadata\":{\"Version\":2,\"Created\":\"2022-04-26\",\"Description\":\"Exported from RichTap Creator Pro\"}," +
+            "\"PatternList\":[{" +
+            "  \"AbsoluteTime\":0," +
+            "  \"Pattern\":[{" +
+            "    \"Event\":{" +
+            "      \"Type\":\"transient\"," +
+            "      \"RelativeTime\":0," +
+            "      \"Parameters\":{\"Intensity\":100,\"Frequency\":75}," +
+            "      \"Index\":0" +
+            "    }" +
+            "  }]" +
+            "}]" +
+            "}";
+
+    // HE 2.0 structure used for the visualizer loop. 
+    private static final String CONTINUOUS_HE_JSON = "{" +
+            "\"Metadata\":{\"Version\":2,\"Created\":\"2022-04-26\",\"Description\":\"Continuous Loop\"}," +
+            "\"PatternList\":[{" +
+            "  \"AbsoluteTime\":0," +
+            "  \"Pattern\":[{" +
+            "    \"Event\":{" +
+            "      \"Type\":\"continuous\"," +
+            "      \"RelativeTime\":0," +
+            "      \"Duration\":3600000," +
+            "      \"Parameters\":{" +
+            "        \"Intensity\":100," +
+            "        \"Frequency\":50," +
+            "        \"Curve\":[" +
+            "          { \"Time\":0, \"Intensity\":1.0, \"Frequency\":0 }," +
+            "          { \"Time\":3600000, \"Intensity\":1.0, \"Frequency\":0 }" +
+            "        ]" +
+            "      }," +
+            "      \"Index\":0" +
+            "    }" +
+            "  }]" +
+            "}]" +
+            "}";
 
     public RichTapHapticEngine(Context context) {
-        Context appContext = context.getApplicationContext();
-        RichTapUtils.getInstance().init(appContext);
+        if (!sInitialized) {
+            try {
+                // Initialize as per sample: RichTapUtils.getInstance().init(context);
+                RichTapUtils.getInstance().init(context);
+                
+                // Poll for support status
+                for (int i = 0; i < 5; i++) {
+                    SystemClock.sleep(100);
+                    sIsSupported = RichTapUtils.getInstance().isSupportedRichTap();
+                    if (sIsSupported) break;
+                }
+
+                Log.d(TAG, "RichTap initialized. Supported: " + sIsSupported);
+
+                if (sIsSupported) {
+                    // Extract asset to file storage
+                    sHeFilePath = dumpAssetToDataStorage(context, HE_ASSET_NAME);
+
+                    // Play a short startup test to confirm motor works
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            Log.d(TAG, "Playing startup haptic test...");
+                            // Simple playback for transient test
+                            RichTapUtils.getInstance().playHaptic(STARTUP_TEST_JSON, 0);
+                        } catch (Exception e) {
+                            Log.w(TAG, "Startup haptic test failed", e);
+                        }
+                    }, 1000);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "RichTap initialization failed", e);
+                sIsSupported = false;
+            }
+            sInitialized = true;
+        }
     }
 
     public synchronized void setHapticMultiplier(float multiplier) {
@@ -57,86 +138,79 @@ public final class RichTapHapticEngine {
     }
 
     public synchronized void performHapticFeedback(float rawPeak, @Nullable AudioProcessor.VisualizerConfig config) {
-        if (!RichTapUtils.getInstance().isSupportedRichTap()) {
+        if (!sIsSupported) {
             return;
         }
 
         final float decay = (config != null) ? config.decay : DEFAULT_DECAY;
-
-        // 1. Same base gain as LEDs
         float current = Math.max(0f, rawPeak) * SPECTRUM_GAIN;
 
-        // 2. Instant-attack peak follower
         if (current > decayedState) {
             decayedState = current;
         } else {
             decayedState = (decay * decayedState) + ((1f - decay) * current);
         }
 
-        if (decayedState < EPSILON) {
-            decayedState = 0f;
-            stopHapticsInternal();
-            return;
-        }
-
-        // 3. Peak tracking for auto-normalization
         peakTracker = Math.max(decayedState, peakTracker * PEAK_FALLOFF);
         if (peakTracker < EPSILON) peakTracker = EPSILON;
 
-        // 4. Normalize to recent peak
         float normalized = decayedState / peakTracker;
-
-        // 5. Apply User Multiplier (Gamma removed per request)
         float shaped = normalized * hapticMultiplier;
         
-        int amplitude = Math.round(Math.min(1.0f, shaped) * MAX_AMPLITUDE);
-        amplitude = clampInt(amplitude, 0, MAX_AMPLITUDE);
+        int amplitudeValue = Math.round(Math.min(1.0f, shaped) * MAX_AMPLITUDE_RICHTAP);
+        amplitudeValue = clampInt(amplitudeValue, 0, MAX_AMPLITUDE_RICHTAP);
 
-        if (amplitude <= 0) {
+        final long now = SystemClock.elapsedRealtime();
+
+        if (!isPlaying) {
+            if (amplitudeValue > 10) { 
+                lastNonZeroAmplitudeMs = now;
+                submitRichTapHaptic(amplitudeValue);
+            }
+            return;
+        }
+
+        if (amplitudeValue > 0) {
+            lastNonZeroAmplitudeMs = now;
+        } else if ((now - lastNonZeroAmplitudeMs) > SILENCE_TIMEOUT_MS) {
             stopHapticsInternal();
             return;
         }
 
-        final long now = SystemClock.elapsedRealtime();
-        
-        // Skip if it's strictly the same to save overhead
-        if (isPlaying && amplitude == lastAmplitude && hapticFrequency == lastFrequency) {
-            return;
-        }
-        
-        // Only resubmit if change is significant OR enough time has passed
-        boolean significantChange = Math.abs(amplitude - lastAmplitude) >= AMPLITUDE_THRESHOLD 
-                || hapticFrequency != lastFrequency;
-        boolean cooldownOver = (now - lastSubmitMs) >= MIN_RESUBMIT_INTERVAL_MS;
+        boolean significantChange = Math.abs(amplitudeValue - lastAmplitude) >= AMPLITUDE_THRESHOLD;
+        boolean intervalElapsed = (now - lastSubmitMs) >= MIN_RESUBMIT_INTERVAL_MS;
 
-        if (isPlaying && !significantChange && (now - lastSubmitMs) < 100) {
-            return;
-        }
-        
-        if (isPlaying && !cooldownOver) {
+        if (!significantChange && !intervalElapsed) {
             return;
         }
 
-        submitRichTapHaptic(amplitude, hapticFrequency);
+        submitRichTapHaptic(amplitudeValue);
     }
 
-    private void submitRichTapHaptic(int amplitude, int frequency) {
+    private void submitRichTapHaptic(int amplitude) {
         try {
             if (!isPlaying) {
-                // Start a looping haptic effect
-                // playHaptic(json, loop, interval, amplitude, frequency)
-                RichTapUtils.getInstance().playHaptic(CONTINUOUS_HE_JSON, 1000, 0, amplitude, frequency);
+                if (sHeFilePath != null) {
+                    File heFile = new File(sHeFilePath);
+                    // playHaptic(File, loop) -> -1 for infinite loop as per documentation
+                    RichTapUtils.getInstance().playHaptic(heFile, -1);
+                } else {
+                    // playHaptic(String, loop) -> -1 for infinite loop
+                    RichTapUtils.getInstance().playHaptic(CONTINUOUS_HE_JSON, -1);
+                }
                 isPlaying = true;
-            } else {
-                // Update parameters of the currently playing loop
-                RichTapUtils.getInstance().sendLoopParameter(amplitude, 0, frequency);
+                Log.d(TAG, "Started RichTap loop session");
             }
             
+            // Adjust loop parameters: sendLoopParameter(amplitude, interval, freq)
+            // freq is delta from original. Base is 50. Target is hapticFrequency (0-100).
+            int deltaFreq = hapticFrequency - 50;
+            RichTapUtils.getInstance().sendLoopParameter(amplitude, 0, deltaFreq);
+            
             lastAmplitude = amplitude;
-            lastFrequency = frequency;
             lastSubmitMs = SystemClock.elapsedRealtime();
         } catch (Exception e) {
-            Log.w(TAG, "Failed to submit RichTap haptic", e);
+            Log.w(TAG, "Failed to submit RichTap dynamics", e);
             stopHapticsInternal();
         }
     }
@@ -148,25 +222,45 @@ public final class RichTapHapticEngine {
     }
 
     private void stopHapticsInternal() {
-        if (!isPlaying) {
-            lastAmplitude = -1;
-            lastSubmitMs = 0L;
-            return;
-        }
-
+        if (!isPlaying) return;
+        
         try {
             RichTapUtils.getInstance().stop();
+            Log.d(TAG, "Stopped RichTap haptics");
         } catch (Exception e) {
-            Log.w(TAG, "Failed to stop RichTap haptics", e);
+            Log.w(TAG, "Failed to stop RichTap dynamics", e);
         }
 
         isPlaying = false;
         lastAmplitude = -1;
         lastSubmitMs = 0L;
+        lastNonZeroAmplitudeMs = 0L;
     }
 
     public void quit() {
         RichTapUtils.getInstance().quit();
+    }
+
+    private static String dumpAssetToDataStorage(Context context, String filename) {
+        File destFile = new File(context.getFilesDir(), filename);
+        try {
+            if (!destFile.exists()) {
+                InputStream input = context.getAssets().open(filename);
+                FileOutputStream output = new FileOutputStream(destFile);
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = input.read(buffer)) > 0) {
+                    output.write(buffer, 0, length);
+                }
+                output.flush();
+                output.close();
+                input.close();
+            }
+            return destFile.getAbsolutePath();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to dump asset: " + filename, e);
+            return null;
+        }
     }
 
     private static int clampInt(int value, int min, int max) {

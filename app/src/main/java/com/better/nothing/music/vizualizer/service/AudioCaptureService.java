@@ -864,15 +864,6 @@ public class AudioCaptureService extends Service {
             }
 
             float hapticPeak = mHapticEnabled ? result.hapticPeak : 0f;
-            if (mHapticEnabled) {
-                if (mHapticMode == HapticMode.BASS_TO_AMPLITUDE) {
-                    mContinuousHapticEngine.performHapticFeedback(result.hapticPeak, config);
-                } else if (mHapticMode == HapticMode.RICHTAP_BASS) {
-                    mRichTapHapticEngine.performHapticFeedback(result.hapticPeak, config);
-                } else {
-                    mBeatDetectionEngine.performHapticFeedback(result.magnitude, mHapticRange);
-                }
-            }
 
             pendingFrames.addLast(new PendingFrame(
                     result.uniqueMagnitudes,
@@ -886,8 +877,6 @@ public class AudioCaptureService extends Service {
         }
     }
 
-
-
     private void dispatchDueFrames(ArrayDeque<PendingFrame> pendingFrames) {
         long nowMs = SystemClock.elapsedRealtime();
         while (!pendingFrames.isEmpty()) {
@@ -899,6 +888,17 @@ public class AudioCaptureService extends Service {
 
             synchronized (mFftLock) {
                 mLatestMagnitudes = pendingFrame.magnitude;
+            }
+
+            // Perform Haptics here so they are synced with the visual latency
+            if (mHapticEnabled) {
+                if (mHapticMode == HapticMode.BASS_TO_AMPLITUDE) {
+                    mContinuousHapticEngine.performHapticFeedback(pendingFrame.hapticPeak, pendingFrame.config);
+                } else if (mHapticMode == HapticMode.RICHTAP_BASS) {
+                    mRichTapHapticEngine.performHapticFeedback(pendingFrame.hapticPeak, pendingFrame.config);
+                } else {
+                    mBeatDetectionEngine.performHapticFeedback(pendingFrame.magnitude, mHapticRange);
+                }
             }
 
             processFrame(pendingFrame.uniqueMagnitudes, pendingFrame.hapticPeak, pendingFrame.config, pendingFrame.configVersion);
