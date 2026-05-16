@@ -2,6 +2,10 @@ package com.better.nothing.music.vizualizer.ui
 
 import com.better.nothing.music.vizualizer.R
 import com.better.nothing.music.vizualizer.model.HapticMode
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -20,8 +25,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -57,6 +64,8 @@ fun HapticsScreen(
     onHapticGammaChanged: (Float) -> Unit,
     richTapFrequency: Int,
     onRichTapFrequencyChanged: (Int) -> Unit,
+    hapticAmplitude: Float,
+    isBeatDetected: Boolean,
 ) {
     val scrollState = rememberScrollState()
 
@@ -219,7 +228,7 @@ fun HapticsScreen(
                             )
                         }
                     }
-                } else if (hapticMode == HapticMode.RICHTAP_BASS) {
+                } else {
                     // RichTap Frequency
                     Card(
                         shape = RoundedCornerShape(28.dp),
@@ -250,6 +259,52 @@ fun HapticsScreen(
                     text = stringResource(R.string.haptics_beat_detection_desc),
                     modifier = Modifier.padding(horizontal = 8.dp)
                 )
+            }
+
+            // Haptic Visualizer
+            Card(
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Haptic Monitor",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+
+                    val animatedAmplitude by animateFloatAsState(
+                        targetValue = hapticAmplitude*4,
+                        label = "hapticAmplitude"
+                    )
+                    val flashColor by animateColorAsState(
+                        targetValue = if (isBeatDetected) Color.White else MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        label = "flashColor"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Canvas(modifier = Modifier.size(100.dp)) {
+                            // Scale the amplitude so it's more visible (base size + dynamic)
+                            val baseRadius = size.minDimension * 0.15f
+                            val dynamicRadius = (size.minDimension * 0.45f) * animatedAmplitude
+                            
+                            drawCircle(
+                                color = flashColor,
+                                radius = (baseRadius + dynamicRadius).coerceAtMost(size.minDimension / 2)
+                            )
+                        }
+                    }
+                }
             }
         }
         Spacer(modifier = Modifier.height(70.dp))

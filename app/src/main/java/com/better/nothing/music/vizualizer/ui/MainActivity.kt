@@ -48,6 +48,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.service.quicksettings.TileService
 import android.util.Log
 import android.widget.Toast
@@ -599,7 +600,80 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    // ── Haptic Visualizer State ──────────────────────────────────────────────
+    private val _hapticAmplitude = MutableStateFlow(0f)
+    val hapticAmplitude = _hapticAmplitude.asStateFlow()
+
+    private val _isBeatDetected = MutableStateFlow(false)
+    val isBeatDetected = _isBeatDetected.asStateFlow()
+
+    private var prevEnergy = 0f
+    private val deltaHistory = FloatArray(61)
+    private var deltaIndex = 0
+    private var deltaCount = 0
+    private var lastTriggerMs = 0L
+    private var thresholdMask = 0f
+
     init {
+        viewModelScope.launch(Dispatchers.Default) {
+            fftState.collect { magnitude ->
+                if (magnitude.isEmpty()) {
+                    _hapticAmplitude.value = 0f
+                    _isBeatDetected.value = false
+                    return@collect
+                }
+
+                val hzPerBin = 44100f / 4096f
+                val binLo = (_hapticFreqMin.value / hzPerBin).toInt().coerceIn(0, magnitude.lastIndex)
+                val binHi = (_hapticFreqMax.value / hzPerBin).toInt().coerceIn(binLo, magnitude.lastIndex)
+
+                // 1. Calculate Amplitude
+                var sumSquares = 0f
+                var sum = 0f
+                for (i in binLo..binHi) {
+                    sumSquares += magnitude[i] * magnitude[i]
+                    sum += magnitude[i]
+                }
+                val count = binHi - binLo + 1
+                val rms = if (count > 0) kotlin.math.sqrt(sumSquares / count) else 0f
+                // Increased gain from 4f to 8f and added a higher floor/ceiling
+                _hapticAmplitude.value = (rms * 8f).coerceIn(0f, 1.2f)
+
+                // 2. Beat Detection (matching HapticEngine.kt logic)
+                if (_hapticMode.value == HapticMode.BEAT_DETECTION) {
+                    val energy = kotlin.math.ln(1f + sum)
+                    val delta = energy - prevEnergy
+                    prevEnergy = energy
+
+                    // Push delta
+                    deltaHistory[deltaIndex] = delta.coerceAtLeast(0.0001f)
+                    deltaIndex = (deltaIndex + 1) % deltaHistory.size
+                    if (deltaCount < deltaHistory.size) deltaCount++
+
+                    // Median
+                    val sorted = deltaHistory.copyOf(deltaCount).apply { sort() }
+                    val median = if (deltaCount == 0) 0.01f else if (deltaCount % 2 == 1) sorted[deltaCount / 2] else (sorted[deltaCount / 2 - 1] + sorted[deltaCount / 2]) * 0.5f
+                    
+                    val threshold = kotlin.math.max(median * 2.2f, thresholdMask)
+                    val now = SystemClock.elapsedRealtime()
+                    
+                    if (delta > threshold && delta > 0.025f && (now - lastTriggerMs) >= 60L) {
+                        _isBeatDetected.value = true
+                        lastTriggerMs = now
+                        thresholdMask = delta * 0.8f
+                        // Auto-reset beat after a short duration for the UI flash
+                        viewModelScope.launch {
+                            delay(50)
+                            _isBeatDetected.value = false
+                        }
+                    }
+                    thresholdMask *= 0.85f
+                } else {
+                    _isBeatDetected.value = false
+                }
+            }
+        }
+
         ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE).registerOnSharedPreferenceChangeListener(prefListener)
         // Run EVERYTHING heavy off-thread immediately
         viewModelScope.launch(Dispatchers.Default) {
@@ -898,6 +972,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 val hapticMultiplier by viewModel.hapticMultiplier.collectAsStateWithLifecycle()
                 val hapticGamma by viewModel.hapticGamma.collectAsStateWithLifecycle()
                 val richTapFrequency by viewModel.richTapFrequency.collectAsStateWithLifecycle()
+                val hapticAmplitude by viewModel.hapticAmplitude.collectAsStateWithLifecycle()
+                val isBeatDetected by viewModel.isBeatDetected.collectAsStateWithLifecycle()
 
                 val idleBreathingEnabled by viewModel.idleBreathingEnabled.collectAsStateWithLifecycle()
                 val idlePattern by viewModel.idlePattern.collectAsStateWithLifecycle()
@@ -965,6 +1041,8 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     onHapticGammaChanged = ::onHapticGammaChanged,
                     richTapFrequency = richTapFrequency,
                     onRichTapFrequencyChanged = ::onRichTapFrequencyChanged,
+                    hapticAmplitude = hapticAmplitude,
+                    isBeatDetected = isBeatDetected,
                     idleBreathingEnabled = idleBreathingEnabled,
                     onIdleBreathingEnabledChanged = ::onIdleBreathingEnabledChanged,
                     idlePattern = idlePattern,
@@ -1428,6 +1506,8 @@ private fun BetterVizApp(
     onHapticGammaChanged: (Float) -> Unit,
     richTapFrequency: Int,
     onRichTapFrequencyChanged: (Int) -> Unit,
+    hapticAmplitude: Float,
+    isBeatDetected: Boolean,
     idleBreathingEnabled: Boolean,
     onIdleBreathingEnabledChanged: (Boolean) -> Unit,
     idlePattern: String,
@@ -1582,6 +1662,8 @@ private fun BetterVizApp(
                             onHapticGammaChanged = onHapticGammaChanged,
                             richTapFrequency = richTapFrequency,
                             onRichTapFrequencyChanged = onRichTapFrequencyChanged,
+                            hapticAmplitude = hapticAmplitude,
+                            isBeatDetected = isBeatDetected,
                         )
                         Tab.Settings -> SettingsScreen(
                             viewModel = viewModel,
