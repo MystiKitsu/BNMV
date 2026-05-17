@@ -38,10 +38,6 @@ import android.content.pm.PackageManager
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
-import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
-import android.hardware.SensorManager
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
@@ -201,6 +197,27 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     val gammaValue = _gammaValue.asStateFlow()
     fun setGammaValue(value: Float) { _gammaValue.value = value }
 
+    private val _spectrumGain = MutableStateFlow(4.0f)
+    val spectrumGain = _spectrumGain.asStateFlow()
+    fun setSpectrumGain(value: Float) {
+        _spectrumGain.value = value
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putFloat("spectrum_gain", value) }
+        }
+    }
+
+    private val _maxBrightness = MutableStateFlow(4095)
+    val maxBrightness = _maxBrightness.asStateFlow()
+    fun setMaxBrightness(value: Int) {
+        val clamped = value.coerceIn(0, 4500)
+        _maxBrightness.value = clamped
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putInt("max_brightness", clamped) }
+        }
+    }
+
     // ── Running state ─────────────────────────────────────────────────────────
     private val _runningState = MutableStateFlow(false)
     val runningState = _runningState.asStateFlow()
@@ -293,10 +310,11 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private suspend fun performUpdateAction(): Boolean {
         // This runs on Dispatchers.IO (called from withContext(IO) above)
         return try {
-            val url = URL("https://raw.githubusercontent.com/Aleks-Levet/better-nothing-music-visualizer/main/zones.config")
+            val url = URL("https://raw.githubusercontent.com/Aleks-Levet/better-nothing-music-visualizer/main/zones.config?t=${System.currentTimeMillis()}")
             val connection = withContext(Dispatchers.IO) {
                 url.openConnection()
             } as HttpURLConnection
+            connection.useCaches = false
             connection.connectTimeout = 10000
             connection.readTimeout = 10000
 
@@ -339,8 +357,9 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     fun checkRemoteConfigVersion() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val url = URL("https://raw.githubusercontent.com/Aleks-Levet/better-nothing-music-visualizer/main/zones.config")
+                val url = URL("https://raw.githubusercontent.com/Aleks-Levet/better-nothing-music-visualizer/main/zones.config?t=${System.currentTimeMillis()}")
                 val connection = url.openConnection() as HttpURLConnection
+                connection.useCaches = false
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
 
@@ -698,6 +717,8 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 }
 
                 val gamma = AudioCaptureService.loadGamma(ctx)
+                val spectrumGain = prefs.getFloat("spectrum_gain", 4.0f)
+                val maxBrightness = prefs.getInt("max_brightness", 4095).coerceIn(0, 4095)
                 val latency = AudioCaptureService.loadLatencyCompensationMs(
                     ctx,
                     device,
@@ -709,6 +730,8 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 
                 // Update UI state once ready
                 _gammaValue.value = gamma
+                _spectrumGain.value = spectrumGain
+                _maxBrightness.value = maxBrightness
                 _latencyMs.value = latency
                 _latencyPresets.value = presets
                 _configVersion.value = configVersion
@@ -830,7 +853,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 // ─── Activity ─────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
-class MainActivity : ComponentActivity(), SensorEventListener {
+class MainActivity : ComponentActivity() {
 
     // viewModels() returns the same instance across configuration changes.
     private val viewModel: MainViewModel by viewModels()
@@ -841,10 +864,6 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
     private val projectionManager by lazy {
         getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-    }
-
-    private val sensorManager by lazy {
-        getSystemService(SENSOR_SERVICE) as SensorManager
     }
 
     private var service: AudioCaptureService? = null
@@ -963,6 +982,7 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                 val latencyMs      by viewModel.latencyMs.collectAsStateWithLifecycle()
                 val latencyPresets by viewModel.latencyPresets.collectAsStateWithLifecycle()
                 val gammaValue     by viewModel.gammaValue.collectAsStateWithLifecycle()
+                val maxBrightness  by viewModel.maxBrightness.collectAsStateWithLifecycle()
                 val presets        by viewModel.presetInfos.collectAsStateWithLifecycle()
                 val selectedPreset by viewModel.selectedPreset.collectAsStateWithLifecycle()
 
@@ -1008,12 +1028,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                         onContinue = {
                             markProjectionInfoShown()
                             showProjectionInfoDialog = false
-                            continueVisualizerStartFlow()
+                            launchProjection()
                         }
                     )
                 }
 
                 BetterVizApp(
+                    viewModel = viewModel,
                     tab = tab,
                     onTabSelected = viewModel::selectTab,
                     isRunning = isRunning,
@@ -1023,12 +1044,13 @@ class MainActivity : ComponentActivity(), SensorEventListener {
                     onLatencyPresetsChanged = viewModel::updateLatencyPresets,
                     gammaValue = gammaValue,
                     onGammaChanged = ::onGammaChanged,
+                    maxBrightness = maxBrightness,
+                    onMaxBrightnessChanged = ::onMaxBrightnessChanged,
                     presets = presets,
                     selectedPreset = selectedPreset,
                     onPresetSelected = ::onPresetSelected,
                     onToggleVisualizer = ::toggleVisualizer,
                     onAutoDeviceToggle = ::onAutoDeviceToggle,
-                    viewModel = viewModel,
                     hapticMotorEnabled = hapticMotorEnabled,
                     onHapticMotorEnabledChanged = ::onHapticMotorEnabledChanged,
                     hapticMode = hapticMode,
@@ -1072,15 +1094,10 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         super.onStart()
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, mainHandler)
         refreshConnectedAudioRoute()
-
-        sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { accel ->
-            sensorManager.registerListener(this, accel, SensorManager.SENSOR_DELAY_UI)
-        }
     }
 
     override fun onStop() {
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
-        sensorManager.unregisterListener(this)
         super.onStop()
     }
 
@@ -1118,6 +1135,20 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         viewModel.setGammaValue(value)
         viewModel.persistGamma(value)            // Dispatchers.IO — never blocks main
         service?.setGamma(value)
+    }
+
+    private fun onSpectrumGainChanged(value: Float) {
+        viewModel.setSpectrumGain(value)
+        viewModel.viewModelScope.launch(Dispatchers.IO) {
+            getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putFloat("spectrum_gain", value) }
+        }
+        service?.setSpectrumGain(value)
+    }
+
+    private fun onMaxBrightnessChanged(value: Int) {
+        viewModel.setMaxBrightness(value)
+        service?.setMaxBrightness(value)
     }
 
     private fun onHapticMotorEnabledChanged(enabled: Boolean) {
@@ -1200,70 +1231,12 @@ class MainActivity : ComponentActivity(), SensorEventListener {
     // ── Visualizer lifecycle ──────────────────────────────────────────────────
 
     private fun toggleVisualizer() {
-        if (viewModel.runningState.value) {
+        if (AudioCaptureService.isRunning()) {
             stopEverything()
-            viewModel.setRunning(false)
-            return
-        }
-        if (viewModel.currentPreset().isBlank()) {
-            viewModel.refreshPresets()
-            Toast.makeText(this, "No preset is currently available", Toast.LENGTH_SHORT).show()
-            return
-        }
-        beginVisualizerStartFlow()
-    }
-
-    private fun beginVisualizerStartFlow() {
-        pendingVisualizerStart = true
-        if (shouldShowProjectionInfo()) {
-            showProjectionInfoDialog = true
-            return
-        }
-        continueVisualizerStartFlow()
-    }
-
-    private fun continueVisualizerStartFlow() {
-        if (ContextCompat.checkSelfPermission(
-                this, Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            return
-        }
-        requestProjection()
-    }
-
-    // ── Shake to Update ──────────────────────────────────────────────────────
-
-    private var lastShakeTime: Long = 0
-    private val SHAKE_THRESHOLD = 12.0f
-    private val SHAKE_COOLDOWN = 2000L
-
-    override fun onSensorChanged(event: SensorEvent?) {
-        if (event == null || event.sensor.type != Sensor.TYPE_ACCELEROMETER) return
-        if (viewModel.selectedTab.value != Tab.Settings) return
-
-        val x = event.values[0]
-        val y = event.values[1]
-        val z = event.values[2]
-
-        val gX = x / SensorManager.GRAVITY_EARTH
-        val gY = y / SensorManager.GRAVITY_EARTH
-        val gZ = z / SensorManager.GRAVITY_EARTH
-
-        val gForce = sqrt((gX * gX + gY * gY + gZ * gZ).toDouble()).toFloat()
-
-        if (gForce > SHAKE_THRESHOLD) {
-            val now = System.currentTimeMillis()
-            if (lastShakeTime + SHAKE_COOLDOWN > now) return
-            lastShakeTime = now
-
-            viewModel.updateZonesConfig()
-            Toast.makeText(this, "Shaked! Checking for updates...", Toast.LENGTH_SHORT).show()
+        } else {
+            requestProjection()
         }
     }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     private fun requestProjection() {
         if (ContextCompat.checkSelfPermission(
@@ -1282,7 +1255,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
             return
         }
 
-        launchProjection()
+        if (shouldShowProjectionInfo()) {
+            showProjectionInfoDialog = true
+        } else {
+            launchProjection()
+        }
     }
 
     private fun launchProjection() {
@@ -1316,6 +1293,11 @@ class MainActivity : ComponentActivity(), SensorEventListener {
         service?.setDevice(viewModel.selectedDevice.value)
         service?.setLatencyCompensationMs(viewModel.latencyMs.value)
         service?.setGamma(viewModel.gammaValue.value)
+        service?.setSpectrumGain(viewModel.spectrumGain.value)
+        service?.setMaxBrightness(viewModel.maxBrightness.value)
+        service?.setIdleBreathingEnabled(viewModel.idleBreathingEnabled.value)
+        service?.setIdlePattern(viewModel.idlePattern.value)
+        service?.setNotificationFlashEnabled(viewModel.notificationFlashEnabled.value)
 
         service?.setHapticEnabled(viewModel.hapticMotorEnabled.value)
         service?.setHapticMode(viewModel.hapticMode.value)
@@ -1489,6 +1471,8 @@ private fun BetterVizApp(
     onLatencyPresetsChanged: (List<Int>) -> Unit,
     gammaValue: Float,
     onGammaChanged: (Float) -> Unit,
+    maxBrightness: Int,
+    onMaxBrightnessChanged: (Int) -> Unit,
     presets: List<AudioCaptureService.PresetInfo>,
     selectedPreset: String,
     onPresetSelected: (String) -> Unit,
@@ -1642,6 +1626,8 @@ private fun BetterVizApp(
                         Tab.Glyphs -> GlyphsScreen(
                             gammaValue = gammaValue,
                             onGammaChanged = onGammaChanged,
+                            maxBrightness = maxBrightness,
+                            onMaxBrightnessChanged = onMaxBrightnessChanged,
                             presets = presets,
                             selectedPreset = selectedPreset,
                             onPresetSelected = onPresetSelected,

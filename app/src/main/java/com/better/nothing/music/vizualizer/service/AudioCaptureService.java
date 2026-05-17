@@ -46,8 +46,10 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.nothing.ketchum.Common;
+import com.nothing.ketchum.Glyph;
 import com.nothing.ketchum.GlyphException;
 import com.nothing.ketchum.GlyphManager;
+import com.nothing.ketchum.GlyphMatrixManager;
 
 import org.jtransforms.fft.DoubleFFT_1D;
 import org.json.JSONArray;
@@ -93,6 +95,7 @@ public class AudioCaptureService extends Service {
     private static final String PREF_LATENCY_PREFIX = "latency_device_";
     private static final String PREF_LATENCY_ROUTE_PREFIX = "latency_route_";
     private static final String PREF_LATENCY_PRESETS = "latency_presets";
+    private static final int MAX_GLYPH_BRIGHTNESS = 4500;
 
     private static final String DEFAULT_PRESET_KEY = "np1s";
     private static final String PHONE_MODEL_UNKNOWN = "UNKNOWN";
@@ -132,19 +135,7 @@ public class AudioCaptureService extends Service {
             }
 
             Log.d(TAG, "Glyph service connected");
-            if (Common.is22111()) {
-                mGM.register(com.nothing.ketchum.Glyph.DEVICE_22111);
-            } else if (Common.is20111()) {
-                mGM.register(com.nothing.ketchum.Glyph.DEVICE_20111);
-            } else if (Common.is23111()) {
-                mGM.register(com.nothing.ketchum.Glyph.DEVICE_23111);
-            } else if (Common.is23113()) {
-                mGM.register(com.nothing.ketchum.Glyph.DEVICE_23113);
-            } else if (Common.is24111()) {
-                mGM.register(com.nothing.ketchum.Glyph.DEVICE_24111);
-            } else {
-                mGM.register(com.nothing.ketchum.Glyph.DEVICE_25111);
-            }
+            registerGlyphManager();
 
             try {
                 if (!mSessionOpen) {
@@ -162,11 +153,51 @@ public class AudioCaptureService extends Service {
         }
     };
 
+    private final GlyphMatrixManager.Callback mGlyphMatrixCallback = new GlyphMatrixManager.Callback() {
+        @Override
+        public void onServiceConnected(ComponentName componentName) {
+            if (mGMM == null) {
+                return;
+            }
+            Log.d(TAG, "Glyph Matrix service connected");
+            registerGlyphMatrixManager();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName componentName) {
+        }
+    };
+
+    private void registerGlyphManager() {
+        if (mGM == null) return;
+        String deviceStr = switch (mSelectedDevice) {
+            case DeviceProfile.DEVICE_NP1 -> Glyph.DEVICE_20111;
+            case DeviceProfile.DEVICE_NP2 -> Glyph.DEVICE_22111;
+            case DeviceProfile.DEVICE_NP2A -> Glyph.DEVICE_23111;
+            case DeviceProfile.DEVICE_NP3A -> Glyph.DEVICE_24111;
+            case DeviceProfile.DEVICE_NP4A -> Glyph.DEVICE_25111;
+            case DeviceProfile.DEVICE_NP4APRO -> Glyph.DEVICE_25111p;
+            case DeviceProfile.DEVICE_NP3 -> Glyph.DEVICE_23112;
+            default -> Glyph.DEVICE_25111;
+        };
+        mGM.register(deviceStr);
+    }
+
+    private void registerGlyphMatrixManager() {
+        if (mGMM == null) return;
+        if (mSelectedDevice == DeviceProfile.DEVICE_NP3) {
+            mGMM.register(Glyph.DEVICE_23112);
+        } else if (mSelectedDevice == DeviceProfile.DEVICE_NP4APRO) {
+            mGMM.register(Glyph.DEVICE_25111p);
+        }
+    }
+
     private HandlerThread mWorkerThread;
     private Handler mWorkerHandler;
     private AudioManager mAudioManager;
 
     private GlyphManager mGM;
+    private GlyphMatrixManager mGMM;
     private volatile boolean mSessionOpen = false;
 
     private MediaProjection mProjection;
@@ -184,6 +215,7 @@ public class AudioCaptureService extends Service {
     private volatile int mPresetConfigVersion = 0;
     private volatile int mHapticSettingsVersion = 0;
     private volatile float mGamma = DEFAULT_GAMMA;
+    private volatile int mMaxBrightness = 4095;
 
     private boolean mIdleBreathingEnabled = false;
     private boolean mNotificationFlashEnabled = false;
@@ -296,14 +328,19 @@ public class AudioCaptureService extends Service {
         mAudioDeviceManager = new AudioDeviceManager(this, this::refreshLatencyForCurrentAudioRoute);
 
         mSelectedDevice = DeviceProfile.detectDevice();
-        mGlyphRenderer = new GlyphRenderer(mGamma, mIdleBreathingEnabled, mNotificationFlashEnabled, mSelectedDevice);
         mLatencyCompensationMs = loadLatencyCompensationMs(this, mSelectedDevice);
         mGamma = loadGamma(this);
 
         SharedPreferences appPrefs = getSharedPreferences(APP_PREFS_NAME, MODE_PRIVATE);
+        mMaxBrightness = clampGlyphBrightness(appPrefs.getInt("max_brightness", MAX_GLYPH_BRIGHTNESS));
         mIdleBreathingEnabled = appPrefs.getBoolean("idle_breathing_enabled", false);
         mNotificationFlashEnabled = appPrefs.getBoolean("notification_flash_enabled", false);
         mDisableGlyphsWhenSilent = appPrefs.getBoolean("disable_glyphs_when_silent", false);
+
+        mGlyphRenderer = new GlyphRenderer(mGamma, mIdleBreathingEnabled, mNotificationFlashEnabled, mSelectedDevice);
+        mGlyphRenderer.setMaxBrightness(mMaxBrightness);
+        float spectrumGain = appPrefs.getFloat("spectrum_gain", 4.0f);
+        mGlyphRenderer.setSpectrumGain(spectrumGain);
 
         mHapticEnabled = appPrefs.getBoolean("haptic_motor_enabled", false);
         String hapticModeName = appPrefs.getString("haptic_mode", HapticMode.BASS_TO_AMPLITUDE.name());
@@ -344,6 +381,8 @@ public class AudioCaptureService extends Service {
 
         mGM = GlyphManager.getInstance(getApplicationContext());
         mGM.init(mGlyphCallback);
+        mGMM = GlyphMatrixManager.getInstance(getApplicationContext());
+        mGMM.init(mGlyphMatrixCallback);
 
         mMainHandler.post(mIdlePulseRunnable);
     }
@@ -398,6 +437,10 @@ public class AudioCaptureService extends Service {
         if (mGM != null) {
             mGM.unInit();
             mGM = null;
+        }
+        if (mGMM != null) {
+            mGMM.unInit();
+            mGMM = null;
         }
         if (mAudioManager != null) {
             mAudioManager.unregisterAudioDeviceCallback(mAudioDeviceCallback);
@@ -564,6 +607,8 @@ public class AudioCaptureService extends Service {
         if (mGlyphRenderer != null) {
             mGlyphRenderer.setDeviceType(device);
         }
+        registerGlyphManager();
+        registerGlyphMatrixManager();
         setLatencyCompensationMs(loadLatencyCompensationMs(this, device));
         try {
             refreshPresetCatalog();
@@ -590,6 +635,53 @@ public class AudioCaptureService extends Service {
         }
     }
 
+    public void setSpectrumGain(float gain) {
+        // Enforce 4.0 gain as requested by user
+        if (mGlyphRenderer != null) {
+            mGlyphRenderer.setSpectrumGain(4.0f);
+        }
+        ensureGlyphSession();
+    }
+
+    public void setMaxBrightness(int brightness) {
+        brightness = clampGlyphBrightness(brightness);
+        final int targetBrightness = brightness;
+        boolean wasDisabled = mMaxBrightness <= 0;
+        final boolean reopeningAfterEnable = wasDisabled;
+        mMaxBrightness = brightness;
+        if (mGlyphRenderer != null) {
+            mGlyphRenderer.setMaxBrightness(brightness);
+        }
+
+        if (mWorkerHandler == null) {
+            if (targetBrightness <= 0) {
+                clearGlyphSession();
+            } else if (reopeningAfterEnable) {
+                clearGlyphSession();
+                ensureGlyphSession();
+                mLastSendMs = 0;
+            } else {
+                ensureGlyphSession();
+            }
+            return;
+        }
+
+        mWorkerHandler.post(() -> {
+            if (targetBrightness <= 0) {
+                clearGlyphSession();
+                return;
+            }
+
+            if (reopeningAfterEnable) {
+                clearGlyphSession();
+                ensureGlyphSession();
+                mLastSendMs = 0;
+            } else {
+                ensureGlyphSession();
+            }
+        });
+    }
+
     public void setIdleBreathingEnabled(boolean enabled) {
         mIdleBreathingEnabled = enabled;
         mGlyphRenderer.setIdleBreathingEnabled(enabled);
@@ -603,6 +695,9 @@ public class AudioCaptureService extends Service {
 
     public void setNotificationFlashEnabled(boolean enabled) {
         mNotificationFlashEnabled = enabled;
+        if (mGlyphRenderer != null) {
+            mGlyphRenderer.setNotificationFlashEnabled(enabled);
+        }
     }
 
     public void setDisableGlyphsWhenSilent(boolean enabled) {
@@ -656,6 +751,9 @@ public class AudioCaptureService extends Service {
 
     public void setHapticGamma(float gamma) {
         mContinuousHapticEngine.setHapticGamma(gamma);
+        if (mBeatDetectionEngine != null) {
+            mBeatDetectionEngine.setHapticGamma(gamma);
+        }
     }
 
     public void setRichTapFrequency(int frequency) {
@@ -864,12 +962,10 @@ public class AudioCaptureService extends Service {
                 continue;
             }
 
-            float hapticPeak = mHapticEnabled ? result.hapticPeak : 0f;
-
             pendingFrames.addLast(new PendingFrame(
                     result.uniqueMagnitudes,
                     result.magnitude.clone(),
-                    hapticPeak,
+                    result.hapticPeak,
                     config,
                     presetVersion,
                     SystemClock.elapsedRealtime() + mLatencyCompensationMs
@@ -914,11 +1010,15 @@ public class AudioCaptureService extends Service {
         long now = SystemClock.elapsedRealtime();
 
         boolean hasActivity = false;
+        float gain = mGlyphRenderer.getSpectrumGain();
         for (float mag : uniqueMagnitudes) {
-            if (mag > 0f) {
+            if (mag * gain > 0.002f) {
                 hasActivity = true;
                 break;
             }
+        }
+        if (!hasActivity && hapticPeak * gain > 0.002f) {
+            hasActivity = true;
         }
 
         if (hasActivity) {
@@ -935,11 +1035,6 @@ public class AudioCaptureService extends Service {
             }
         }
 
-        // Haptics are already handled in the capture thread for low latency.
-        if (!mSessionOpen || mGM == null) {
-            return;
-        }
-
         if (now - mLastSendMs < MIN_SEND_INTERVAL_MS) {
             return;
         }
@@ -954,8 +1049,19 @@ public class AudioCaptureService extends Service {
             return; // No change
         }
 
+        // Keep the preview/renderer state alive even if the hardware session is not ready yet.
+        if (!canPushGlyphFrames()) {
+            return;
+        }
+
         try {
-            mGM.setFrameColors(frameColors);
+            if (DeviceProfile.getMatrixWidth(mSelectedDevice) > 0) {
+                if (mGMM != null) {
+                    mGMM.setMatrixFrame(frameColors);
+                }
+            } else {
+                mGM.setFrameColors(frameColors);
+            }
             mLastSendMs = now;
         } catch (Exception e) {
             Log.w(TAG, "Failed to push frame colors", e);
@@ -1163,23 +1269,32 @@ public class AudioCaptureService extends Service {
     }
 
     private void turnOffGlyphs() {
-        if (mGM == null || !mSessionOpen) {
-            return;
-        }
+        if (mGM != null && mSessionOpen) {
+            int glyphCount = resolveGlyphCount();
+            if (glyphCount > 0) {
+                try {
+                    mGM.setFrameColors(new int[glyphCount]);
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to clear glyph frame", e);
+                }
+            }
 
-        int glyphCount = resolveGlyphCount();
-        if (glyphCount > 0) {
             try {
-                mGM.setFrameColors(new int[glyphCount]);
+                mGM.turnOff();
             } catch (Exception e) {
-                Log.w(TAG, "Failed to clear glyph frame", e);
+                Log.w(TAG, "Failed to turn glyphs off", e);
             }
         }
 
-        try {
-            mGM.turnOff();
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to turn glyphs off", e);
+        if (mGMM != null) {
+            int matrixSize = DeviceProfile.getMatrixWidth(mSelectedDevice) * DeviceProfile.getMatrixHeight(mSelectedDevice);
+            if (matrixSize > 0) {
+                try {
+                    mGMM.setMatrixFrame(new int[matrixSize]);
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to clear matrix frame", e);
+                }
+            }
         }
     }
 
@@ -1206,6 +1321,17 @@ public class AudioCaptureService extends Service {
             }
             mSessionOpen = false;
         }
+    }
+
+    private boolean canPushGlyphFrames() {
+        if (DeviceProfile.getMatrixWidth(mSelectedDevice) > 0) {
+            return mGMM != null;
+        }
+        return mGM != null && mSessionOpen;
+    }
+
+    private static int clampGlyphBrightness(int brightness) {
+        return Math.max(0, Math.min(MAX_GLYPH_BRIGHTNESS, brightness));
     }
 
     private int resolveGlyphCount() {

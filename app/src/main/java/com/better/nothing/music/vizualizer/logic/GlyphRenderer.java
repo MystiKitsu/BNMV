@@ -9,17 +9,19 @@ import java.util.Arrays;
  */
 public class GlyphRenderer {
 
+    private static final int MAX_BRIGHTNESS = 4500;
     private static final float PEAK_FALLOFF = 0.9995f;
-    private static final float SPECTRUM_GAIN = 4f;
     private static final float EPSILON = 0.000001f;
-    private static final float SILENCE_THRESHOLD = 0.005f;
+    private static final float SILENCE_THRESHOLD = 0.002f;
     private static final long BREATH_DELAY_MS = 3000L;
     private static final long BREATH_PERIOD_MS = 5000L;
     private static final long FLASH_DURATION_MS = 200L;
 
     private float mGamma;
+    private float mSpectrumGain = 4f;
+    private int mMaxBrightness = MAX_BRIGHTNESS;
     private boolean mIdleBreathingEnabled;
-    private final boolean mNotificationFlashEnabled;
+    private boolean mNotificationFlashEnabled;
     private int mDeviceType = DeviceProfile.DEVICE_UNKNOWN;
     private String mIdlePattern = "pulse";
 
@@ -51,9 +53,28 @@ public class GlyphRenderer {
         this.mIdlePattern = pattern;
     }
 
+    public void setNotificationFlashEnabled(boolean enabled) {
+        mNotificationFlashEnabled = enabled;
+    }
+
     public void setGamma(float gamma) {
         mGamma = gamma;
         mLastHash = Integer.MIN_VALUE; // Force redraw with new gamma
+    }
+
+    public void setSpectrumGain(float gain) {
+        // Enforce 4.0 gain as requested
+        mSpectrumGain = 4.0f;
+        mLastHash = Integer.MIN_VALUE;
+    }
+
+    public float getSpectrumGain() {
+        return mSpectrumGain;
+    }
+
+    public void setMaxBrightness(int brightness) {
+        mMaxBrightness = Math.max(0, Math.min(MAX_BRIGHTNESS, brightness));
+        mLastHash = Integer.MIN_VALUE;
     }
 
     public void setDeviceType(int deviceType) {
@@ -90,6 +111,11 @@ public class GlyphRenderer {
         ensureStateArrays(zoneCount, config.uniqueRanges.length);
 
         float[] nextLightState = computeNextLightState(uniqueMagnitudes, config, zoneCount);
+
+        // Apply gamma to music state FIRST, before idle breathing, so breathing bypasses gamma
+        for (int i = 0; i < nextLightState.length; i++) {
+            nextLightState[i] = applyGamma(nextLightState[i]);
+        }
 
         if (nowMs - mLastNotificationFlashMs < FLASH_DURATION_MS) {
             Arrays.fill(nextLightState, 1.0f);
@@ -150,7 +176,7 @@ public class GlyphRenderer {
     private float[] computeDecayedFrequencyState(float[] uniqueMagnitudes, AudioProcessor.VisualizerConfig config) {
         float[] next = new float[mDecayedFrequencyState.length];
         for (int i = 0; i < next.length; i++) {
-            float current = (i < uniqueMagnitudes.length ? uniqueMagnitudes[i] : 0f) * SPECTRUM_GAIN;
+            float current = (i < uniqueMagnitudes.length ? uniqueMagnitudes[i] : 0f) * mSpectrumGain;
             float risen = Math.max(mDecayedFrequencyState[i], current);
             float decayed = (config.decay * risen) + ((1f - config.decay) * current);
             next[i] = decayed < EPSILON ? 0f : decayed;
@@ -165,7 +191,7 @@ public class GlyphRenderer {
 
         boolean isSilent = true;
         for (float peak : uniqueMagnitudes) {
-            if (peak * SPECTRUM_GAIN > SILENCE_THRESHOLD) {
+            if (peak * mSpectrumGain > SILENCE_THRESHOLD) {
                 isSilent = false;
                 break;
             }
@@ -181,12 +207,12 @@ public class GlyphRenderer {
 
         long silenceDuration = (mSilenceStartTimeMs > 0) ? (nowMs - mSilenceStartTimeMs) : 0;
         boolean shouldBreathe = mIdleBreathingEnabled && (silenceDuration > BREATH_DELAY_MS);
-        float targetEnvelope = shouldBreathe ? 1.0f : 0.0f;
+        float targetEnvelope = shouldBreathe ? .4f : 0.0f;
 
         // Smooth envelope transition
         if (mBreathingEnvelope < targetEnvelope) {
             // Fade in slowly (~1.5s)
-            mBreathingEnvelope += (float) deltaMs / 1500f;
+            mBreathingEnvelope += (float) deltaMs / 2500f;
             if (mBreathingEnvelope > targetEnvelope) mBreathingEnvelope = targetEnvelope;
         } else if (mBreathingEnvelope > targetEnvelope) {
             // Fade out faster (~300ms) for responsiveness
@@ -202,7 +228,7 @@ public class GlyphRenderer {
                     case "wave": {
                         double timeProg = (double) (nowMs % 2000L) / 2000L;
                         float phaseShift = (float) i / Math.max(1, zoneCount);
-                        intensity = (float) (0.5 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg - phaseShift)));
+                        intensity = (float) (0.1 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg - phaseShift)));
                         break;
                     }
                     case "scanner": {
@@ -214,14 +240,14 @@ public class GlyphRenderer {
                         break;
                     }
                     case "static": {
-                        intensity = 0.4f;
+                        intensity = 0.2f;
                         break;
                     }
                     case "pulse":
                     default: {
                         double timeProg = (double) (nowMs % 3000L) / 3000L;
                         float phaseShift = (float) i * 0.02f;
-                        intensity = (float) (0.5 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg + phaseShift) - Math.PI / 2.0));
+                        intensity = (float) (0.2 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg + phaseShift) - Math.PI / 2.0));
                         break;
                     }
                 }
@@ -237,8 +263,11 @@ public class GlyphRenderer {
     private int[] buildFrameColors(float[] normalizedLightState, int expectedLength) {
         int[] frameColors = new int[expectedLength];
         int count = Math.min(normalizedLightState.length, expectedLength);
+        float multiplier = (float) mMaxBrightness;
         for (int i = 0; i < count; i++) {
-            frameColors[i] = Math.round(applyGamma(normalizedLightState[i]) * 4095f);
+            // Gamma is already applied to music state in processFrame, and breathing bypasses it
+            int val = Math.round(normalizedLightState[i] * multiplier);
+            frameColors[i] = Math.max(0, Math.min(4095, val)); // Hard clamp to 12-bit max (4095)
         }
         return frameColors;
     }
