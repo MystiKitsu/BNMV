@@ -48,6 +48,7 @@
     <string name="haptics_frequency_desc">Vibrates based on audio amplitude in this range.</string>
     <string name="haptics_amplitude_label">Amplitude: %.1fx</string>
     <string name="haptics_gamma_label">Gamma (Response): %.1f</string>
+    <string name="haptics_speed_label">Speed: %.1f</string>
     <string name="haptics_richtap_freq_label">RichTap Frequency: %d</string>
     <string name="experimental_features">Experimental Features</string>
     <string name="developer_mode">Developer Mode</string>

@@ -751,6 +751,9 @@ public class AudioCaptureService extends Service {
 
     public void setHapticGamma(float gamma) {
         mContinuousHapticEngine.setHapticGamma(gamma);
+        if (mBeatDetectionEngine != null) {
+            mBeatDetectionEngine.setHapticGamma(gamma);
+        }
     }
 
     public void setRichTapFrequency(int frequency) {

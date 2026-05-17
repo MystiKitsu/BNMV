@@ -16,6 +16,7 @@ class BeatDetectionHapticEngine(context: Context) {
 
     private var waveform: VibrationEffect? = null
     private var hapticMultiplier = 1.0f
+    private var hapticGamma = 4.0f
 
     private val deltaHistory = FloatArray(61)
     private val sortedHistory = FloatArray(61)
@@ -201,7 +202,7 @@ class BeatDetectionHapticEngine(context: Context) {
             } else {
                 // Decay starts after 80ms sustain
                 val x = 1f - ((t - sustainMs).toFloat() / decayMs.toFloat())
-                255f * x.coerceIn(0f, 1f).pow(4f)
+                255f * x.coerceIn(0f, 1f).pow(hapticGamma)
             }
 
             amplitudes[i] = (amp * hapticMultiplier).toInt().coerceIn(0, 255)
@@ -261,6 +262,13 @@ class BeatDetectionHapticEngine(context: Context) {
     fun setHapticMultiplier(multiplier: Float) {
         if (hapticMultiplier != multiplier) {
             hapticMultiplier = multiplier
+            waveform = buildWaveform()
+        }
+    }
+
+    fun setHapticGamma(gamma: Float) {
+        if (hapticGamma != gamma) {
+            hapticGamma = gamma
             waveform = buildWaveform()
         }
     }

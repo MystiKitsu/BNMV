@@ -48,6 +48,7 @@
     <string name="haptics_frequency_desc">Bu aralıktaki ses genliğine göre titreşir.</string>
     <string name="haptics_amplitude_label">Genlik: %.1fx</string>
     <string name="haptics_gamma_label">Gama (Tepki): %.1f</string>
+    <string name="haptics_speed_label">Hız: %.1f</string>
     <string name="haptics_richtap_freq_label">RichTap Frekansı: %d</string>
     <string name="experimental_features">Deneysel Özellikler</string>
     <string name="developer_mode">Geliştirici Modu</string>

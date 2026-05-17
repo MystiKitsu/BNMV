@@ -185,7 +185,7 @@ fun HapticsScreen(
                     }
                 }
 
-                if (hapticMode == HapticMode.BASS_TO_AMPLITUDE || hapticMode == HapticMode.RICHTAP_BASS) {
+                if (hapticMode == HapticMode.BASS_TO_AMPLITUDE || hapticMode == HapticMode.RICHTAP_BASS || hapticMode == HapticMode.BEAT_DETECTION) {
                     Card(
                         shape = RoundedCornerShape(28.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -209,7 +209,7 @@ fun HapticsScreen(
                         }
                     }
 
-                    if (hapticMode == HapticMode.BASS_TO_AMPLITUDE) {
+                    if (hapticMode == HapticMode.BASS_TO_AMPLITUDE || hapticMode == HapticMode.BEAT_DETECTION) {
                         Card(
                             shape = RoundedCornerShape(28.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -219,20 +219,22 @@ fun HapticsScreen(
                                 modifier = Modifier.padding(20.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
+                                val label = if (hapticMode == HapticMode.BEAT_DETECTION) stringResource(R.string.haptics_speed_label, hapticGamma) else stringResource(R.string.haptics_gamma_label, hapticGamma)
                                 Text(
-                                    text = stringResource(R.string.haptics_gamma_label, hapticGamma),
+                                    text = label,
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
+                                val currentRange = if (hapticMode == HapticMode.BEAT_DETECTION) 4f..10f else 1f..4.0f
                                 ExpressiveSlider(
-                                    value = hapticGamma,
+                                    value = hapticGamma.coerceIn(currentRange),
                                     onValueChange = onHapticGammaChanged,
-                                    valueRange = 1f..4.0f,
+                                    valueRange = currentRange,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }
-                    } else {
+                    } else if (hapticMode == HapticMode.RICHTAP_BASS) {
                         Card(
                             shape = RoundedCornerShape(28.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -256,7 +258,9 @@ fun HapticsScreen(
                             }
                         }
                     }
-                } else {
+                }
+
+                if (hapticMode == HapticMode.BEAT_DETECTION) {
                     BodyText(
                         text = stringResource(R.string.haptics_beat_detection_desc),
                         modifier = Modifier.padding(horizontal = 8.dp)
