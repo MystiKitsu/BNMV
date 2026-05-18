@@ -1,5 +1,6 @@
 package com.better.nothing.music.vizualizer.ui
 
+import com.better.nothing.music.vizualizer.BuildConfig
 import com.better.nothing.music.vizualizer.service.AudioCaptureService
 import com.better.nothing.music.vizualizer.R
 import android.Manifest
@@ -228,6 +229,14 @@ fun CaptureSourceCard(
                     onClick = { onSourceSelected(AudioCaptureService.CaptureSource.MIC) },
                     modifier = Modifier.weight(1f)
                 )
+                if (BuildConfig.SHOW_SHIZUKU) {
+                    CaptureSourceButton(
+                        label = "Shizuku",
+                        selected = selectedSource == AudioCaptureService.CaptureSource.SHIZUKU,
+                        onClick = { onSourceSelected(AudioCaptureService.CaptureSource.SHIZUKU) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }

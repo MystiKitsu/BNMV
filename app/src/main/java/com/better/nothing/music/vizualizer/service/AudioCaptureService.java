@@ -48,6 +48,11 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.nothing.ketchum.Common;
+import rikka.shizuku.Shizuku;
+import rikka.shizuku.ShizukuBinderWrapper;
+import rikka.shizuku.SystemServiceHelper;
+import android.os.IBinder;
+import android.os.IInterface;
 import com.nothing.ketchum.Glyph;
 import com.nothing.ketchum.GlyphException;
 import com.nothing.ketchum.GlyphManager;
@@ -83,7 +88,7 @@ public class AudioCaptureService extends Service {
     private static final String TAG = "GlyphViz:Service";
     private static final String CHANNEL_ID = "glyph_viz_channel";
     private static final int NOTIF_ID = 1;
-    public enum CaptureSource { INTERNAL, MIC }
+    public enum CaptureSource { INTERNAL, MIC, SHIZUKU }
     private volatile CaptureSource mCaptureSource = CaptureSource.INTERNAL;
 
     public static final String ACTION_STOP = "com.better.nothing.music.vizualizer.action.STOP";
@@ -609,12 +614,130 @@ public class AudioCaptureService extends Service {
             if (!mCapturing) return;
             if (mCaptureSource == CaptureSource.MIC) {
                 startMicCapture();
+            } else if (mCaptureSource == CaptureSource.SHIZUKU) {
+                startShizukuCapture();
             } else {
                 // Switching to internal requires activity token
                 stopCaptureLocked();
                 sIsRunning = false;
                 requestTileRefresh();
             }
+        }
+    }
+
+    public void startShizukuCapture() {
+        startCaptureInternal(CaptureSource.SHIZUKU, 0, null);
+    }
+
+    private MediaProjection getShizukuProjection() {
+        try {
+            String pkg = getPackageName();
+            // 1. Grant PROJECT_MEDIA AppOp via Shizuku shell (covers both names for compatibility)
+            String[] cmds = {
+                "appops set " + pkg + " PROJECT_MEDIA allow",
+                "appops set " + pkg + " android:project_media allow"
+            };
+            
+            for (String cmd : cmds) {
+                try {
+                    // Use a more robust reflection lookup for Shizuku.newProcess
+                    java.lang.reflect.Method newProcessMethod = null;
+                    for (java.lang.reflect.Method m : Shizuku.class.getDeclaredMethods()) {
+                        if (m.getName().equals("newProcess") && m.getParameterCount() == 3) {
+                            newProcessMethod = m;
+                            break;
+                        }
+                    }
+                    if (newProcessMethod != null) {
+                        newProcessMethod.setAccessible(true);
+                        java.lang.Process remoteProcess = (java.lang.Process) newProcessMethod.invoke(
+                                null, new String[]{"sh", "-c", cmd}, null, null);
+                        if (remoteProcess != null) remoteProcess.waitFor();
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to execute Shizuku appops: " + cmd, e);
+                }
+            }
+            
+            // Give the system a moment to propagate the appop grant
+            SystemClock.sleep(500);
+
+            // 2. Obtain MediaProjection via Binder injection
+            IBinder binder = SystemServiceHelper.getSystemService("media_projection");
+            if (binder == null) {
+                Log.e(TAG, "Could not get media_projection service binder");
+                return null;
+            }
+
+            IBinder wrapped = new ShizukuBinderWrapper(binder);
+
+            // 3. Robust reflection to get IMediaProjectionManager
+            Class<?> managerClass = Class.forName("android.media.projection.IMediaProjectionManager");
+            Class<?> stubClass = Class.forName("android.media.projection.IMediaProjectionManager$Stub");
+
+            Object service = null;
+            for (java.lang.reflect.Method m : stubClass.getDeclaredMethods()) {
+                if (m.getName().equals("asInterface") && m.getParameterCount() == 1) {
+                    m.setAccessible(true);
+                    service = m.invoke(null, wrapped);
+                    break;
+                }
+            }
+
+            if (service == null) {
+                Log.e(TAG, "Failed to create IMediaProjectionManager proxy");
+                return null;
+            }
+
+            // 4. Create the projection
+            // IMediaProjection createProjection(int uid, String packageName, int type, boolean permanent)
+            java.lang.reflect.Method createProjectionMethod = null;
+            for (java.lang.reflect.Method m : service.getClass().getMethods()) {
+                if (m.getName().equals("createProjection") && m.getParameterCount() == 4) {
+                    createProjectionMethod = m;
+                    break;
+                }
+            }
+
+            if (createProjectionMethod == null) {
+                Log.e(TAG, "createProjection method not found");
+                return null;
+            }
+
+            int uid = getApplicationInfo().uid;
+            IBinder projectionBinder = (IBinder) createProjectionMethod.invoke(service, uid, pkg, 0, true);
+            if (projectionBinder == null) {
+                Log.e(TAG, "createProjection returned null binder");
+                return null;
+            }
+
+            // 5. Wrap the projection binder
+            Class<?> iProjectionClass = Class.forName("android.media.projection.IMediaProjection");
+            Class<?> iProjectionStubClass = Class.forName("android.media.projection.IMediaProjection$Stub");
+
+            Object iProjection = null;
+            for (java.lang.reflect.Method m : iProjectionStubClass.getDeclaredMethods()) {
+                if (m.getName().equals("asInterface") && m.getParameterCount() == 1) {
+                    m.setAccessible(true);
+                    iProjection = m.invoke(null, new ShizukuBinderWrapper(projectionBinder));
+                    break;
+                }
+            }
+
+            if (iProjection == null) {
+                Log.e(TAG, "Failed to create IMediaProjection proxy");
+                return null;
+            }
+
+            // 6. Instantiate the MediaProjection object
+            java.lang.reflect.Constructor<MediaProjection> constructor = MediaProjection.class.getConstructor(
+                    Context.class, iProjectionClass);
+            
+            return constructor.newInstance(this, iProjection);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Critical failure in Shizuku MediaProjection creation", e);
+            return null;
         }
     }
 
@@ -832,11 +955,22 @@ public class AudioCaptureService extends Service {
                     return;
                 }
                 mProjection = projection;
-                if (mWorkerHandler != null) {
-                    mProjection.registerCallback(mProjectionCallback, mWorkerHandler);
+            } else if (source == CaptureSource.SHIZUKU) {
+                // Use SPECIAL_USE for Shizuku to bypass some projection-related enforcement checks
+                // while still technically using the projection for capture
+                mProjection = getShizukuProjection();
+                if (mProjection == null) {
+                    Log.e(TAG, "Failed to obtain Shizuku MediaProjection");
+                    sIsRunning = false;
+                    return;
                 }
+                startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
             } else {
                 startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+            }
+
+            if (mProjection != null && mWorkerHandler != null) {
+                mProjection.registerCallback(mProjectionCallback, mWorkerHandler);
             }
 
             mCapturing = true;
@@ -858,7 +992,7 @@ public class AudioCaptureService extends Service {
                             AudioFormat.ENCODING_PCM_16BIT);
                     int bufferSize = Math.max(minBufSize, 4096 * 4);
 
-                    if (source == CaptureSource.INTERNAL) {
+                    if (source == CaptureSource.INTERNAL || source == CaptureSource.SHIZUKU) {
                         AudioPlaybackCaptureConfiguration config =
                                 new AudioPlaybackCaptureConfiguration.Builder(mProjection)
                                         .addMatchingUsage(AudioAttributes.USAGE_MEDIA)

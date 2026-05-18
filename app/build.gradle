@@ -16,6 +16,19 @@ android {
         targetSdk 36
         versionCode 7
         versionName '3.1'
+        buildConfigField "boolean", "SHOW_SHIZUKU", "true"
+    }
+
+    flavorDimensions = ["distribution"]
+    productFlavors {
+        googlePlay {
+            dimension "distribution"
+            buildConfigField "boolean", "SHOW_SHIZUKU", "false"
+        }
+        github {
+            dimension "distribution"
+            buildConfigField "boolean", "SHOW_SHIZUKU", "true"
+        }
     }
 
     buildTypes {
@@ -91,4 +104,8 @@ dependencies {
 
     // 8. Debugging
     debugImplementation 'androidx.compose.ui:ui-tooling'
+
+    // Shizuku
+    implementation "dev.rikka.shizuku:api:13.1.5"
+    implementation "dev.rikka.shizuku:provider:13.1.5"
 }

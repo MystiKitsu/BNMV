@@ -32,6 +32,9 @@ import com.better.nothing.music.vizualizer.logic.CommunityRepository
 import com.better.nothing.music.vizualizer.model.CommunityPreset
 import com.better.nothing.music.vizualizer.model.ZoneData
 import com.better.nothing.music.vizualizer.ui.CommunityPresetsScreen
+
+import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuProvider
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onEach
@@ -172,12 +175,35 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     fun selectTab(tab: Tab) { _selectedTab.value = tab }
 
     fun setCaptureSource(source: AudioCaptureService.CaptureSource) {
+        if (source == AudioCaptureService.CaptureSource.SHIZUKU) {
+            if (!checkShizukuPermission()) {
+                return
+            }
+        }
         _captureSource.value = source
         MainActivity.serviceStatic?.setCaptureSource(source)
         analytics.logCaptureSourceChanged(source.name)
         viewModelScope.launch(Dispatchers.IO) {
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putString("capture_source", source.name) }
+        }
+    }
+
+    private fun checkShizukuPermission(): Boolean {
+        try {
+            if (Shizuku.isPreV11()) return false
+            if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                return true
+            } else if (Shizuku.shouldShowRequestPermissionRationale()) {
+                Toast.makeText(ctx, "Shizuku permission is required for this source", Toast.LENGTH_LONG).show()
+                return false
+            } else {
+                Shizuku.requestPermission(1001)
+                return false
+            }
+        } catch (e: Exception) {
+            Toast.makeText(ctx, "Shizuku not running or not installed", Toast.LENGTH_LONG).show()
+            return false
         }
     }
 
@@ -1134,8 +1160,12 @@ class MainActivity : ComponentActivity() {
                 pendingResultCode = 0
                 pendingData = null
                 hasPendingToken = false
-            } else if (pendingVisualizerStart && viewModel.captureSource.value == AudioCaptureService.CaptureSource.MIC) {
-                service?.startMicCapture()
+            } else if (pendingVisualizerStart) {
+                if (viewModel.captureSource.value == AudioCaptureService.CaptureSource.MIC) {
+                    service?.startMicCapture()
+                } else if (viewModel.captureSource.value == AudioCaptureService.CaptureSource.SHIZUKU) {
+                    service?.startShizukuCapture()
+                }
                 pendingVisualizerStart = false
             }
         }
@@ -1169,7 +1199,7 @@ class MainActivity : ComponentActivity() {
 
     private val notificationLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) requestProjection()
+            if (granted) toggleVisualizer()
             else {
                 pendingVisualizerStart = false
                 viewModel.setRunning(false)
@@ -1183,7 +1213,7 @@ class MainActivity : ComponentActivity() {
 
     private val audioPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) requestProjection()
+            if (granted) toggleVisualizer()
             else {
                 pendingVisualizerStart = false
                 viewModel.setRunning(false)
@@ -1525,12 +1555,46 @@ class MainActivity : ComponentActivity() {
         if (AudioCaptureService.isRunning()) {
             stopEverything()
         } else {
-            if (viewModel.captureSource.value == AudioCaptureService.CaptureSource.MIC) {
-                startMicVisualizer()
-            } else {
-                requestProjection()
+            when (viewModel.captureSource.value) {
+                AudioCaptureService.CaptureSource.MIC -> startMicVisualizer()
+                AudioCaptureService.CaptureSource.SHIZUKU -> startShizukuVisualizer()
+                else -> requestProjection()
             }
         }
+    }
+
+    private fun startShizukuVisualizer() {
+        // Notification permission is still good to have for the FGS
+        if (ContextCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+
+        // Even with Shizuku, AudioRecord usually needs the base permission granted to the app
+        if (ContextCompat.checkSelfPermission(
+                this, Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+
+        val serviceIntent = Intent(this, AudioCaptureService::class.java).apply {
+            putExtra(AudioCaptureService.EXTRA_PRESET_KEY, viewModel.currentPreset())
+        }
+        ContextCompat.startForegroundService(this, serviceIntent)
+        if (!bound) bindService(serviceIntent, serviceConnection, BIND_AUTO_CREATE)
+        
+        if (bound && service != null) {
+            applyServiceSettings()
+            service?.startShizukuCapture()
+        } else {
+            pendingVisualizerStart = true
+        }
+        viewModel.setRunning(true)
     }
 
     private fun startMicVisualizer() {
