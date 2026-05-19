@@ -1,7 +1,8 @@
 # Better Nothing Music Visualizer - TODO
 
 ## To Do
-- [ ] Add microphone audio source
+- [ ] Ask Oliver if i can replace these checkmarks by some easier bullet points?
+- [ ] Adapt ui depending on the audio source (Aleks)
 - [ ] Add shitty vizualizer audio source WITH DISCLAIMER THAT IT SUCKS
 - [ ] Add one-shot spam haptics engine (from Oliver)
 - [ ] Zebra breathing mode
@@ -16,6 +17,7 @@
 - [ ] Update notification (Oliver)
 
 ## In Progress
+- [x] Add microphone audio source
 - [ ] RichTap haptics (currently not working)
 - [ ] Add Shizuku audio source (Oliver) - Added structure & UI toggle
 
