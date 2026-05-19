@@ -2,7 +2,8 @@
 
 ## To Do
 - [ ] Add microphone audio source
-- [ ] Add one-shot spam haptics engine (Oliver)
+- [ ] Add shitty vizualizer audio source WITH DISCLAIMER THAT IT SUCKS
+- [ ] Add one-shot spam haptics engine (from Oliver)
 - [ ] Zebra breathing mode
 - [ ] Alternating strobe mode blinking of the glyphs (10ms)
 - [ ] Add an adjustment Hz range preset for Phone (4a)
@@ -15,11 +16,11 @@
 - [ ] Update notification (Oliver)
 
 ## In Progress
-- [ ] Fix gamma resetting after every update
 - [ ] RichTap haptics (currently not working)
 - [ ] Add Shizuku audio source (Oliver) - Added structure & UI toggle
 
 ## Done
+- [x] **ADDED PHONE (1) COMPATIBILITY WITHOUT DEBUG MODE!**
 - [x] Fix status bar padding preventing true edge-to-edge
 - [x] Implement haptic visualization
 - [x] Add "disable glyph session when no sound" toggle
@@ -33,3 +34,4 @@
 - [x] Fetch `zones.config` from GitHub repo
 - [x] Fix Phone (2) screen off issues (battery optimization fix)
 - [x] Resolve Quick Settings tile functional issues
+- [x] *And many things we did before moving the todo list here!*
