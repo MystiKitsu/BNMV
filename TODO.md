@@ -1,6 +1,15 @@
 # Better Nothing Music Visualizer - TODO
 
 ## To Do
+- [ ] **Split this list in categories**
+- [ ] **Ask if I can remove the done part wiz we don't need it rlly**
+- [ ] Remove the debug disclaimer in readme one we release
+- [ ] Collapse experimental features in settings tab for lighter UI 
+- [ ] Rename OLED black theme to "Default theme" 
+- [ ] Change that app theme carrousel thing cuz it sucks
+- [ ] Auto dark light theme for Nothing and Material You themes (no need to display the 2 variants in that case, we save space!)
+- [ ] Use rotating rounded polygon for the haptic viz visual (boost rotate when beat detected)
+- [ ] Collapse experimental settings in togglglable buttons instead of text + toggle
 - [ ] Change "check for updates" text in "Update" if there is an update available
 - [ ] Make the local file button smoler
 - [ ] M3E split and round those 2 /\ buttons
