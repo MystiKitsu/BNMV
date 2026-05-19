@@ -11,7 +11,7 @@ android {
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.better.nothing.music.visualizer"
+        applicationId "com.better.nothing.music.vizualizer"
         minSdk 34
         targetSdk 36
         versionCode 7
