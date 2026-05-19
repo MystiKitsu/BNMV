@@ -26,7 +26,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BetterGlyph">
 
-        <meta-data android:name="NothingKey" android:value="test" />
+        <meta-data android:name="NothingKey" android:value="4fce0591-cbd9-4b1d-9cd0-646a2d2aecea" />
 
         <activity
             android:name=".ui.MainActivity"
@@ -35,8 +35,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
         </activity>
