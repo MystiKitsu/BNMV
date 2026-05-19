@@ -2,11 +2,7 @@ package com.better.nothing.music.vizualizer.ui
 
 import android.annotation.SuppressLint
 import com.better.nothing.music.vizualizer.R
-import com.better.nothing.music.vizualizer.model.DeviceProfile
 import com.better.nothing.music.vizualizer.service.AudioCaptureService
-import android.content.Context
-import android.os.Build
-import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
@@ -24,7 +20,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,11 +33,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -53,7 +48,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -77,7 +71,6 @@ internal fun GlyphsScreen(
     viewModel: MainViewModel,
 ) {
     val mainScrollState = rememberScrollState()
-    val context = LocalContext.current
 
     val selectedInfo = remember(selectedPreset, presets) {
         presets.firstOrNull { it.key == selectedPreset } ?: presets.firstOrNull()
@@ -94,31 +87,22 @@ internal fun GlyphsScreen(
 
         ScreenTitle(text = stringResource(R.string.glyph_controls))
 
-        if (selectedDevice == DeviceProfile.DEVICE_NP1 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
-            if (!isGlyphDebugEnabled(context)) {
-                GlyphDebugWarningCard(
-                    developerModeEnabled = isDeveloperOptionsEnabled(context)
-                )
-            }
-        }
-
-
         // Header with external toggle for glyph visualization
         val hapticsLocal = androidx.compose.ui.platform.LocalHapticFeedback.current
         val DEFAULT_BR = 4095
-        val lastNonZero = remember { mutableStateOf(if (maxBrightness > 0) maxBrightness else DEFAULT_BR) }
+        val lastNonZero = remember { mutableIntStateOf(if (maxBrightness > 0) maxBrightness else DEFAULT_BR) }
         androidx.compose.runtime.LaunchedEffect(maxBrightness) {
-            if (maxBrightness > 0) lastNonZero.value = maxBrightness
+            if (maxBrightness > 0) lastNonZero.intValue = maxBrightness
         }
 
         val glyphEnabled = maxBrightness > 0
         AnimatedToggleCard(
-            title = "Glyph vizualisation",
+            title = "Glyph visualisation",
             checked = glyphEnabled,
             onCheckedChange = { switchEnabled ->
                 hapticsLocal.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                 if (switchEnabled) {
-                    onMaxBrightnessChanged(lastNonZero.value)
+                    onMaxBrightnessChanged(lastNonZero.intValue)
                 } else {
                     onMaxBrightnessChanged(0)
                 }
@@ -147,8 +131,8 @@ internal fun GlyphsScreen(
                 BrightnessCard(
                     maxBrightness = maxBrightness,
                     enabled = glyphEnabled,
-                    lastNonZero = lastNonZero.value,
-                    onLastNonZeroChanged = { v -> lastNonZero.value = v },
+                    lastNonZero = lastNonZero.intValue,
+                    onLastNonZeroChanged = { v -> lastNonZero.intValue = v },
                     onMaxBrightnessChanged = onMaxBrightnessChanged
                 )
 
@@ -275,61 +259,6 @@ internal fun GlyphsScreen(
     }
 }
 
-@Composable
-private fun GlyphDebugWarningCard(
-    developerModeEnabled: Boolean,
-) {
-    Card(
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.glyph_debug_title),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            BodyText(
-                text = stringResource(if (developerModeEnabled) R.string.glyph_debug_desc_adb_enabled else R.string.glyph_debug_desc_dev_options)
-            )
-            Text(
-                text = stringResource(R.string.glyph_debug_command),
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.bodyLarge,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Medium,
-            )
-            if (developerModeEnabled) {
-                BodyText(
-                    text = stringResource(R.string.glyph_debug_instruction),
-                    size = 14.sp,
-                    lineHeight = 20.sp,
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(70.dp))
-    }
-}
-
-private fun isDeveloperOptionsEnabled(context: Context): Boolean {
-    return Settings.Global.getInt(
-        context.contentResolver,
-        Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
-        0
-    ) == 1
-}
-
-private fun isGlyphDebugEnabled(context: Context): Boolean {
-    return Settings.Global.getInt(
-        context.contentResolver,
-        "nt_glyph_interface_debug_enable",
-        0
-    ) == 1
-}
 
 @Composable
 fun BrightnessCard(
@@ -339,9 +268,8 @@ fun BrightnessCard(
     onLastNonZeroChanged: (Int) -> Unit,
     onMaxBrightnessChanged: (Int) -> Unit,
 ) {
-    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+    androidx.compose.ui.platform.LocalHapticFeedback.current
 
-    val DEFAULT_BRIGHTNESS = 4095
     val MIN_BRIGHTNESS = 50
     val MAX_BRIGHTNESS = 4500
 
