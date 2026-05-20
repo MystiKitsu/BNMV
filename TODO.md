@@ -9,7 +9,7 @@
 - [ ] Make toggle card white accent color when on???
 - [ ] Make toggle card thinner
 - [ ] remove latency compensation from microphone input
-
+- [ ] change git link embed
 
 About screen:
 - [ ] Change title "About and other" to "App info and updates"
