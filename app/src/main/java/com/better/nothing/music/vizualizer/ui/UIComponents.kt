@@ -26,6 +26,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -556,25 +557,61 @@ val LocalAppSpacing = staticCompositionLocalOf { AppSpacing() }
 
 @Composable
 fun BetterVizTheme(
-    themeName: String = "OLED Black",
+    themeName: String = "Default",
     fontName: String = "NDot",
     content: @Composable () -> Unit
 ) {
     val useNType = fontName == "NType"
     val context = LocalContext.current
+    val isDark = isSystemInDarkTheme()
 
     val targetColorScheme = when (themeName) {
         "Material You" -> {
-            dynamicDarkColorScheme(context)
+            if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        "Material You Light" -> {
-            dynamicLightColorScheme(context)
+        "Nothing" -> {
+            if (isDark) {
+                // Nothing Red (Branded Dark)
+                androidx.compose.material3.darkColorScheme(
+                    background = Color.Black,
+                    surface = Color(0xFF0D0D0D),
+                    primary = Color(0xFFD71921),    // Authentic Nothing Red
+                    secondary = Color(0xFFD71921),
+                    error = Color(0xFFD71921),
+                    onBackground = Color.White,
+                    onSurface = Color.White,
+                    onPrimary = Color.White,
+                    onSecondary = Color.White,
+                    onError = Color.White,
+                    surfaceVariant = Color(0xFF1A1A1A),
+                    onSurfaceVariant = Color(0xFFB3B3B3),
+                    outline = Color(0xFF333333)
+                )
+            } else {
+                // Nothing Light (Branded Light)
+                androidx.compose.material3.lightColorScheme(
+                    background = Color.White,
+                    surface = Color(0xFFF5F5F5),
+                    primary = Color(0xFF000000),
+                    secondary = Color(0xFF626262),
+                    error = Color(0xFFD71921),
+                    onBackground = Color.Black,
+                    onSurface = Color.Black,
+                    onPrimary = Color.White,
+                    onSecondary = Color.White,
+                    onError = Color.White,
+                    surfaceVariant = Color(0xFFE0E0E0),
+                    onSurfaceVariant = Color(0xFF757575),
+                    outline = Color(0xFFBDBDBD)
+                )
+            }
         }
         "Nothing Red" -> {
+            // Fallback for old selection, same as Nothing Dark
             androidx.compose.material3.darkColorScheme(
                 background = Color.Black,
                 surface = Color(0xFF0D0D0D),
-                primary = Color(0xFFD71921),    // Authentic Nothing Red
+                primary = Color(0xFFD71921),
                 secondary = Color(0xFFD71921),
                 error = Color(0xFFD71921),
                 onBackground = Color.White,
@@ -604,24 +641,7 @@ fun BetterVizTheme(
                 outline = Color(0xFF2C2C2C)
             )
         }
-        "Nothing Light" -> {
-            androidx.compose.material3.lightColorScheme(
-                background = Color.White,
-                surface = Color(0xFFF5F5F5),
-                primary = Color(0xFF000000),
-                secondary = Color(0xFF626262),
-                error = Color(0xFFD71921),
-                onBackground = Color.Black,
-                onSurface = Color.Black,
-                onPrimary = Color.White,
-                onSecondary = Color.White,
-                onError = Color.White,
-                surfaceVariant = Color(0xFFE0E0E0),
-                onSurfaceVariant = Color(0xFF757575),
-                outline = Color(0xFFBDBDBD)
-            )
-        }
-        else -> { // OLED Black / Default
+        else -> { // Default / OLED Black
             androidx.compose.material3.darkColorScheme(
                 background = Color.Black,
                 surface = Color(0xFF1A1A1A),

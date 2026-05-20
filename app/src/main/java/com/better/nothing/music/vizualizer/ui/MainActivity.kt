@@ -585,7 +585,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     }
 
     // ── Theme & Font ─────────────────────────────────────────────────────────
-    private val _selectedTheme = MutableStateFlow("OLED Black")
+    private val _selectedTheme = MutableStateFlow("Default")
     val selectedTheme = _selectedTheme.asStateFlow()
 
     private val _selectedFont = MutableStateFlow("NDot")
@@ -998,8 +998,13 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 _configVersion.value = AudioCaptureService.loadZonesConfigVersion(ctx)
                 _disableGlyphsWhenSilent.value = prefs.getBoolean("disable_glyphs_when_silent", false)
 
-                val theme = prefs.getString("selected_theme", "OLED Black") ?: "OLED Black"
-                _selectedTheme.value = if (theme == "Normal") "OLED Black" else theme
+                val theme = prefs.getString("selected_theme", "Default") ?: "Default"
+                _selectedTheme.value = when (theme) {
+                    "Normal", "OLED Black" -> "Default"
+                    "Nothing Light", "Nothing Red" -> "Nothing"
+                    "Material You Light" -> "Material You"
+                    else -> theme
+                }
                 _selectedFont.value = prefs.getString("selected_font", "NDot") ?: "NDot"
                 _selectedPreset.value = prefs.getString("selected_preset", "") ?: ""
 

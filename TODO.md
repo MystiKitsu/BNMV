@@ -1,30 +1,23 @@
 # Better Nothing Music Visualizer - TODO
 
 ## To Do
-- [ ] **Split this list in categories**
-- [ ] **Ask if I can remove the done part wiz we don't need it rlly**
 - [ ] Remove the debug disclaimer in readme one we release
-- [ ] Collapse experimental features in settings tab for lighter UI 
-- [ ] Rename OLED black theme to "Default theme" 
 - [ ] Change that app theme carrousel thing cuz it sucks
-- [ ] Auto dark light theme for Nothing and Material You themes (no need to display the 2 variants in that case, we save space!)
 - [ ] Use rotating rounded polygon for the haptic viz visual (boost rotate when beat detected)
-- [ ] Collapse experimental settings in togglglable buttons instead of text + toggle
-- [ ] Change "check for updates" text in "Update" if there is an update available
-- [ ] Make the local file button smoler
 - [ ] M3E split and round those 2 /\ buttons
-- [ ] Remove latency compensations for microphone
 - [ ] M3E selector capture source
 - [ ] Make toggle card white accent color when on???
-- [ ] Make toogl cadr thinner
-About scren:
+- [ ] Make toggle card thinner
+- [ ] remove latency compensation from microphone input
+
+
+About screen:
 - [ ] Change title "About and other" to "App info and updates"
-- [ ] Redesing about page for a proper hierarchical easy M3E design
+- [ ] Redesign about page for a proper hierarchical easy M3E design
 - [ ] Merge Git repo link card with app version card
---- (someone do proper indentation)
 - [ ] Ask Oliver if i can replace these checkmarks by some easier bullet points?
 - [ ] Adapt ui depending on the audio source (Aleks)
-- [ ] Add shitty vizualizer audio source WITH DISCLAIMER THAT IT SUCKS
+- [ ] Add shitty visualizer audio source WITH DISCLAIMER THAT IT SUCKS
 - [ ] Add one-shot spam haptics engine (from Oliver)
 - [ ] Zebra breathing mode
 - [ ] Alternating strobe mode blinking of the glyphs (10ms)
@@ -38,11 +31,18 @@ About scren:
 - [ ] Update notification (Oliver)
 
 ## In Progress
-- [x] Add microphone audio source
 - [ ] RichTap haptics (currently not working)
 - [ ] Add Shizuku audio source (Oliver) - Added structure & UI toggle
 
 ## Done
+- [x] Collapse experimental features in settings tab for lighter UI
+- [x] Rename OLED black theme to "Default theme"
+- [x] Auto dark light theme for Nothing and Material You theme
+- [x] Collapse experimental settings in toggleable buttons
+- [x] Change "check for updates" text to "Update" when available
+- [x] Make the local file button smaller
+- [x] Remove latency compensations for microphone
+- [x] Add microphone audio source
 - [x] **ADDED PHONE (1) COMPATIBILITY WITHOUT DEBUG MODE!**
 - [x] Fix status bar padding preventing true edge-to-edge
 - [x] Implement haptic visualization

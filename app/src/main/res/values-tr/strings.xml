@@ -24,10 +24,11 @@
     <!-- Settings Screen -->
     <string name="settings_title">Ayarlar</string>
     <string name="app_theme">Uygulama Teması</string>
-    <string name="theme_normal">OLED Siyah</string>
+    <string name="theme_normal">Varsayılan</string>
     <string name="theme_liquorice">Meyan Kökü Siyahı</string>
-    <string name="theme_light">Nothing Açık</string>
+    <string name="theme_nothing">Nothing</string>
     <string name="theme_nothing_red">Nothing Kırmızı</string>
+    <string name="theme_material_you">Material You</string>
     <string name="theme_help_text">Değişiklikler uygulama yeniden başlatıldıktan sonra uygulanır.</string>
     <string name="typography">Tipografi</string>
     <string name="font_ndot">NDot</string>

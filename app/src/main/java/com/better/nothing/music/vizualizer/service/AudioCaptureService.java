@@ -1162,13 +1162,14 @@ public class AudioCaptureService extends Service {
                 continue;
             }
 
+            int delay = mCaptureSource == CaptureSource.MIC ? 0 : mLatencyCompensationMs;
             pendingFrames.addLast(new PendingFrame(
                     result.uniqueMagnitudes,
                     result.magnitude.clone(),
                     result.hapticPeak,
                     config,
                     presetVersion,
-                    SystemClock.elapsedRealtime() + mLatencyCompensationMs
+                    SystemClock.elapsedRealtime() + delay
             ));
             dispatchDueFrames(pendingFrames);
         }

@@ -37,6 +37,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -59,21 +60,27 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Air
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
-import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun SettingsScreen(
     viewModel: MainViewModel,
@@ -140,49 +147,41 @@ internal fun SettingsScreen(
             )
 
             val themeOptions = listOf(
-                "OLED Black",
-                "Liquorice Black",
-                "Nothing Light",
-                "Nothing Red",
-                "Material You",
-                "Material You Light"
+                "Default" to stringResource(R.string.theme_normal),
+                "Liquorice Black" to stringResource(R.string.theme_liquorice),
+                "Nothing" to stringResource(R.string.theme_nothing),
+                "Material You" to stringResource(R.string.theme_material_you)
             )
-            val initialThemeIndex = remember { themeOptions.indexOf(selectedTheme).coerceAtLeast(0) }
-            val carouselState = rememberCarouselState(initialItem = initialThemeIndex) { themeOptions.size }
 
-            HorizontalMultiBrowseCarousel(
-                state = carouselState,
-                preferredItemWidth = 140.dp,
-                itemSpacing = 8.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(75.dp)
-            ) { index ->
-                val theme = themeOptions[index]
-                val isSelected = selectedTheme == theme
-                Card(
-                    onClick = { viewModel.setSelectedTheme(theme) },
-                    shape = RoundedCornerShape(22.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surface,
-                        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.onSurface
-                    ),
-                    border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .maskClip(RoundedCornerShape(22.dp))
-                ) {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        Text(
-                            text = theme,
-                            style = MaterialTheme.typography.titleSmall,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(12.dp),
-                            maxLines = 2,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                        )
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                maxItemsInEachRow = 2,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                themeOptions.forEach { (key, label) ->
+                    val isSelected = selectedTheme == key
+                    Card(
+                        onClick = { viewModel.setSelectedTheme(key) },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) Color.White else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            contentColor = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelLarge,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(4.dp),
+                                maxLines = 1,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
                     }
                 }
             }
@@ -195,167 +194,196 @@ internal fun SettingsScreen(
             )
         }
 
-        // ── Visualizer Features ──────────────────────────────────────────────
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = stringResource(R.string.experimental_features),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 4.dp),
-            )
+        // ── Experimental Features ───────────────────────────────────────────
+        val devModeEnabled by viewModel.developerModeEnabled.collectAsStateWithLifecycle()
+        var experimentalExpanded by remember { mutableStateOf(false) }
 
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth(),
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Surface(
+                onClick = { experimentalExpanded = !experimentalExpanded },
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                val devModeEnabled by viewModel.developerModeEnabled.collectAsStateWithLifecycle()
-                val spoofedDevice by viewModel.spoofedDevice.collectAsStateWithLifecycle()
-                var spoofExpanded by remember { mutableStateOf(false) }
-
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    FeatureToggle(
-                        title = stringResource(R.string.idle_breathing_title),
-                        description = stringResource(R.string.idle_breathing_desc),
-                        checked = idleBreathingEnabled,
-                        onCheckedChange = onIdleBreathingEnabledChanged
-                    )
-
-                    if (idleBreathingEnabled) {
-                        var patternExpanded by remember { mutableStateOf(false) }
-                        val patternNames = mapOf(
-                            "pulse" to "Breathing Pulse",
-                            "wave" to "Traveling Wave",
-                            "scanner" to "Cylon Scanner",
-                            "static" to "Low Static"
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Text(
+                            text = stringResource(R.string.experimental_features),
+                            style = MaterialTheme.typography.titleMedium,
                         )
-
-                        Column(modifier = Modifier.padding(top = 8.dp)) {
-                            Text(
-                                text = "Idle Pattern",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-
-                            Box {
-                                OutlinedTextField(
-                                    value = patternNames[idlePattern] ?: idlePattern,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = patternExpanded) },
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .background(Color.Transparent)
-                                        .clickable { patternExpanded = true }
-                                )
-
-                                DropdownMenu(
-                                    expanded = patternExpanded,
-                                    onDismissRequest = { patternExpanded = false },
-                                    modifier = Modifier.fillMaxWidth(0.9f)
-                                ) {
-                                    patternNames.forEach { (key, name) ->
-                                        DropdownMenuItem(
-                                            text = { Text(name) },
-                                            onClick = {
-                                                onIdlePatternChanged(key)
-                                                patternExpanded = false
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
                     }
+                    Icon(
+                        imageVector = if (experimentalExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = Color.Gray
+                    )
+                }
+            }
 
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-
-                    FeatureToggle(
-                        title = stringResource(R.string.notification_flash_title),
-                        description = stringResource(R.string.notification_flash_desc),
+            if (experimentalExpanded) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    maxItemsInEachRow = 2,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FeatureCard(
+                        title = "Idle Breathing",
+                        icon = Icons.Default.Air,
+                        checked = idleBreathingEnabled,
+                        onCheckedChange = onIdleBreathingEnabledChanged,
+                        modifier = Modifier.weight(1f)
+                    )
+                    FeatureCard(
+                        title = "Notif. Flash",
+                        icon = Icons.Default.FlashOn,
                         checked = notificationFlashEnabled,
-                        onCheckedChange = onNotificationFlashEnabledChanged
+                        onCheckedChange = onNotificationFlashEnabledChanged,
+                        modifier = Modifier.weight(1f)
                     )
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-
-                    FeatureToggle(
-                        title = stringResource(R.string.disable_glyphs_when_silent_title),
-                        description = stringResource(R.string.disable_glyphs_when_silent_desc),
+                    FeatureCard(
+                        title = "Silent Auto-Off",
+                        icon = Icons.Default.VolumeOff,
                         checked = disableGlyphsWhenSilent,
-                        onCheckedChange = onDisableGlyphsWhenSilentChanged
+                        onCheckedChange = onDisableGlyphsWhenSilentChanged,
+                        modifier = Modifier.weight(1f)
                     )
-
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-
-                    FeatureToggle(
-                        title = stringResource(R.string.developer_mode),
-                        description = stringResource(R.string.developer_mode_description),
+                    FeatureCard(
+                        title = "Dev Mode",
+                        icon = Icons.Default.Code,
                         checked = devModeEnabled,
-                        onCheckedChange = { viewModel.setDeveloperModeEnabled(it) }
+                        onCheckedChange = { viewModel.setDeveloperModeEnabled(it) },
+                        modifier = Modifier.weight(1f)
                     )
+                }
 
-                    if (devModeEnabled) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                text = stringResource(R.string.spoof_device),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-
-                            Box {
-                                OutlinedTextField(
-                                    value = DeviceProfile.deviceName(spoofedDevice),
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = spoofExpanded) },
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                // Transparent overlay for clickable box logic since OutlinedTextField is readOnly
-                                Box(
-                                    modifier = Modifier
-                                        .matchParentSize()
-                                        .background(Color.Transparent)
-                                        .clickable { spoofExpanded = true }
+                if (idleBreathingEnabled || devModeEnabled) {
+                    Card(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            if (idleBreathingEnabled) {
+                                var patternExpanded by remember { mutableStateOf(false) }
+                                val patternNames = mapOf(
+                                    "pulse" to "Breathing Pulse",
+                                    "wave" to "Traveling Wave",
+                                    "scanner" to "Cylon Scanner",
+                                    "static" to "Low Static"
                                 )
 
-                                DropdownMenu(
-                                    expanded = spoofExpanded,
-                                    onDismissRequest = { spoofExpanded = false },
-                                    modifier = Modifier.fillMaxWidth(0.9f)
-                                ) {
-                                    val devices = listOf(
-                                        DeviceProfile.DEVICE_NP1,
-                                        DeviceProfile.DEVICE_NP2,
-                                        DeviceProfile.DEVICE_NP2A,
-                                        DeviceProfile.DEVICE_NP3A,
-                                        DeviceProfile.DEVICE_NP4A,
-                                        DeviceProfile.DEVICE_NP4APRO,
-                                        DeviceProfile.DEVICE_NP3
+                                Column {
+                                    Text(
+                                        text = "Idle Pattern",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(bottom = 8.dp)
                                     )
-                                    devices.forEach { dev ->
-                                        DropdownMenuItem(
-                                            text = { Text(DeviceProfile.deviceName(dev)) },
-                                            onClick = {
-                                                viewModel.setSpoofedDevice(dev)
-                                                spoofExpanded = false
-                                            }
+
+                                    Box {
+                                        OutlinedTextField(
+                                            value = patternNames[idlePattern] ?: idlePattern,
+                                            onValueChange = {},
+                                            readOnly = true,
+                                            modifier = Modifier.fillMaxWidth(),
+                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = patternExpanded) },
+                                            shape = RoundedCornerShape(12.dp)
                                         )
+                                        Box(
+                                            modifier = Modifier
+                                                .matchParentSize()
+                                                .background(Color.Transparent)
+                                                .clickable { patternExpanded = true }
+                                        )
+
+                                        DropdownMenu(
+                                            expanded = patternExpanded,
+                                            onDismissRequest = { patternExpanded = false },
+                                            modifier = Modifier.fillMaxWidth(0.9f)
+                                        ) {
+                                            patternNames.forEach { (key, name) ->
+                                                DropdownMenuItem(
+                                                    text = { Text(name) },
+                                                    onClick = {
+                                                        onIdlePatternChanged(key)
+                                                        patternExpanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
-                            Text(
-                                text = stringResource(R.string.spoof_device_description),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.Gray
-                            )
+
+                            if (devModeEnabled) {
+                                if (idleBreathingEnabled) {
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                                }
+
+                                val spoofedDevice by viewModel.spoofedDevice.collectAsStateWithLifecycle()
+                                var spoofExpanded by remember { mutableStateOf(false) }
+
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        text = stringResource(R.string.spoof_device),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+
+                                    Box {
+                                        OutlinedTextField(
+                                            value = DeviceProfile.deviceName(spoofedDevice),
+                                            onValueChange = {},
+                                            readOnly = true,
+                                            modifier = Modifier.fillMaxWidth(),
+                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = spoofExpanded) },
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        Box(
+                                            modifier = Modifier
+                                                .matchParentSize()
+                                                .background(Color.Transparent)
+                                                .clickable { spoofExpanded = true }
+                                        )
+
+                                        DropdownMenu(
+                                            expanded = spoofExpanded,
+                                            onDismissRequest = { spoofExpanded = false },
+                                            modifier = Modifier.fillMaxWidth(0.9f)
+                                        ) {
+                                            val devices = listOf(
+                                                DeviceProfile.DEVICE_NP1,
+                                                DeviceProfile.DEVICE_NP2,
+                                                DeviceProfile.DEVICE_NP2A,
+                                                DeviceProfile.DEVICE_NP3A,
+                                                DeviceProfile.DEVICE_NP4A,
+                                                DeviceProfile.DEVICE_NP4APRO,
+                                                DeviceProfile.DEVICE_NP3
+                                            )
+                                            devices.forEach { dev ->
+                                                DropdownMenuItem(
+                                                    text = { Text(DeviceProfile.deviceName(dev)) },
+                                                    onClick = {
+                                                        viewModel.setSpoofedDevice(dev)
+                                                        spoofExpanded = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Text(
+                                        text = stringResource(R.string.spoof_device_description),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -447,9 +475,10 @@ internal fun SettingsScreen(
                     val filePickerLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.GetContent()
                     ) { uri ->
-                        uri?.let { viewModel.importZonesConfig(it) }
+                        uri?.let { viewModel.importZonesConfig(uri) }
                     }
 
+                    val isUpdateAvailable = remoteVersion != null && remoteVersion != "Unknown" && remoteVersion != configVersion
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -457,7 +486,7 @@ internal fun SettingsScreen(
                         Button(
                             onClick = { viewModel.updateZonesConfig() },
                             enabled = configStatus is MainViewModel.ConfigUpdateStatus.Idle,
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1.4f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             if (configStatus is MainViewModel.ConfigUpdateStatus.Updating) {
@@ -469,7 +498,7 @@ internal fun SettingsScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Updating...")
                             } else {
-                                Text("Check for Updates")
+                                Text(if (isUpdateAvailable) "Update" else "Check for Updates")
                             }
                         }
 
@@ -489,7 +518,7 @@ internal fun SettingsScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Load Local")
+                            Text("Local", maxLines = 1)
                         }
                     }
                 }
@@ -540,28 +569,35 @@ internal fun SettingsScreen(
 }
 
 @Composable
-private fun FeatureToggle(
+private fun FeatureCard(
     title: String,
-    description: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+    Card(
+        onClick = { onCheckedChange(!checked) },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (checked) Color.White else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            contentColor = if (checked) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        modifier = modifier.height(64.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
-            Text(text = description, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                fontWeight = if (checked) FontWeight.Bold else FontWeight.Normal,
+                modifier = Modifier.weight(1f)
             )
-        )
+        }
     }
 }
