@@ -3,6 +3,7 @@
 ## To Do
 - [ ] Add author name in generated description of  community presets
 - [ ] Make the "save to community" button more obvious
+- [ ] Add time count for the vizualizer
 - [ ] Make categories for this Todo list. (really need a list for something only Aleks should do and not anyone else, cuz he knows what he meant and has the exact vision of what he wants... Please it's not against you Oliver. Also need to make an Oliver reserved list)
 - [ ] **Change np1 preset with wider spectrum range (Aleks)**
 - [ ] Reduce bit depth haptics amplitude 
