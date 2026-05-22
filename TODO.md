@@ -20,7 +20,6 @@ About screen:
 - [ ] Change title "About and other" to "App info and updates"
 - [ ] Redesign about page for a proper hierarchical easy M3E design
 - [ ] Merge Git repo link card with app version card
-- [ ] Ask Oliver if i can replace these checkmarks by some easier bullet points?
 - [ ] Adapt ui depending on the audio source (Aleks)
 - [ ] Add shitty visualizer audio source WITH DISCLAIMER THAT IT SUCKS
 - [ ] Add one-shot spam haptics engine (from Oliver)
@@ -30,7 +29,6 @@ About screen:
 - [ ] Replace dropdowns with Material 3 Expressive Split Buttons
 - [ ] Global "UI shift" variable (float 0.0 to 1.0, reactive to 50-150 Hz)
 - [ ] Ask RichTap what is going on
-- [ ] Hide glyph tab if device is not a Nothing Phone
 - [ ] Remove notification detection
 - [ ] Refine beat detection engine haptics
 - [ ] Update notification (Oliver)
@@ -38,8 +36,10 @@ About screen:
 ## In Progress
 - [ ] RichTap haptics (currently not working)
 - [ ] Add Shizuku audio source (Oliver) - Added structure & UI toggle
+- [ ] Hide glyph tab if device is not a Nothing Phone
 
 ## Done
+- [x] Ask Oliver if i can replace these checkmarks by some easier bullet points?
 - [x] Add flashlight visualizer (same UI as Haptics, add it at the bottom of the haptics screen for now)
 - [x] Collapse experimental features in settings tab for lighter UI
 - [x] Rename OLED black theme to "Default theme"

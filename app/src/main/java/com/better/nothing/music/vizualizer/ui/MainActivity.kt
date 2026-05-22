@@ -82,6 +82,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
@@ -244,6 +245,9 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 
         if (selectedDevice.value != targetDevice) {
             selectedDevice.value = targetDevice
+            if (targetDevice == DeviceProfile.DEVICE_UNKNOWN && _selectedTab.value == Tab.Glyphs) {
+                _selectedTab.value = Tab.Audio
+            }
             refreshPresets()
             reloadLatencyForCurrentRoute()
             // Forward to service if bound
@@ -1114,7 +1118,9 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 _flashlightGamma.value = prefs.getFloat("flashlight_gamma", 2.2f)
 
                 checkRemoteConfigVersion()
-                checkAppUpdate()
+                if (!BuildConfig.DEBUG) {
+                    checkAppUpdate()
+                }
             }
 
             startRunningStatePoller()
@@ -1970,8 +1976,6 @@ private fun AudioDeviceInfo.toAudioRoute(): AudioRoute {
     )
 }
 
-// Define the static list outside or as a constant to avoid overhead
-private val Tabs = listOf(Tab.Audio, Tab.Glyphs, Tab.Haptics, Tab.Settings)
 
 private val HeavyEasingSpec = tween<Float>(
     durationMillis = 600,
@@ -2067,6 +2071,14 @@ private fun BetterVizApp(
     val autoDeviceEnabled by viewModel.autoDeviceEnabled.collectAsStateWithLifecycle()
     val connectedDeviceName by viewModel.connectedDeviceName.collectAsStateWithLifecycle()
 
+    val availableTabs = remember(selectedDevice) {
+        if (selectedDevice == DeviceProfile.DEVICE_UNKNOWN) {
+            listOf(Tab.Audio, Tab.Haptics, Tab.Settings)
+        } else {
+            listOf(Tab.Audio, Tab.Glyphs, Tab.Haptics, Tab.Settings)
+        }
+    }
+
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
 
@@ -2087,8 +2099,8 @@ private fun BetterVizApp(
     }
 
     val pagerState = rememberPagerState(
-        initialPage = Tabs.indexOf(tab).coerceAtLeast(0),
-        pageCount = { Tabs.size }
+        initialPage = availableTabs.indexOf(tab).coerceAtLeast(0),
+        pageCount = { availableTabs.size }
     )
 
     // ─── Haptics: Trigger exactly at 50% threshold ────────────────────────────
@@ -2104,7 +2116,7 @@ private fun BetterVizApp(
 
     // ─── Sync Pager -> ViewModel ──────────────────────────────────────────────
     LaunchedEffect(pagerState.settledPage) {
-        val targetTab = Tabs.getOrNull(pagerState.settledPage)
+        val targetTab = availableTabs.getOrNull(pagerState.settledPage)
         if (targetTab != null && targetTab != tab) {
             onTabSelected(targetTab)
         }
@@ -2112,7 +2124,7 @@ private fun BetterVizApp(
 
     // ─── Sync ViewModel -> Pager ──────────────────────────────────────────────
     LaunchedEffect(tab) {
-        val targetPage = Tabs.indexOf(tab)
+        val targetPage = availableTabs.indexOf(tab)
         if (targetPage != -1 && targetPage != pagerState.currentPage) {
             pagerState.animateScrollToPage(targetPage, animationSpec = HeavyEasingSpec)
         }
@@ -2128,10 +2140,10 @@ private fun BetterVizApp(
         },
         bottomBar = {
             NativeBottomBar(
-                selectedTab = Tabs[pagerState.currentPage], // Snap highlight to current page
-                visibleTabs = Tabs,
+                selectedTab = availableTabs[pagerState.currentPage], // Snap highlight to current page
+                visibleTabs = availableTabs,
                 onTabSelected = { targetTab ->
-                    val index = Tabs.indexOf(targetTab)
+                    val index = availableTabs.indexOf(targetTab)
                     if (index != -1 && index != pagerState.currentPage) {
                         scope.launch {
                             pagerState.animateScrollToPage(index, animationSpec = HeavyEasingSpec)
@@ -2154,7 +2166,7 @@ private fun BetterVizApp(
                 userScrollEnabled = true,
                 pageSpacing = 10.dp
             ) { pageIndex ->
-                val currentTab = Tabs[pageIndex]
+                val currentTab = availableTabs[pageIndex]
                 val pageOffset = ((pagerState.currentPage - pageIndex) + pagerState.currentPageOffsetFraction).absoluteValue
 
                 Box(
