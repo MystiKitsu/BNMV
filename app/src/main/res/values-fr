@@ -21,11 +21,10 @@
     <!-- Settings Screen -->
     <string name="settings_title">Settings</string>
     <string name="app_theme">App Theme</string>
-    <string name="theme_normal">Default</string>
+    <string name="theme_normal">OLED Black</string>
     <string name="theme_liquorice">Liquorice Black</string>
-    <string name="theme_nothing">Nothing</string>
+    <string name="theme_light">Nothing Light</string>
     <string name="theme_nothing_red">Nothing Red</string>
-    <string name="theme_material_you">Material You</string>
     <string name="theme_help_text">Changes apply after app restart.</string>
     <string name="typography">Typography</string>
     <string name="font_ndot">NDot</string>
@@ -67,7 +66,7 @@
     <string name="glyph_debug_command">adb shell settings put global nt_glyph_interface_debug_enable 1</string>
     <string name="glyph_debug_instruction">Run the command once from a computer with ADB, then reopen the app if the Glyphs still do not respond.</string>
     <!-- About Screen -->
-    <string name="about_title">App info and updates</string>
+    <string name="about_title">About and others</string>
     <string name="about_description">WE NEED A DAMN PROPER ABOUT SCREEN!! In the meantime please check GitHub for info.</string>
     <string name="about_intro">Better Nothing Music Visualizer unlocks the full potential of the Glyph Interface with high-fidelity, real-time frequency analysis.</string>
     <string name="about_section_why">Why are we better than Nothing\'s implementation:</string>
