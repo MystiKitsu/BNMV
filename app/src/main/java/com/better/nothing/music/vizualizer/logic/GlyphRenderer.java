@@ -14,7 +14,6 @@ public class GlyphRenderer {
     private static final float EPSILON = 0.000001f;
     private static final float SILENCE_THRESHOLD = 0.002f;
     private static final long BREATH_DELAY_MS = 3000L;
-    private static final long BREATH_PERIOD_MS = 5000L;
     private static final long FLASH_DURATION_MS = 200L;
 
     private float mGamma;
@@ -22,14 +21,13 @@ public class GlyphRenderer {
     private int mMaxBrightness = MAX_BRIGHTNESS;
     private boolean mIdleBreathingEnabled;
     private boolean mNotificationFlashEnabled;
-    private int mDeviceType = DeviceProfile.DEVICE_UNKNOWN;
+    private int mDeviceType;
     private String mIdlePattern = "pulse";
 
     private float[] mCurrentLightState = new float[0];
     private float[] mZonePeaks = new float[0];
     private float[] mDecayedFrequencyState = new float[0];
     private int mLastHash = Integer.MIN_VALUE;
-    private long mLastSendMs = 0L;
     private long mSilenceStartTimeMs = 0;
     private long mLastNotificationFlashMs = 0;
     private long mLastFrameMs = 0;
@@ -94,7 +92,6 @@ public class GlyphRenderer {
             mDecayedFrequencyState = new float[config.uniqueRanges.length];
         }
         mLastHash = Integer.MIN_VALUE;
-        mLastSendMs = 0L;
         mSilenceStartTimeMs = 0;
         mLastFrameMs = 0;
         mBreathingEnvelope = 0f;
@@ -132,7 +129,6 @@ public class GlyphRenderer {
         }
 
         mLastHash = frameHash;
-        mLastSendMs = nowMs;
         return frameColors;
     }
 
@@ -223,18 +219,18 @@ public class GlyphRenderer {
         if (mBreathingEnvelope > 0.01f) {
             int zoneCount = nextState.length;
             for (int i = 0; i < zoneCount; i++) {
-                float intensity = 0f;
+                float intensity;
                 switch (mIdlePattern) {
                     case "wave": {
                         double timeProg = (double) (nowMs % 2000L) / 2000L;
-                        float phaseShift = (float) i / Math.max(1, zoneCount);
+                        float phaseShift = (float) i / zoneCount;
                         intensity = (float) (0.1 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg - phaseShift)));
                         break;
                     }
                     case "scanner": {
                         double timeProg = (double) (nowMs % 2500L) / 2500L;
                         float scannerPos = (float) (0.5 + 0.5 * Math.sin(2.0 * Math.PI * timeProg));
-                        float ledPos = (float) i / Math.max(1, zoneCount);
+                        float ledPos = (float) i / zoneCount;
                         float dist = Math.abs(ledPos - scannerPos);
                         intensity = (float) Math.exp(-dist * dist * 40.0);
                         break;

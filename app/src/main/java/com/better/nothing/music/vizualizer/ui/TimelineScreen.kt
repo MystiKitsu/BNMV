@@ -96,8 +96,8 @@ internal fun TimelineScreen(
         verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
         Spacer(modifier = Modifier.height(16.dp))
-        androidx.compose.material3.IconButton(onClick = onDismiss) {
-            androidx.compose.material3.Icon(
+        IconButton(onClick = onDismiss) {
+            Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Back"
             )

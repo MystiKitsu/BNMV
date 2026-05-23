@@ -2,25 +2,14 @@ package com.better.nothing.music.vizualizer.logic;
 
 import org.jtransforms.fft.DoubleFFT_1D;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-
 /**
  * Handles audio capture, FFT processing, and frequency analysis.
  */
 public class AudioProcessor {
 
     private static final int SAMPLE_RATE = 44100;
-    private static final int FPS = 60;
-    private static final int HOP = Math.round(SAMPLE_RATE / (float) FPS);
-    private static final float SPECTRUM_GAIN = 4f;
     private static final float SPECTRUM_LEAKAGE_FLOOR_RATIO = 0.12f;
     private static final float EPSILON = 0.000001f;
-    private static final float PEAK_FALLOFF = 0.9995f;
 
     private int fftSize;
     private int analysisWindow;
@@ -66,8 +55,8 @@ public class AudioProcessor {
 
     public AudioFrameResult processAudioFrame(short[] hopBuffer, VisualizerConfig config, FrequencyRange hapticRange) {
         // Fill ring buffer
-        for (int i = 0; i < hopBuffer.length; i++) {
-            ring[ringPosition] = hopBuffer[i] / 32768f;
+        for (short value : hopBuffer) {
+            ring[ringPosition] = value / 32768f;
             ringPosition = (ringPosition + 1) % analysisWindow;
         }
         filled = Math.min(filled + hopBuffer.length, analysisWindow);

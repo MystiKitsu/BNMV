@@ -12,6 +12,7 @@ import com.better.nothing.music.vizualizer.logic.BeatDetectionHapticEngine;
 import com.better.nothing.music.vizualizer.logic.FlashlightEngine;
 import com.better.nothing.music.vizualizer.ui.MainActivity;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -21,6 +22,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.media.AudioAttributes;
 import android.media.AudioDeviceCallback;
@@ -39,12 +41,10 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Process;
 import android.os.SystemClock;
-import android.os.Vibrator;
-import android.os.VibratorManager;
 import android.service.quicksettings.TileService;
 import android.util.Log;
 
-import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
 import com.nothing.ketchum.Common;
@@ -75,7 +75,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -1029,6 +1028,16 @@ public class AudioCaptureService extends Service {
                                         .addMatchingUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
                                         .build();
 
+                        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                            // TODO: Consider calling
+                            //    ActivityCompat#requestPermissions
+                            // here to request the missing permissions, and then overriding
+                            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                            //                                          int[] grantResults)
+                            // to handle the case where the user grants the permission. See the documentation
+                            // for ActivityCompat#requestPermissions for more details.
+                            return;
+                        }
                         localRecord = new AudioRecord.Builder()
                                 .setAudioPlaybackCaptureConfig(config)
                                 .setAudioFormat(new AudioFormat.Builder()

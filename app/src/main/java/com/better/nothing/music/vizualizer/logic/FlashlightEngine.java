@@ -4,7 +4,6 @@ import android.content.Context;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
-import android.os.Build;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -72,22 +71,20 @@ public final class FlashlightEngine {
                     this.cameraId = id;
                     
                     // PWM Intensity support check (Android 13+)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        try {
-                            // Using reflection to avoid compilation errors on environments with 
-                            // older SDK stubs or weird shadowing.
-                            CameraCharacteristics.Key<Integer> key = getTorchMaxLevelKey();
-                            if (key != null) {
-                                Integer max = chars.get(key);
-                                if (max != null && max > 1) {
-                                    this.hasTorchStrength = true;
-                                    this.maxTorchStrength = max;
-                                    Log.d(TAG, "Hardware supports torch strength up to: " + max);
-                                }
+                    try {
+                        // Using reflection to avoid compilation errors on environments with
+                        // older SDK stubs or weird shadowing.
+                        CameraCharacteristics.Key<Integer> key = getTorchMaxLevelKey();
+                        if (key != null) {
+                            Integer max = chars.get(key);
+                            if (max != null && max > 1) {
+                                this.hasTorchStrength = true;
+                                this.maxTorchStrength = max;
+                                Log.d(TAG, "Hardware supports torch strength up to: " + max);
                             }
-                        } catch (Exception e) {
-                            Log.w(TAG, "Failed to read torch strength characteristic", e);
                         }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Failed to read torch strength characteristic", e);
                     }
                     break;
                 }
@@ -195,7 +192,7 @@ public final class FlashlightEngine {
         if (cameraId == null) return;
 
         try {
-            if (hasTorchStrength && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (hasTorchStrength) {
                 cameraManager.turnOnTorchWithStrengthLevel(cameraId, Math.max(1, level));
             } else {
                 cameraManager.setTorchMode(cameraId, true);
