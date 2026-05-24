@@ -2,13 +2,13 @@ package com.better.nothing.music.vizualizer.ui
 
 import com.better.nothing.music.vizualizer.R
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -162,20 +162,36 @@ fun FlashlightScreen(
                     )
                 }
 
-                ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+                ExpressiveCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                ) {
                     CardHeader(title = stringResource(R.string.flashlight_monitor_label))
+
+                    val isHigh = flashlightAmplitude > (flashlightThreshold + 0.05f)
+                    val flashColor by animateColorAsState(
+                        targetValue = if (isHigh) Color.Yellow else Color.Yellow.copy(alpha = 0.3f),
+                        animationSpec = if (isHigh) snap() else spring(stiffness = Spring.StiffnessVeryLow),
+                        label = "flashColor"
+                    )
 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp),
+                            .height(220.dp)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                    colors = listOf(flashColor.copy(alpha = 0.08f * flashlightAmplitude), Color.Transparent),
+                                    radius = 350f
+                                )
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         MorphingPolygon(
-                            isBeatDetected = flashlightAmplitude > (flashlightThreshold + 0.05f),
+                            isBeatDetected = isHigh,
                             amplitude = flashlightAmplitude,
-                            color = Color.Yellow.copy(alpha = 0.8f),
-                            modifier = Modifier.size(100.dp)
+                            color = flashColor,
+                            modifier = Modifier.size(110.dp)
                         )
                     }
                 }

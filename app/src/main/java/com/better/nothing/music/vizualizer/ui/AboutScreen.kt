@@ -3,6 +3,7 @@ package com.better.nothing.music.vizualizer.ui
 import com.better.nothing.music.vizualizer.R
 import com.better.nothing.music.vizualizer.BuildConfig
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -24,6 +26,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.ui.graphics.Color
 
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -75,137 +79,151 @@ internal fun AboutScreen(
         }
         ScreenTitle(text = stringResource(R.string.about_title))
 
-        ExpressiveCard(
-            modifier = Modifier.clickable { viewModel.showTimeline() },
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
-        ) {
+        ExpressiveCard {
+            CardHeader(title = "Application Info")
+            
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(56.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Timeline, null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            painter = painterResource(R.drawable.app_icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = Color.Unspecified
+                        )
                     }
                 }
+                
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Project Timeline", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("View the app roadmap", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    Text(
+                        text = "Better Nothing Music Visualizer",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = stringResource(R.string.version_info, BuildConfig.VERSION_NAME),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
                 }
-                Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Version details
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Configuration Version",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = configVersion,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Actions: GitHub and Updates
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { uriHandler.openUri("https://github.com/Aleks-Levet/better-nothing-music-visualizer") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Icon(Icons.Default.Code, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("GitHub")
+                }
+
+                Button(
+                    onClick = { viewModel.checkAppUpdate() },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = appUpdateStatus !is MainViewModel.AppUpdateStatus.Checking
+                ) {
+                    if (appUpdateStatus is MainViewModel.AppUpdateStatus.Checking) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Icon(Icons.Default.Sync, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Check for Updates")
+                    }
+                }
+            }
+            
+            if (appUpdateStatus is MainViewModel.AppUpdateStatus.Available) {
+                val status = appUpdateStatus as MainViewModel.AppUpdateStatus.Available
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { uriHandler.openUri(status.url) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Download ${status.version}")
+                }
+            }
+        }
+
+        ExpressiveCard(
+            modifier = Modifier.clickable { viewModel.showTimeline() },
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Timeline,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Project Timeline",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "View the app roadmap",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                )
             }
         }
 
         ExpressiveCard {
             BodyText(text = stringResource(R.string.about_intro), size = 15.sp)
-        }
-
-        ExpressiveCard(
-            modifier = Modifier.clickable { uriHandler.openUri("https://github.com/Aleks-Levet/better-nothing-music-visualizer") }
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Code, null, tint = MaterialTheme.colorScheme.secondary)
-                    }
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.github_repository), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("Support development on GitHub", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                }
-                Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
-            }
-        }
-
-        ExpressiveCard {
-            CardHeader(title = "App Status")
-            
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = stringResource(R.string.version_info, BuildConfig.VERSION_NAME),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = stringResource(R.string.zones_config_version, configVersion),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            BodyText(
-                text = stringResource(R.string.media_projection_info),
-                size = 13.sp,
-                lineHeight = 18.sp,
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            when (val status = appUpdateStatus) {
-                is MainViewModel.AppUpdateStatus.Idle, is MainViewModel.AppUpdateStatus.Error -> {
-                    Button(
-                        onClick = { viewModel.checkAppUpdate() },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(stringResource(R.string.check_for_app_updates))
-                    }
-                    if (status is MainViewModel.AppUpdateStatus.Error) {
-                        Text(status.message, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
-                    }
-                }
-                is MainViewModel.AppUpdateStatus.Checking -> {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(stringResource(R.string.checking_for_updates), style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-                is MainViewModel.AppUpdateStatus.Available -> {
-                    Button(
-                        onClick = { uriHandler.openUri(status.url) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text(stringResource(R.string.update_now) + " (${status.version})")
-                    }
-                }
-                is MainViewModel.AppUpdateStatus.UpToDate -> {
-                    Surface(
-                        color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = stringResource(R.string.app_up_to_date),
-                            modifier = Modifier.padding(12.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.secondary,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
         }
 
         SectionHeader(text = stringResource(R.string.about_section_why))

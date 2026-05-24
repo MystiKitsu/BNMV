@@ -1,5 +1,6 @@
 package com.better.nothing.music.vizualizer.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -38,10 +39,16 @@ internal fun TimelineScreen(
     val items = remember {
         listOf(
             TimelineItem(
+                "Strobe Mode",
+                "Experimental high-frequency flicker for intense visual feedback.",
+                isKey = false,
+                status = TimelineStatus.DONE
+            ),
+            TimelineItem(
                 "Zebra Breathing Mode",
                 "A new alternating pulse mode for Glyph LEDs.",
                 isKey = false,
-                status = TimelineStatus.PLANNED
+                status = TimelineStatus.DONE
             ),
             TimelineItem(
                 "RichTap HD & Shizuku",
@@ -205,17 +212,17 @@ private fun StatusBadge(status: TimelineStatus) {
     val (text, containerColor, contentColor) = when (status) {
         TimelineStatus.DONE -> Triple(
             "Done",
-            MaterialTheme.colorScheme.secondaryContainer,
-            MaterialTheme.colorScheme.onSecondaryContainer
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+            MaterialTheme.colorScheme.primary
         )
         TimelineStatus.IN_PROGRESS -> Triple(
             "In Progress",
-            MaterialTheme.colorScheme.secondaryContainer,
-            MaterialTheme.colorScheme.onSecondaryContainer
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
+            MaterialTheme.colorScheme.secondary
         )
         TimelineStatus.PLANNED -> Triple(
             "Planned",
-            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
@@ -223,12 +230,16 @@ private fun StatusBadge(status: TimelineStatus) {
     Surface(
         shape = CircleShape,
         color = containerColor,
+        border = if (status != TimelineStatus.PLANNED) 
+            BorderStroke(1.dp, contentColor.copy(alpha = 0.3f)) 
+            else null,
         modifier = Modifier.padding(top = 8.dp)
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = contentColor,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
         )
     }

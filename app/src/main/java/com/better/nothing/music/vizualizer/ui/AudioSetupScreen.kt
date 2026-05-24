@@ -13,6 +13,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -221,19 +222,28 @@ fun CaptureSourceCard(
 
                 Surface(
                     onClick = { onSourceSelected(source) },
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(20.dp),
                     color = backgroundColor,
                     contentColor = contentColor,
-                    modifier = Modifier.weight(1f).height(64.dp)
+                    border = if (isSelected) BorderStroke(1.dp, contentColor.copy(alpha = 0.5f)) else null,
+                    modifier = Modifier.weight(1f).height(72.dp)
                 ) {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.height(4.dp))
-                        Text(source.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.labelSmall)
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = source.name.lowercase().replaceFirstChar { it.uppercase() },
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
                     }
                 }
             }
@@ -439,7 +449,7 @@ fun FFTSpectrumCard(fftData: FloatArray) {
                 val h = size.height
                 
                 // Draw Grid
-                val gridColor = Color.White.copy(alpha = 0.05f)
+                val gridColor = Color.White.copy(alpha = 0.03f)
                 drawLine(gridColor, Offset(0f, h*0.25f), Offset(w, h*0.25f), 1f)
                 drawLine(gridColor, Offset(0f, h*0.5f), Offset(w, h*0.5f), 1f)
                 drawLine(gridColor, Offset(0f, h*0.75f), Offset(w, h*0.75f), 1f)
@@ -456,13 +466,14 @@ fun FFTSpectrumCard(fftData: FloatArray) {
                 val barPath = Path()
                 var first = true
 
+                // Dynamic gradient based on amplitude
                 val gradient = Brush.verticalGradient(
-                    colors = listOf(primaryColor.copy(alpha = 0.6f), primaryColor.copy(alpha = 0.05f)),
+                    colors = listOf(primaryColor.copy(alpha = 0.4f), primaryColor.copy(alpha = 0.02f)),
                     startY = 0f,
                     endY = h
                 )
 
-                val points = 250
+                val points = 200 // Reduced for better performance and smoother look
                 for (i in 0..points) {
                     val fraction = i.toFloat() / points
                     val logFreq = logMin + fraction * (logMax - logMin)
@@ -477,8 +488,9 @@ fun FFTSpectrumCard(fftData: FloatArray) {
                         (1f - t) * data[lowerBin] + t * data[upperBin]
                     } else 0f
 
-                    val scaledMag = (mag * 60f).coerceIn(0f, 1f)
-                    val y = h - (scaledMag * (h - 20f)) - 10f
+                    // Nonlinear scaling for better visuals
+                    val scaledMag = (mag * 70f).coerceIn(0f, 1.2f)
+                    val y = h - (scaledMag * (h - 40f)) - 20f
                     val x = fraction * w
 
                     if (first) {
@@ -497,20 +509,29 @@ fun FFTSpectrumCard(fftData: FloatArray) {
                 }
 
                 drawPath(path = fillPath, brush = gradient)
+                
+                // Outer glow
+                drawPath(
+                    path = barPath,
+                    color = primaryColor.copy(alpha = 0.3f),
+                    style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                )
+                
+                // Main line
                 drawPath(
                     path = barPath,
                     color = primaryColor,
-                    style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
                 )
 
                 touchX?.let { tx ->
                     val x = tx.coerceIn(0f, w)
                     drawLine(
-                        color = Color.White.copy(alpha = 0.3f),
+                        color = primaryColor.copy(alpha = 0.5f),
                         start = Offset(x, 0f),
                         end = Offset(x, h),
-                        strokeWidth = 1.5.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f))
+                        strokeWidth = 1.dp.toPx(),
+                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(20f, 10f))
                     )
                 }
             }

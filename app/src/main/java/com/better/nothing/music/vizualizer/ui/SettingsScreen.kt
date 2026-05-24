@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -23,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
@@ -39,12 +41,13 @@ internal fun SettingsScreen(
     onIdlePatternChanged: (String) -> Unit,
     notificationFlashEnabled: Boolean,
     onNotificationFlashEnabledChanged: (Boolean) -> Unit,
+    strobeEnabled: Boolean,
+    onStrobeEnabledChanged: (Boolean) -> Unit,
     disableGlyphsWhenSilent: Boolean,
     onDisableGlyphsWhenSilentChanged: (Boolean) -> Unit,
 ) {
     val m3eEnabled = LocalM3EEnabled.current
     val scrollState = rememberScrollState()
-    val context = LocalContext.current
 
     val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
     val selectedFont by viewModel.selectedFont.collectAsStateWithLifecycle()
@@ -83,10 +86,10 @@ internal fun SettingsScreen(
             CardHeader(title = stringResource(R.string.app_theme))
 
             val themeOptions = listOf(
-                "Default" to stringResource(R.string.theme_normal),
-                "Liquorice Black" to stringResource(R.string.theme_liquorice),
-                "Nothing" to stringResource(R.string.theme_nothing),
-                "Material You" to stringResource(R.string.theme_material_you)
+                Triple("Default", stringResource(R.string.theme_normal), Icons.Default.BrightnessAuto),
+                Triple("Liquorice Black", stringResource(R.string.theme_liquorice), Icons.Default.DarkMode),
+                Triple("Nothing", stringResource(R.string.theme_nothing), Icons.Default.Settings),
+                Triple("Material You", stringResource(R.string.theme_material_you), Icons.Default.Palette)
             )
 
             FlowRow(
@@ -95,7 +98,7 @@ internal fun SettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                themeOptions.forEach { (key, label) ->
+                themeOptions.forEach { (key, label, icon) ->
                     val isSelected = selectedTheme == key
                     val backgroundColor by animateColorAsState(
                         if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -109,15 +112,22 @@ internal fun SettingsScreen(
                         shape = RoundedCornerShape(16.dp),
                         color = backgroundColor,
                         contentColor = contentColor,
+                        border = if (isSelected) BorderStroke(1.dp, contentColor.copy(alpha = 0.5f)) else null,
                         modifier = Modifier
                             .weight(1f)
-                            .height(56.dp)
+                            .height(64.dp)
                     ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Row(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
                             Text(
                                 text = label,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                maxLines = 1
                             )
                         }
                     }
@@ -125,8 +135,198 @@ internal fun SettingsScreen(
             }
         }
 
-        // ── Experimental Features ───────────────────────────────────────────
+        // ── Idle Breathing ──────────────────────────────────────────────────
+        ExpressiveCard {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Default.Air, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Column {
+                        Text(
+                            text = "Idle Breathing",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Pulse Glyphs when no audio is playing",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+                Switch(
+                    checked = idleBreathingEnabled,
+                    onCheckedChange = onIdleBreathingEnabledChanged,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+            }
+
+            AnimatedVisibility(visible = idleBreathingEnabled) {
+                Column(modifier = Modifier.padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Idle Pattern",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    val patternOptions = listOf(
+                        "pulse" to "Pulse",
+                        "wave" to "Wave",
+                        "scanner" to "Cylon",
+                        "static" to "Static",
+                        "zebra" to "Zebra"
+                    )
+
+                    ExpressiveSegmentedButtonRow(
+                        items = patternOptions.map { it.first },
+                        selectedItem = idlePattern,
+                        onItemSelection = onIdlePatternChanged,
+                        labelProvider = { key -> patternOptions.find { it.first == key }?.second ?: key },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
+        // ── Developer Mode ──────────────────────────────────────────────────
         val devModeEnabled by viewModel.developerModeEnabled.collectAsStateWithLifecycle()
+        var showPasswordDialog by remember { mutableStateOf(false) }
+        var passwordInput by remember { mutableStateOf("") }
+        val context = LocalContext.current
+
+        if (showPasswordDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showPasswordDialog = false
+                    passwordInput = ""
+                },
+                title = { Text("Developer Access") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Please enter the developer password to enable advanced features and device spoofing.")
+                        OutlinedTextField(
+                            value = passwordInput,
+                            onValueChange = { passwordInput = it },
+                            label = { Text("Password") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (passwordInput == "BNMV") {
+                                viewModel.setDeveloperModeEnabled(true)
+                                showPasswordDialog = false
+                                passwordInput = ""
+                            } else {
+                                Toast.makeText(context, "Incorrect Password", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) {
+                        Text("Unlock")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { 
+                        showPasswordDialog = false
+                        passwordInput = ""
+                    }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        ExpressiveCard {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Default.Code, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Column {
+                        Text(
+                            text = "Developer Mode",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Advanced testing and device spoofing",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+                Switch(
+                    checked = devModeEnabled,
+                    onCheckedChange = { enabled ->
+                        if (enabled) {
+                            showPasswordDialog = true
+                        } else {
+                            viewModel.setDeveloperModeEnabled(false)
+                        }
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+            }
+
+            AnimatedVisibility(visible = devModeEnabled) {
+                Column(modifier = Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    val spoofedDevice by viewModel.spoofedDevice.collectAsStateWithLifecycle()
+                    val devices = listOf(
+                        DeviceProfile.DEVICE_NP1,
+                        DeviceProfile.DEVICE_NP2,
+                        DeviceProfile.DEVICE_NP2A,
+                        DeviceProfile.DEVICE_NP3A,
+                        DeviceProfile.DEVICE_NP4A,
+                        DeviceProfile.DEVICE_NP4APRO,
+                        DeviceProfile.DEVICE_NP3
+                    )
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(R.string.spoof_device),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            devices.forEach { dev ->
+                                NativeFilterChip(
+                                    label = DeviceProfile.deviceName(dev).replace("Nothing Phone ", ""),
+                                    selected = spoofedDevice == dev,
+                                    onClick = { viewModel.setSpoofedDevice(dev) }
+                                )
+                            }
+                        }
+
+                        BodyText(
+                            text = stringResource(R.string.spoof_device_description),
+                            size = 11.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // ── Experimental Features ───────────────────────────────────────────
         var experimentalExpanded by remember { mutableStateOf(false) }
 
         ExpressiveCard {
@@ -168,13 +368,6 @@ internal fun SettingsScreen(
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
-                            title = "Idle Breathing",
-                            icon = Icons.Default.Air,
-                            checked = idleBreathingEnabled,
-                            onCheckedChange = onIdleBreathingEnabledChanged,
-                            modifier = Modifier.weight(1f)
-                        )
-                        FeatureCard(
                             title = "Notif. Flash",
                             icon = Icons.Default.FlashOn,
                             checked = notificationFlashEnabled,
@@ -182,138 +375,20 @@ internal fun SettingsScreen(
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
+                            title = "Strobe Mode",
+                            icon = Icons.Default.Vibration,
+                            checked = strobeEnabled,
+                            onCheckedChange = onStrobeEnabledChanged,
+                            modifier = Modifier.weight(1f)
+                        )
+                        FeatureCard(
                             title = "Silent Auto-Off",
-                            icon = Icons.Default.VolumeOff,
+                            icon = Icons.AutoMirrored.Filled.VolumeOff,
                             checked = disableGlyphsWhenSilent,
                             onCheckedChange = onDisableGlyphsWhenSilentChanged,
                             modifier = Modifier.weight(1f)
                         )
-                        FeatureCard(
-                            title = "Dev Mode",
-                            icon = Icons.Default.Code,
-                            checked = devModeEnabled,
-                            onCheckedChange = { viewModel.setDeveloperModeEnabled(it) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    if (idleBreathingEnabled || devModeEnabled) {
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                if (idleBreathingEnabled) {
-                                    var patternExpanded by remember { mutableStateOf(false) }
-                                    val patternNames = mapOf(
-                                        "pulse" to "Breathing Pulse",
-                                        "wave" to "Traveling Wave",
-                                        "scanner" to "Cylon Scanner",
-                                        "static" to "Low Static"
-                                    )
-
-                                    Column {
-                                        Text(
-                                            text = "Idle Pattern",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(bottom = 8.dp)
-                                        )
-
-                                        Box {
-                                            OutlinedTextField(
-                                                value = patternNames[idlePattern] ?: idlePattern,
-                                                onValueChange = {},
-                                                readOnly = true,
-                                                modifier = Modifier.fillMaxWidth(),
-                                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = patternExpanded) },
-                                                shape = RoundedCornerShape(12.dp)
-                                            )
-                                            Box(
-                                                modifier = Modifier
-                                                    .matchParentSize()
-                                                    .clickable { patternExpanded = true }
-                                            )
-
-                                            DropdownMenu(
-                                                expanded = patternExpanded,
-                                                onDismissRequest = { patternExpanded = false },
-                                                modifier = Modifier.fillMaxWidth(0.8f)
-                                            ) {
-                                                patternNames.forEach { (key, name) ->
-                                                    DropdownMenuItem(
-                                                        text = { Text(name) },
-                                                        onClick = {
-                                                            onIdlePatternChanged(key)
-                                                            patternExpanded = false
-                                                        }
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if (devModeEnabled) {
-                                    val spoofedDevice by viewModel.spoofedDevice.collectAsStateWithLifecycle()
-                                    var spoofExpanded by remember { mutableStateOf(false) }
-
-                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text(
-                                            text = stringResource(R.string.spoof_device),
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-
-                                        Box {
-                                            OutlinedTextField(
-                                                value = DeviceProfile.deviceName(spoofedDevice),
-                                                onValueChange = {},
-                                                readOnly = true,
-                                                modifier = Modifier.fillMaxWidth(),
-                                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = spoofExpanded) },
-                                                shape = RoundedCornerShape(12.dp)
-                                            )
-                                            Box(
-                                                modifier = Modifier
-                                                    .matchParentSize()
-                                                    .clickable { spoofExpanded = true }
-                                            )
-
-                                            DropdownMenu(
-                                                expanded = spoofExpanded,
-                                                onDismissRequest = { spoofExpanded = false },
-                                                modifier = Modifier.fillMaxWidth(0.8f)
-                                            ) {
-                                                val devices = listOf(
-                                                    DeviceProfile.DEVICE_NP1,
-                                                    DeviceProfile.DEVICE_NP2,
-                                                    DeviceProfile.DEVICE_NP2A,
-                                                    DeviceProfile.DEVICE_NP3A,
-                                                    DeviceProfile.DEVICE_NP4A,
-                                                    DeviceProfile.DEVICE_NP4APRO,
-                                                    DeviceProfile.DEVICE_NP3
-                                                )
-                                                devices.forEach { dev ->
-                                                    DropdownMenuItem(
-                                                        text = { Text(DeviceProfile.deviceName(dev)) },
-                                                        onClick = {
-                                                            viewModel.setSpoofedDevice(dev)
-                                                            spoofExpanded = false
-                                                        }
-                                                    )
-                                                }
-                                            }
-                                        }
-                                        BodyText(
-                                            text = stringResource(R.string.spoof_device_description),
-                                            size = 11.sp
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -405,44 +480,17 @@ internal fun SettingsScreen(
             }
 
             val isUpdateAvailable = remoteVersion != null && remoteVersion != "Unknown" && remoteVersion != configVersion
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = { viewModel.updateZonesConfig() },
-                    enabled = configStatus is MainViewModel.ConfigUpdateStatus.Idle,
-                    modifier = Modifier.weight(1.5f),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    if (configStatus is MainViewModel.ConfigUpdateStatus.Updating) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(Icons.Default.CloudDownload, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(if (isUpdateAvailable) "Update Now" else "Check GitHub")
-                    }
-                }
-
-                Button(
-                    onClick = { filePickerLauncher.launch("*/*") },
-                    enabled = configStatus is MainViewModel.ConfigUpdateStatus.Idle,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    Icon(Icons.Default.FolderOpen, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Local")
-                }
-            }
+            
+            ExpressiveSplitButton(
+                primaryText = if (isUpdateAvailable) "Update Now" else "Check GitHub",
+                primaryIcon = if (configStatus is MainViewModel.ConfigUpdateStatus.Updating) Icons.Default.Sync else Icons.Default.CloudDownload,
+                onPrimaryClick = { viewModel.updateZonesConfig() },
+                secondaryText = "Local",
+                secondaryIcon = Icons.Default.FolderOpen,
+                onSecondaryClick = { filePickerLauncher.launch("*/*") },
+                enabled = configStatus is MainViewModel.ConfigUpdateStatus.Idle,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         // ── About ────────────────────────────────────────────────────────────

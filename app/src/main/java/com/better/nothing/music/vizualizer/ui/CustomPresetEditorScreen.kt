@@ -95,18 +95,28 @@ fun CustomPresetEditorScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = { showShareDialog = true }
+                    Button(
+                        onClick = { showShareDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                            contentColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.padding(end = 8.dp)
                     ) {
-                        Icon(Icons.Default.Public, contentDescription = "Share", tint = Color.White)
+                        Icon(Icons.Default.Public, contentDescription = "Share", modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Share")
                     }
-                    TextButton(
+                    
+                    Button(
                         onClick = { 
                             haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                             onSave(presetName, zones.toList()) 
-                        }
+                        },
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.Save, contentDescription = "Save")
+                        Icon(Icons.Default.Save, contentDescription = "Save", modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Save")
                     }

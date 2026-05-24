@@ -364,6 +364,9 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private val _notificationFlashEnabled = MutableStateFlow(false)
     val notificationFlashEnabled = _notificationFlashEnabled.asStateFlow()
 
+    private val _strobeEnabled = MutableStateFlow(false)
+    val strobeEnabled = _strobeEnabled.asStateFlow()
+
     private val _configVersion = MutableStateFlow("Unknown")
     val configVersion = _configVersion.asStateFlow()
 
@@ -930,6 +933,14 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    fun setStrobeEnabled(enabled: Boolean) {
+        _strobeEnabled.value = enabled
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putBoolean("strobe_enabled", enabled) }
+        }
+    }
+
     fun setDisableGlyphsWhenSilent(enabled: Boolean) {
         _disableGlyphsWhenSilent.value = enabled
         viewModelScope.launch(Dispatchers.IO) {
@@ -969,6 +980,9 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     // ── Haptic Visualizer State ──────────────────────────────────────────────
     private val _hapticAmplitude = MutableStateFlow(0f)
     val hapticAmplitude = _hapticAmplitude.asStateFlow()
+
+    private val _uiAmplitude = MutableStateFlow(0f)
+    val uiAmplitude = _uiAmplitude.asStateFlow()
 
     private val _flashlightAmplitude = MutableStateFlow(0f)
     val flashlightAmplitude = _flashlightAmplitude.asStateFlow()
@@ -1018,6 +1032,17 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 val fCount = fBinHi - fBinLo + 1
                 val fRms = if (fCount > 0) kotlin.math.sqrt(fSumSquares / fCount) else 0f
                 _flashlightAmplitude.value = (fRms * 8f).coerceIn(0f, 1.2f)
+
+                // UI Amplitude (50-150 Hz) for global reactive UI elements
+                val uiBinLo = (50f / hzPerBin).toInt().coerceIn(0, magnitude.lastIndex)
+                val uiBinHi = (150f / hzPerBin).toInt().coerceIn(uiBinLo, magnitude.lastIndex)
+                var uiSumSquares = 0f
+                for (i in uiBinLo..uiBinHi) {
+                    uiSumSquares += magnitude[i] * magnitude[i]
+                }
+                val uiCount = uiBinHi - uiBinLo + 1
+                val uiRms = if (uiCount > 0) kotlin.math.sqrt(uiSumSquares / uiCount) else 0f
+                _uiAmplitude.value = (uiRms * 10f).coerceIn(0f, 1.0f)
 
                 // 2. Beat Detection (matching HapticEngine.kt logic)
                 if (_hapticMode.value == HapticMode.BEAT_DETECTION) {
@@ -1104,6 +1129,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 _idleBreathingEnabled.value = prefs.getBoolean("idle_breathing_enabled", false)
                 _idlePattern.value = prefs.getString("idle_pattern", "pulse") ?: "pulse"
                 _notificationFlashEnabled.value = prefs.getBoolean("notification_flash_enabled", false)
+                _strobeEnabled.value = prefs.getBoolean("strobe_enabled", false)
                 _configVersion.value = AudioCaptureService.loadZonesConfigVersion(ctx)
                 _disableGlyphsWhenSilent.value = prefs.getBoolean("disable_glyphs_when_silent", false)
                 _m3eEnabled.value = prefs.getBoolean("m3e_enabled", true)
@@ -1357,8 +1383,9 @@ class MainActivity : ComponentActivity() {
             val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
             val selectedFont by viewModel.selectedFont.collectAsStateWithLifecycle()
             val m3eEnabled by viewModel.m3eEnabled.collectAsStateWithLifecycle()
+            val uiAmplitude by viewModel.uiAmplitude.collectAsStateWithLifecycle()
 
-            BetterVizTheme(themeName = selectedTheme, fontName = selectedFont, m3eEnabled = m3eEnabled) {
+            BetterVizTheme(themeName = selectedTheme, fontName = selectedFont, m3eEnabled = m3eEnabled, uiAmplitude = uiAmplitude) {
                 // Collect each StateFlow independently. Compose only recomposes the
                 // subtree(s) that actually read a value when it changes — collecting
                 // them as separate `by` delegates achieves this granularity.
@@ -1557,6 +1584,8 @@ class MainActivity : ComponentActivity() {
                     onIdlePatternChanged = ::onIdlePatternChanged,
                     notificationFlashEnabled = notificationFlashEnabled,
                     onNotificationFlashEnabledChanged = ::onNotificationFlashEnabledChanged,
+                    strobeEnabled = viewModel.strobeEnabled.collectAsStateWithLifecycle().value,
+                    onStrobeEnabledChanged = ::onStrobeEnabledChanged,
                     disableGlyphsWhenSilent = disableGlyphsWhenSilent,
                     onDisableGlyphsWhenSilentChanged = ::onDisableGlyphsWhenSilentChanged,
                     selectedDevice = selectedDevice,
@@ -1714,6 +1743,11 @@ class MainActivity : ComponentActivity() {
         }
         viewModel.setNotificationFlashEnabled(enabled)
         service?.setNotificationFlashEnabled(enabled)
+    }
+
+    private fun onStrobeEnabledChanged(enabled: Boolean) {
+        viewModel.setStrobeEnabled(enabled)
+        service?.setStrobeEnabled(enabled)
     }
 
     private fun onDisableGlyphsWhenSilentChanged(enabled: Boolean) {
@@ -1878,6 +1912,7 @@ class MainActivity : ComponentActivity() {
         service?.setIdleBreathingEnabled(viewModel.idleBreathingEnabled.value)
         service?.setIdlePattern(viewModel.idlePattern.value)
         service?.setNotificationFlashEnabled(viewModel.notificationFlashEnabled.value)
+        service?.setStrobeEnabled(viewModel.strobeEnabled.value)
 
         service?.setHapticEnabled(viewModel.hapticMotorEnabled.value)
         service?.setHapticMode(viewModel.hapticMode.value)
@@ -2098,6 +2133,8 @@ private fun BetterVizApp(
     onIdlePatternChanged: (String) -> Unit,
     notificationFlashEnabled: Boolean,
     onNotificationFlashEnabledChanged: (Boolean) -> Unit,
+    strobeEnabled: Boolean,
+    onStrobeEnabledChanged: (Boolean) -> Unit,
     disableGlyphsWhenSilent: Boolean,
     onDisableGlyphsWhenSilentChanged: (Boolean) -> Unit,
     selectedDevice: Int,
@@ -2286,6 +2323,8 @@ private fun BetterVizApp(
                             onIdlePatternChanged = onIdlePatternChanged,
                             notificationFlashEnabled = notificationFlashEnabled,
                             onNotificationFlashEnabledChanged = onNotificationFlashEnabledChanged,
+                            strobeEnabled = strobeEnabled,
+                            onStrobeEnabledChanged = onStrobeEnabledChanged,
                             disableGlyphsWhenSilent = disableGlyphsWhenSilent,
                             onDisableGlyphsWhenSilentChanged = onDisableGlyphsWhenSilentChanged,
                         )

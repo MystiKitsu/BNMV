@@ -21,6 +21,7 @@ public class GlyphRenderer {
     private int mMaxBrightness = MAX_BRIGHTNESS;
     private boolean mIdleBreathingEnabled;
     private boolean mNotificationFlashEnabled;
+    private boolean mStrobeEnabled = false;
     private int mDeviceType;
     private String mIdlePattern = "pulse";
 
@@ -53,6 +54,10 @@ public class GlyphRenderer {
 
     public void setNotificationFlashEnabled(boolean enabled) {
         mNotificationFlashEnabled = enabled;
+    }
+
+    public void setStrobeEnabled(boolean enabled) {
+        mStrobeEnabled = enabled;
     }
 
     public void setGamma(float gamma) {
@@ -118,6 +123,15 @@ public class GlyphRenderer {
             Arrays.fill(nextLightState, 1.0f);
         } else {
             applyIdleBreathing(nextLightState, uniqueMagnitudes, nowMs);
+        }
+
+        if (mStrobeEnabled) {
+            boolean phase = (nowMs / 10) % 2 == 0;
+            for (int i = 0; i < nextLightState.length; i++) {
+                if ((i % 2 == 0) != phase) {
+                    nextLightState[i] = 0;
+                }
+            }
         }
 
         System.arraycopy(nextLightState, 0, mCurrentLightState, 0, nextLightState.length);
@@ -233,6 +247,13 @@ public class GlyphRenderer {
                         float ledPos = (float) i / zoneCount;
                         float dist = Math.abs(ledPos - scannerPos);
                         intensity = (float) Math.exp(-dist * dist * 40.0);
+                        break;
+                    }
+                    case "zebra": {
+                        double timeProg = (double) (nowMs % 2500L) / 2500L;
+                        boolean even = (i % 2 == 0);
+                        double sinVal = Math.sin(2.0 * Math.PI * timeProg);
+                        intensity = even ? (float)(0.5 + 0.5 * sinVal) : (float)(0.5 - 0.5 * sinVal);
                         break;
                     }
                     case "static": {

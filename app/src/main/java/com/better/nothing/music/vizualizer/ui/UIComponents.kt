@@ -76,7 +76,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.asComposePath
 import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.Morph
@@ -178,6 +180,15 @@ fun MorphingPolygon(
         composePath.transform(matrix)
 
         rotate(baseRotation) {
+            // Draw subtle bloom/shadow
+            if (animatedAmplitude > 0.1f) {
+                drawPath(
+                    path = composePath,
+                    color = color.copy(alpha = 0.2f * animatedAmplitude),
+                    style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
+                )
+            }
+
             drawPath(
                 path = composePath,
                 color = color,
@@ -188,21 +199,98 @@ fun MorphingPolygon(
 }
 
 @Composable
+fun ExpressiveSplitButton(
+    primaryText: String,
+    primaryIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    onPrimaryClick: () -> Unit,
+    secondaryText: String,
+    secondaryIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    onSecondaryClick: () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    val haptics = LocalHapticFeedback.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .background(
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(20.dp)
+            )
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        // Primary Action
+        Surface(
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                onPrimaryClick()
+            },
+            enabled = enabled,
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.weight(1.5f).fillMaxHeight()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(primaryIcon, null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(primaryText, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // Secondary Action
+        Surface(
+            onClick = {
+                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                onSecondaryClick()
+            },
+            enabled = enabled,
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f).fillMaxHeight()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(secondaryIcon, null, modifier = Modifier.size(20.dp))
+                if (secondaryText.isNotBlank()) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(secondaryText, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ScreenTitle(text: String) {
+    val uiAmp = LocalUIAmplitude.current
+    val shift = (uiAmp * 12).dp
+    
     Column(modifier = Modifier.padding(bottom = 8.dp)) {
         Text(
             text  = text,
             style = MaterialTheme.typography.displayLarge,
             color = MaterialTheme.colorScheme.onBackground,
-            letterSpacing = (-1).sp
+            letterSpacing = (-1).sp,
+            fontWeight = FontWeight.Bold
         )
-        // Add a subtle accent line or dot pattern
+        // Add a subtle accent line or dot pattern that reacts to UI Amplitude
         Box(
             modifier = Modifier
                 .padding(top = 4.dp)
-                .width(40.dp)
-                .height(4.dp)
-                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
+                .width(44.dp + shift)
+                .height(5.dp)
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.5.dp))
         )
     }
 }
@@ -328,8 +416,9 @@ fun NativeFilterChip(
         animationSpec = tween(300),
         label = "chip_content"
     )
+    val uiAmp = LocalUIAmplitude.current
     val scale by animateFloatAsState(
-        targetValue = if (selected) 1.05f else 1f,
+        targetValue = if (selected) 1.05f + (uiAmp * 0.05f) else 1f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
         label = "chip_scale"
     )
@@ -402,7 +491,10 @@ fun StartStopButton(
 
     val glowAlpha by animateFloatAsState(
         targetValue = if (running) 0.4f else 0.0f,
-        animationSpec = tween(1000, easing = EaseInOutCubic),
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
         label = "glowAlpha"
     )
 
@@ -412,6 +504,17 @@ fun StartStopButton(
             .padding(8.dp),
         contentAlignment = Alignment.Center
     ) {
+        // Pulse Glow
+        if (running) {
+            Box(
+                modifier = Modifier
+                    .size(width = 170.dp, height = 64.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.error.copy(alpha = glowAlpha),
+                        shape = RoundedCornerShape(22.dp)
+                    )
+            )
+        }
         FloatingActionButton(
             onClick           = {
                 haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
@@ -476,8 +579,9 @@ fun NativeBottomBar(
         ) {
             visibleTabs.forEach { tab ->
                 val isSelected = tab == selectedTab
+                val uiAmp = LocalUIAmplitude.current
                 val iconScale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.2f else 1.0f,
+                    targetValue = if (isSelected) 1.25f + (uiAmp * 0.15f) else 1.0f,
                     animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
                     label = "nav_icon_scale"
                 )
@@ -780,12 +884,14 @@ data class AppSpacing(
 
 val LocalAppSpacing = staticCompositionLocalOf { AppSpacing() }
 val LocalM3EEnabled = staticCompositionLocalOf { true }
+val LocalUIAmplitude = staticCompositionLocalOf { 0f }
 
 @Composable
 fun BetterVizTheme(
     themeName: String = "Default",
     fontName: String = "NDot",
     m3eEnabled: Boolean = true,
+    uiAmplitude: Float = 0f,
     content: @Composable () -> Unit
 ) {
     val useNType = fontName == "NType"
@@ -945,7 +1051,8 @@ fun BetterVizTheme(
     )
     CompositionLocalProvider(
         LocalAppSpacing provides AppSpacing(),
-        LocalM3EEnabled provides m3eEnabled
+        LocalM3EEnabled provides m3eEnabled,
+        LocalUIAmplitude provides uiAmplitude
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

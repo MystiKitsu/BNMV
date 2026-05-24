@@ -1,9 +1,11 @@
 package com.better.nothing.music.vizualizer.ui
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -14,6 +16,7 @@ import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,13 +41,13 @@ internal fun AnimatedToggleCard(
     modifier: Modifier = Modifier,
     titleStyle: TextStyle? = null,
     titleColor: Color? = null,
-    shape: Shape = RoundedCornerShape(32.dp),
+    shape: Shape = RoundedCornerShape(24.dp),
     colors: CardColors? = null,
-    contentPadding: Dp = 24.dp,
-    disabledTopSpacerFraction: Float = 0.4f,
-    disabledTitleScaleFactor: Float = 1.2f,
-    disabledSwitchScaleFactor: Float = 1.5f,
-    disabledTitleSpacing: Dp = 50.dp,
+    contentPadding: Dp = 16.dp,
+    disabledTopSpacerFraction: Float = 0.3f,
+    disabledTitleScaleFactor: Float = 1.15f,
+    disabledSwitchScaleFactor: Float = 1.4f,
+    disabledTitleSpacing: Dp = 40.dp,
     animationDurationMs: Int = 500,
 ) {
     // Tweak these defaults here when tuning the shared motion/scale behavior.
@@ -55,13 +58,34 @@ internal fun AnimatedToggleCard(
     val offTitleSpacing = disabledTitleSpacing
     val defaultTitleStyle = MaterialTheme.typography.headlineMedium.let { style ->
         style.copy(
-            fontSize = style.fontSize * 0.94f,
-            lineHeight = style.lineHeight * 0.94f
+            fontSize = style.fontSize * 0.9f,
+            lineHeight = style.lineHeight * 0.9f
         )
     }
     val resolvedTitleStyle = titleStyle ?: defaultTitleStyle
-    val resolvedTitleColor = titleColor ?: MaterialTheme.colorScheme.onBackground
-    val resolvedColors = colors ?: CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    
+    val containerColor by animateColorAsState(
+        targetValue = if (checked) {
+            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f)
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
+        animationSpec = tween(durationMillis = animationDurationMs),
+        label = "card_container_color"
+    )
+    
+    val borderColor by animateColorAsState(
+        targetValue = if (checked) {
+            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = animationDurationMs),
+        label = "card_border_color"
+    )
+    
+    val resolvedTitleColor = titleColor ?: if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+    val resolvedColors = colors ?: CardDefaults.cardColors(containerColor = containerColor)
 
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val progress by animateFloatAsState(
@@ -82,6 +106,7 @@ internal fun AnimatedToggleCard(
     Card(
         shape = shape,
         colors = resolvedColors,
+        border = BorderStroke(1.dp, borderColor),
         modifier = modifier.fillMaxWidth(),
     ) {
         AnimatedToggleCardLayout(
@@ -128,7 +153,13 @@ private fun AnimatedToggleCardLayout(
             )
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             )
         }
     ) { measurables, constraints ->

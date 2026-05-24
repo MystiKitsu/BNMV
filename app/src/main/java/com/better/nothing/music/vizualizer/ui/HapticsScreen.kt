@@ -2,11 +2,12 @@ package com.better.nothing.music.vizualizer.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -185,25 +186,35 @@ fun HapticsScreen(
                     )
                 }
 
-                ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+                ExpressiveCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                ) {
                     CardHeader(title = "Haptic Monitor")
 
                     val flashColor by animateColorAsState(
-                        targetValue = if (isBeatDetected) Color.White else MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        targetValue = if (isBeatDetected) Color.White else MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                        animationSpec = if (isBeatDetected) snap() else spring(stiffness = Spring.StiffnessVeryLow),
                         label = "flashColor"
                     )
 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp),
+                            .height(220.dp)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                    colors = listOf(flashColor.copy(alpha = 0.1f * hapticAmplitude), Color.Transparent),
+                                    radius = 300f
+                                )
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         MorphingPolygon(
                             isBeatDetected = isBeatDetected,
                             amplitude = hapticAmplitude,
                             color = flashColor,
-                            modifier = Modifier.size(100.dp)
+                            modifier = Modifier.size(110.dp)
                         )
                     }
                 }

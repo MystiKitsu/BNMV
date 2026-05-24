@@ -225,6 +225,7 @@ public class AudioCaptureService extends Service {
 
     private boolean mIdleBreathingEnabled = false;
     private boolean mNotificationFlashEnabled = false;
+    private boolean mStrobeEnabled = false;
     private boolean mDisableGlyphsWhenSilent = false;
     private long mLastNotificationFlashMs = 0;
     private static final long FLASH_DURATION_MS = 200L;
@@ -850,6 +851,13 @@ public class AudioCaptureService extends Service {
         mNotificationFlashEnabled = enabled;
         if (mGlyphRenderer != null) {
             mGlyphRenderer.setNotificationFlashEnabled(enabled);
+        }
+    }
+
+    public void setStrobeEnabled(boolean enabled) {
+        mStrobeEnabled = enabled;
+        if (mGlyphRenderer != null) {
+            mGlyphRenderer.setStrobeEnabled(enabled);
         }
     }
 
