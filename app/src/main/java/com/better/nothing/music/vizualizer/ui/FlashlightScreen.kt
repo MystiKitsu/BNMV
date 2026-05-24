@@ -165,26 +165,18 @@ fun FlashlightScreen(
                 ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
                     CardHeader(title = stringResource(R.string.flashlight_monitor_label))
 
-                    val animatedAmplitude by animateFloatAsState(
-                        targetValue = flashlightAmplitude * 4,
-                        label = "flashlightAmplitude"
-                    )
-
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(100.dp),
+                            .height(200.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Canvas(modifier = Modifier.size(100.dp)) {
-                            val baseRadius = size.minDimension * 0.15f
-                            val dynamicRadius = (size.minDimension * 0.45f) * animatedAmplitude
-
-                            drawCircle(
-                                color = Color.Yellow.copy(alpha = 0.8f),
-                                radius = (baseRadius + dynamicRadius).coerceAtMost(size.minDimension / 2)
-                            )
-                        }
+                        MorphingPolygon(
+                            isBeatDetected = flashlightAmplitude > (flashlightThreshold + 0.05f),
+                            amplitude = flashlightAmplitude,
+                            color = Color.Yellow.copy(alpha = 0.8f),
+                            modifier = Modifier.size(100.dp)
+                        )
                     }
                 }
             }

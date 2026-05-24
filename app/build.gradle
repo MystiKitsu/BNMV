@@ -92,6 +92,7 @@ dependencies {
     // 4. Material 3
     implementation "androidx.compose.material3:material3"
     implementation 'com.google.android.material:material:1.14.0'
+    implementation "androidx.graphics:graphics-shapes:1.0.1"
 
     // 5. Activity & Lifecycle
     implementation 'androidx.activity:activity-compose:1.13.0'

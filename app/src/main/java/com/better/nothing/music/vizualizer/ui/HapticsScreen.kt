@@ -1,20 +1,15 @@
 package com.better.nothing.music.vizualizer.ui
 
-import com.better.nothing.music.vizualizer.R
-import com.better.nothing.music.vizualizer.model.HapticMode
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,9 +17,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -33,24 +28,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.*
-
-// Linear position (0..1) to Logarithmic Frequency (20..2000)
-fun lerpLog(value: Float, min: Float, max: Float): Float {
-    val logMin = ln(min)
-    val logMax = ln(max)
-    return exp(logMin + (logMax - logMin) * value)
-}
-
-// Logarithmic Frequency (20..2000) back to Linear position (0..1)
-fun invLerpLog(freq: Float, min: Float, max: Float): Float {
-    val logMin = ln(min)
-    val logMax = ln(max)
-    return (ln(freq) - logMin) / (logMax - logMin)
-}
+import com.better.nothing.music.vizualizer.R
+import com.better.nothing.music.vizualizer.model.HapticMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,20 +51,6 @@ fun HapticsScreen(
     onRichTapFrequencyChanged: (Int) -> Unit,
     hapticAmplitude: Float,
     isBeatDetected: Boolean,
-    flashlightEnabled: Boolean,
-    onFlashlightEnabledChanged: (Boolean) -> Unit,
-    flashlightFreqMin: Float,
-    flashlightFreqMax: Float,
-    onFlashlightFreqRangeChanged: (Float, Float) -> Unit,
-    flashlightMultiplier: Float,
-    onFlashlightMultiplierChanged: (Float) -> Unit,
-    flashlightThreshold: Float,
-    onFlashlightThresholdChanged: (Float) -> Unit,
-    flashlightSmoothing: Float,
-    onFlashlightSmoothingChanged: (Float) -> Unit,
-    flashlightGamma: Float,
-    onFlashlightGammaChanged: (Float) -> Unit,
-    flashlightAmplitude: Float,
 ) {
     val scrollState = rememberScrollState()
     val haptics = LocalHapticFeedback.current
@@ -221,10 +188,6 @@ fun HapticsScreen(
                 ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
                     CardHeader(title = "Haptic Monitor")
 
-                    val animatedAmplitude by animateFloatAsState(
-                        targetValue = hapticAmplitude * 4,
-                        label = "hapticAmplitude"
-                    )
                     val flashColor by animateColorAsState(
                         targetValue = if (isBeatDetected) Color.White else MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                         label = "flashColor"
@@ -233,145 +196,15 @@ fun HapticsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(100.dp),
+                            .height(200.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Canvas(modifier = Modifier.size(100.dp)) {
-                            val baseRadius = size.minDimension * 0.15f
-                            val dynamicRadius = (size.minDimension * 0.45f) * animatedAmplitude
-
-                            drawCircle(
-                                color = flashColor,
-                                radius = (baseRadius + dynamicRadius).coerceAtMost(size.minDimension / 2)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // --- Flashlight Visualizer Section ---
-        SectionHeader(text = "Flashlight Visualizer")
-        
-        AnimatedToggleCard(
-            title = "Flashlight Sync",
-            checked = flashlightEnabled,
-            onCheckedChange = { enabled ->
-                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                onFlashlightEnabledChanged(enabled)
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        AnimatedVisibility(
-            visible = flashlightEnabled,
-            enter = fadeIn(animationSpec = tween(durationMillis = 320)) +
-                slideInVertically(
-                    animationSpec = tween(durationMillis = 420),
-                    initialOffsetY = { fullHeight -> fullHeight / 3 }
-                ),
-            exit = fadeOut(animationSpec = tween(durationMillis = 220)) +
-                slideOutVertically(
-                    animationSpec = tween(durationMillis = 280),
-                    targetOffsetY = { fullHeight -> fullHeight / 5 }
-                )
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                    CardHeader(
-                        title = "Frequency Range: ${flashlightFreqMin.toInt()} - ${flashlightFreqMax.toInt()} Hz"
-                    )
-
-                    val currentRange = invLerpLog(flashlightFreqMin, 20f, 1000f)..invLerpLog(flashlightFreqMax, 20f, 1000f)
-
-                    ExpressiveRangeSlider(
-                        value = currentRange,
-                        onValueChange = { newRange ->
-                            val newMin = lerpLog(newRange.start, 20f, 1000f)
-                            val newMax = lerpLog(newRange.endInclusive, 20f, 1000f)
-
-                            if (newMax - newMin >= 10f) {
-                                onFlashlightFreqRangeChanged(newMin, newMax)
-                            }
-                        },
-                        valueRange = 0f..1f,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    BodyText(
-                        text = "The Hz range that the flashlight will react to. Lower for bass, higher for snare/vocals.",
-                        size = 12.sp
-                    )
-                }
-
-                ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                    CardHeader(title = "Sensitivity Threshold: ${String.format("%.2f", flashlightThreshold)}")
-                    ExpressiveSlider(
-                        value = flashlightThreshold,
-                        onValueChange = onFlashlightThresholdChanged,
-                        valueRange = 0f..0.8f,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    BodyText(text = "Higher threshold filters out background noise/drums.", size = 11.sp)
-                }
-
-                ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                    CardHeader(title = "Smoothing: ${String.format("%.2f", flashlightSmoothing)}")
-                    ExpressiveSlider(
-                        value = flashlightSmoothing,
-                        onValueChange = onFlashlightSmoothingChanged,
-                        valueRange = 0f..0.95f,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    BodyText(text = "Higher smoothing makes the light pulse softly instead of strobing.", size = 11.sp)
-                }
-
-                ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                    CardHeader(title = "Intensity Gamma: ${String.format("%.1f", flashlightGamma)}")
-                    ExpressiveSlider(
-                        value = flashlightGamma,
-                        onValueChange = onFlashlightGammaChanged,
-                        valueRange = 1.0f..4.0f,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                    CardHeader(title = "Amplitude Multiplier: $flashlightMultiplier")
-                    ExpressiveSlider(
-                        value = flashlightMultiplier,
-                        onValueChange = onFlashlightMultiplierChanged,
-                        valueRange = 0.5f..1.5f,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                    CardHeader(title = "Flashlight Monitor")
-
-                    val animatedAmplitude by animateFloatAsState(
-                        targetValue = flashlightAmplitude * 4,
-                        label = "flashlightAmplitude"
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Canvas(modifier = Modifier.size(100.dp)) {
-                            val baseRadius = size.minDimension * 0.15f
-                            val dynamicRadius = (size.minDimension * 0.45f) * animatedAmplitude
-
-                            drawCircle(
-                                color = Color.Yellow.copy(alpha = 0.8f),
-                                radius = (baseRadius + dynamicRadius).coerceAtMost(size.minDimension / 2)
-                            )
-                        }
+                        MorphingPolygon(
+                            isBeatDetected = isBeatDetected,
+                            amplitude = hapticAmplitude,
+                            color = flashColor,
+                            modifier = Modifier.size(100.dp)
+                        )
                     }
                 }
             }

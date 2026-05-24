@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
@@ -44,6 +45,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -71,6 +73,119 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.asComposePath
+import androidx.graphics.shapes.CornerRounding
+import androidx.graphics.shapes.Morph
+import androidx.graphics.shapes.RoundedPolygon
+import androidx.graphics.shapes.star
+import androidx.graphics.shapes.toPath
+import androidx.compose.ui.graphics.drawscope.rotate
+import android.graphics.Path as AndroidPath
+import kotlin.math.*
+
+// Linear position (0..1) to Logarithmic Frequency (20..2000)
+fun lerpLog(value: Float, min: Float, max: Float): Float {
+    val logMin = ln(min)
+    val logMax = ln(max)
+    return exp(logMin + (logMax - logMin) * value)
+}
+
+// Logarithmic Frequency (20..2000) back to Linear position (0..1)
+fun invLerpLog(freq: Float, min: Float, max: Float): Float {
+    val logMin = ln(min)
+    val logMax = ln(max)
+    return (ln(freq) - logMin) / (logMax - logMin)
+}
+
+@Composable
+fun MorphingPolygon(
+    isBeatDetected: Boolean,
+    amplitude: Float,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "polygonRotation")
+    val baseRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(12000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "baseRotation"
+    )
+
+    val polygonBase = remember {
+        RoundedPolygon.star(
+            numVerticesPerRadius = 12,
+            innerRadius = 0.85f,
+            rounding = CornerRounding(0.2f)
+        )
+    }
+
+    var sourcePoly by remember { mutableStateOf(polygonBase) }
+    var targetPoly by remember { mutableStateOf(polygonBase) }
+    val progress = remember { Animatable(1f) }
+
+    LaunchedEffect(isBeatDetected) {
+        if (isBeatDetected) {
+            sourcePoly = targetPoly
+            targetPoly = RoundedPolygon.star(
+                numVerticesPerRadius = (3..24).random(),
+                innerRadius = (25..85).random() / 100f,
+                rounding = CornerRounding((4..20).random() / 100f)
+            )
+            progress.snapTo(0f)
+            progress.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+        }
+    }
+
+    // Smooth amplitude to avoid jitter, but kept responsive
+    val animatedAmplitude by animateFloatAsState(
+        targetValue = (amplitude * 5f).coerceAtMost(1.2f),
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "animatedAmplitude"
+    )
+
+    val morph = remember(sourcePoly, targetPoly) {
+        Morph(sourcePoly, targetPoly)
+    }
+
+    val path = remember { AndroidPath() }
+
+    Canvas(modifier = modifier) {
+        val size = size.minDimension
+        // Base scale 0.15 + up to 0.85 from amplitude
+        val scale = size * (0.15f + (animatedAmplitude * 0.7f))
+        
+        path.reset()
+        val matrix = androidx.compose.ui.graphics.Matrix()
+        matrix.scale(scale, scale)
+        matrix.translate(size / (2 * scale), size / (2 * scale))
+        
+        morph.toPath(progress.value, path)
+        val composePath = path.asComposePath()
+        composePath.transform(matrix)
+
+        rotate(baseRotation) {
+            drawPath(
+                path = composePath,
+                color = color,
+                style = Fill
+            )
+        }
+    }
+}
 
 @Composable
 fun ScreenTitle(text: String) {
@@ -392,6 +507,7 @@ fun NativeBottomBar(
                                 Tab.Audio -> Icon(Icons.AutoMirrored.Filled.VolumeUp, tab.label, modifier = iconModifier)
                                 Tab.Glyphs -> Icon(painter = painterResource(R.drawable.ic_nav_glyphs), contentDescription = tab.label, modifier = iconModifier)
                                 Tab.Haptics -> Icon(Icons.Filled.Vibration, tab.label, modifier = iconModifier)
+                                Tab.Flashlight -> Icon(Icons.Filled.FlashlightOn, tab.label, modifier = iconModifier)
                                 Tab.Settings -> Icon(Icons.Filled.Settings, tab.label, modifier = iconModifier)
                             }
                         }

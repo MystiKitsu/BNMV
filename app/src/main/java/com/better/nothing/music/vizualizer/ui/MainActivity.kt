@@ -115,7 +115,7 @@ import kotlin.math.sqrt
 // Promoted to internal so MainViewModel can reference it without reflection.
 
 enum class Tab(val label: String) {
-    Audio("Audio"), Glyphs("Glyphs"), Haptics("Haptics"), Settings("Settings");
+    Audio("Audio"), Glyphs("Glyphs"), Haptics("Haptics"), Flashlight("Flashlight"), Settings("Settings");
 
 }
 
@@ -2107,9 +2107,9 @@ private fun BetterVizApp(
 
     val availableTabs = remember(selectedDevice) {
         if (selectedDevice == DeviceProfile.DEVICE_UNKNOWN) {
-            listOf(Tab.Audio, Tab.Haptics, Tab.Settings)
+            listOf(Tab.Audio, Tab.Haptics, Tab.Flashlight, Tab.Settings)
         } else {
-            listOf(Tab.Audio, Tab.Glyphs, Tab.Haptics, Tab.Settings)
+            listOf(Tab.Audio, Tab.Glyphs, Tab.Haptics, Tab.Flashlight, Tab.Settings)
         }
     }
 
@@ -2261,6 +2261,8 @@ private fun BetterVizApp(
                             onRichTapFrequencyChanged = onRichTapFrequencyChanged,
                             hapticAmplitude = hapticAmplitude,
                             isBeatDetected = isBeatDetected,
+                        )
+                        Tab.Flashlight -> FlashlightScreen(
                             flashlightEnabled = flashlightEnabled,
                             onFlashlightEnabledChanged = onFlashlightEnabledChanged,
                             flashlightFreqMin = flashlightFreqMin,
