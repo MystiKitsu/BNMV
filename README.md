@@ -28,7 +28,7 @@ Feel free to submit a **Pull Request (PR)**! We will review them as soon as we c
 🇹🇷 [Türkçe](README_TR.md)
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Partying%20Face.png" alt="Partying Face" width="25" height="25" /> The Android App is here!
-We have successfully moved from the simple Python script to a powerful Android app! It grabs the live audio stream from your device using **Media Projection** and processes it directly into the glyphs. This means you can visualize music from **Spotify, YouTube Music**, and basically any other app without manual processing! No more local files only!
+We have successfully moved from the simple Python script to a powerful Android app! It grabs the live audio stream from your device using **Media Projection** and processes it directly into the glyphs. This means you can visualize music from **Spotify, YouTube Music**, and basically any other app! No more local files only! The app not only visualises mucic on the glyphs, but also on the vibration motor! More on that soon!
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Thinking%20Face.png" alt="Thinking Face" width="25" height="25" /> Why does this exist?
 For a lot of people (including me), the *stock Glyph Music Visualiastion provided by Nothing* feels random.  
@@ -56,11 +56,11 @@ Even if it technically isn’t, the visual response to music just isn’t very o
 - Nothing phone (2a plus)
 - Nothing phone (3a)
 - Nothing phone (3a pro)
+- Nothing phone (3) 
 - Nothing Phone (4a)
 
 **partial support:**
 - Nothing Phone (4a) pro
-- Nothing phone (3) 
 
 
 ### <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/2699_fe0f/512.gif" alt="⚙" width="25" height="25"> How it works (technically)
