@@ -31,7 +31,10 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,6 +46,7 @@ internal fun AboutScreen(
 ) {
     val scrollState = rememberScrollState()
     val uriHandler = LocalUriHandler.current
+    val haptics = LocalHapticFeedback.current
     val configVersion by viewModel.configVersion.collectAsStateWithLifecycle()
     val appUpdateStatus by viewModel.appUpdateStatus.collectAsStateWithLifecycle()
     var depressedClickCount by remember { mutableIntStateOf(0) }
@@ -85,10 +89,12 @@ internal fun AboutScreen(
         ScreenTitle(text = stringResource(R.string.about_title))
 
         ExpressiveCard {
-            CardHeader(title = "Application Info")
+            CardHeader(title = "Application")
             
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -96,7 +102,7 @@ internal fun AboutScreen(
                     shape = RoundedCornerShape(16.dp),
                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(64.dp)
                         .clickable {
                             depressedClickCount++
                             if (depressedClickCount >= 10) {
@@ -129,74 +135,62 @@ internal fun AboutScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+            )
 
-            // Version details
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "Configuration Version",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = configVersion,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+            // Version detail
+            InfoRow(
+                icon = Icons.Default.Info,
+                title = "Configuration Version",
+                subtitle = configVersion
+            )
+
+            // GitHub Action
+            InfoRow(
+                icon = Icons.Default.Code,
+                title = "GitHub Repository",
+                subtitle = "View source and contributions",
+                onClick = { uriHandler.openUri("https://github.com/Aleks-Levet/better-nothing-music-visualizer") }
+            )
+
+            // Update Action
+            val statusText = when (appUpdateStatus) {
+                is MainViewModel.AppUpdateStatus.Checking -> "Checking for updates..."
+                is MainViewModel.AppUpdateStatus.Available -> "Update available: ${(appUpdateStatus as MainViewModel.AppUpdateStatus.Available).version}"
+                is MainViewModel.AppUpdateStatus.UpToDate -> "Latest version installed"
+                else -> "Check for software updates"
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Actions: GitHub and Updates
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = { uriHandler.openUri("https://github.com/Aleks-Levet/better-nothing-music-visualizer") },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                ) {
-                    Icon(Icons.Default.Code, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("GitHub")
-                }
-
-                Button(
-                    onClick = { viewModel.checkAppUpdate() },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = appUpdateStatus !is MainViewModel.AppUpdateStatus.Checking
-                ) {
-                    if (appUpdateStatus is MainViewModel.AppUpdateStatus.Checking) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+            InfoRow(
+                icon = Icons.Default.Sync,
+                title = "Software Update",
+                subtitle = statusText,
+                onClick = { 
+                    if (appUpdateStatus is MainViewModel.AppUpdateStatus.Available) {
+                        uriHandler.openUri((appUpdateStatus as MainViewModel.AppUpdateStatus.Available).url)
                     } else {
-                        Icon(Icons.Default.Sync, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Check for Updates")
+                        viewModel.checkAppUpdate()
+                    }
+                },
+                trailingContent = {
+                    if (appUpdateStatus is MainViewModel.AppUpdateStatus.Checking) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else if (appUpdateStatus is MainViewModel.AppUpdateStatus.Available) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ) {
+                            Text("UPDATE", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
                     }
                 }
-            }
-            
-            if (appUpdateStatus is MainViewModel.AppUpdateStatus.Available) {
-                val status = appUpdateStatus as MainViewModel.AppUpdateStatus.Available
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { uriHandler.openUri(status.url) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Download ${status.version}")
-                }
-            }
+            )
         }
 
         ExpressiveCard(
@@ -287,3 +281,44 @@ private data class CreditEntry(
     val role: String,
     val githubUsername: String?,
 )
+
+@Composable
+private fun InfoRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    onClick: (() -> Unit)? = null,
+    trailingContent: @Composable (() -> Unit)? = null
+) {
+    val haptics = LocalHapticFeedback.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable {
+                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                onClick()
+            } else Modifier)
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            modifier = Modifier.size(40.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+        }
+        if (trailingContent != null) {
+            trailingContent()
+        } else if (onClick != null) {
+            Icon(Icons.Default.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+        }
+    }
+}

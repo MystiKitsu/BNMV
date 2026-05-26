@@ -29,7 +29,7 @@ class BeatDetectionHapticEngine(context: Context) {
     private var thresholdMask = 0f
 
     // Lower cooldown = tighter beat following
-    private val cooldownMs = 60L
+    private val cooldownMs = 45L
 
     init {
         val appContext = context.applicationContext
@@ -85,7 +85,7 @@ class BeatDetectionHapticEngine(context: Context) {
         pushDelta(delta)
 
         // Use adaptive threshold with a decaying mask to prevent double-triggering
-        val threshold = max(medianDelta() * 2.2f, thresholdMask)
+        val threshold = max(medianDelta() * 1.8f, thresholdMask)
 
         val now = SystemClock.elapsedRealtime()
         val cooldownPassed = now - lastTriggerMs >= cooldownMs
@@ -93,17 +93,17 @@ class BeatDetectionHapticEngine(context: Context) {
         // Main trigger condition
         if (
             delta > threshold &&
-            delta > 0.025f &&
+            delta > 0.015f &&
             cooldownPassed
         ) {
 
             triggerWaveform()
             lastTriggerMs = now
-            thresholdMask = delta * 0.8f
+            thresholdMask = delta * 0.9f
         }
 
         // Decay the mask over time
-        thresholdMask *= 0.85f
+        thresholdMask *= 0.82f
     }
 
     private fun pushDelta(delta: Float) {
@@ -182,9 +182,9 @@ class BeatDetectionHapticEngine(context: Context) {
 
     private fun buildWaveform(): VibrationEffect {
 
-        val sustainMs = 80
-        val decayMs = 1220
-        val stepMs = 10
+        val sustainMs = 10
+        val decayMs = 140
+        val stepMs = 5
 
         val count = (sustainMs + decayMs) / stepMs
 
@@ -200,7 +200,7 @@ class BeatDetectionHapticEngine(context: Context) {
             val amp = if (t < sustainMs) {
                 255f
             } else {
-                // Decay starts after 80ms sustain
+                // Decay starts after sustain
                 val x = 1f - ((t - sustainMs).toFloat() / decayMs.toFloat())
                 255f * x.coerceIn(0f, 1f).pow(hapticGamma)
             }

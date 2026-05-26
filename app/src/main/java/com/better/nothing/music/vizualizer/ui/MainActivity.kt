@@ -87,6 +87,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -96,9 +97,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
@@ -146,9 +152,22 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 
     private val _thanksMessage = MutableStateFlow<String?>(null)
     val thanksMessage = _thanksMessage.asStateFlow()
+    private val thanksQueue = mutableListOf<String>()
 
     fun dismissThanksMessage() {
-        _thanksMessage.value = null
+        if (thanksQueue.isNotEmpty()) {
+            _thanksMessage.value = thanksQueue.removeAt(0)
+        } else {
+            _thanksMessage.value = null
+        }
+    }
+
+    private fun showThanks(message: String) {
+        if (_thanksMessage.value == null) {
+            _thanksMessage.value = message
+        } else {
+            thanksQueue.add(message)
+        }
     }
 
     private val _favoritePresets = MutableStateFlow<Set<String>>(emptySet())
@@ -170,12 +189,20 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 
         viewModelScope.launch {
             if (BuildConfig.DEBUG) {
-                _thanksMessage.value = "DEBUG MODE: thanks for everything!\n\n(Showing this every open because this is a debug build)"
+                // In debug, show start-up messages every time
+                showThanks("thanks for downloading")
+                showThanks("thanks for installing")
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, "thanks for using the app", Toast.LENGTH_SHORT).show()
+                }
             } else {
                 if (openCount == 1) {
-                    _thanksMessage.value = "thanks for downloading\n\nthanks for installing"
+                    showThanks("thanks for downloading")
+                    showThanks("thanks for installing")
                 } else if (openCount == 2) {
-                    _thanksMessage.value = "thanks for using the app"
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(ctx, "thanks for using the app", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
@@ -715,7 +742,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 communityRepository.uploadPreset(preset)
                 analytics.logPresetShared(name)
                 withContext(Dispatchers.Main) {
-                    _thanksMessage.value = "thanks for participating to the community"
+                    Toast.makeText(ctx, "thanks for participating to the community", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Failed to share preset", e)
@@ -1291,7 +1318,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 
     // ── Thanks Messages ──────────────────────────────────────────────────────
     fun onDevDepressed() {
-        _thanksMessage.value = "thanks for everything"
+        showThanks("thanks for nothing")
     }
 
     override fun onCleared() {
@@ -1552,40 +1579,73 @@ class MainActivity : ComponentActivity() {
                     androidx.compose.material3.AlertDialog(
                         onDismissRequest = viewModel::dismissThanksMessage,
                         icon = {
-                            Icon(
-                                painter = painterResource(R.drawable.app_icon),
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = Color.Unspecified
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f), RoundedCornerShape(16.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.app_icon),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(40.dp),
+                                    tint = Color.Unspecified
+                                )
+                            }
                         },
                         title = { 
                             androidx.compose.material3.Text(
-                                "Better Nothing", 
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold
+                                "BETTER NOTHING MUSIC VISUALIZER", 
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                letterSpacing = 2.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
                             ) 
                         },
                         text = { 
-                            androidx.compose.material3.Text(
-                                thanksMessage!!,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth(),
-                                style = MaterialTheme.typography.bodyLarge
-                            ) 
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                androidx.compose.material3.Text(
+                                    thanksMessage!!.uppercase(),
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    lineHeight = 32.sp
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                                androidx.compose.material3.Text(
+                                    "WE APPRECIATE YOUR SUPPORT.",
+                                    textAlign = TextAlign.Center,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                    letterSpacing = 1.sp
+                                )
+                            }
                         },
                         confirmButton = {
                             androidx.compose.material3.Button(
                                 onClick = viewModel::dismissThanksMessage,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(24.dp),
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
                             ) {
-                                androidx.compose.material3.Text("You're welcome!")
+                                androidx.compose.material3.Text(
+                                    "YOU'RE WELCOME!",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
                             }
                         },
-                        shape = RoundedCornerShape(24.dp),
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 6.dp
+                        shape = RoundedCornerShape(32.dp),
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        tonalElevation = 8.dp
                     )
                 }
                 
