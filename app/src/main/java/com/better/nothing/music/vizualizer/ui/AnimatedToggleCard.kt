@@ -43,11 +43,11 @@ internal fun AnimatedToggleCard(
     titleColor: Color? = null,
     shape: Shape = RoundedCornerShape(24.dp),
     colors: CardColors? = null,
-    contentPadding: Dp = 16.dp,
+    contentPadding: Dp = 12.dp,
     disabledTopSpacerFraction: Float = 0.3f,
     disabledTitleScaleFactor: Float = 1.15f,
     disabledSwitchScaleFactor: Float = 1.4f,
-    disabledTitleSpacing: Dp = 40.dp,
+    disabledTitleSpacing: Dp = 28.dp,
     animationDurationMs: Int = 500,
 ) {
     // Tweak these defaults here when tuning the shared motion/scale behavior.
@@ -66,7 +66,7 @@ internal fun AnimatedToggleCard(
     
     val containerColor by animateColorAsState(
         targetValue = if (checked) {
-            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f)
+            Color.White
         } else {
             MaterialTheme.colorScheme.surface
         },
@@ -76,7 +76,7 @@ internal fun AnimatedToggleCard(
     
     val borderColor by animateColorAsState(
         targetValue = if (checked) {
-            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+            Color.White
         } else {
             Color.Transparent
         },
@@ -84,7 +84,7 @@ internal fun AnimatedToggleCard(
         label = "card_border_color"
     )
     
-    val resolvedTitleColor = titleColor ?: if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+    val resolvedTitleColor = titleColor ?: if (checked) Color.Black else MaterialTheme.colorScheme.onBackground
     val resolvedColors = colors ?: CardDefaults.cardColors(containerColor = containerColor)
 
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
@@ -156,7 +156,7 @@ private fun AnimatedToggleCardLayout(
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    checkedTrackColor = Color.Black,
                     uncheckedThumbColor = MaterialTheme.colorScheme.outline,
                     uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                 )

@@ -690,12 +690,19 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private val _fftState = MutableStateFlow(floatArrayOf())
     val fftState = _fftState.asStateFlow()
 
+    private val _sessionDuration = MutableStateFlow(0L)
+    val sessionDuration = _sessionDuration.asStateFlow()
+
     fun updateVisualizerState(state: FloatArray) {
         _visualizerState.value = state
     }
 
     fun updateFftState(state: FloatArray) {
         _fftState.value = state
+    }
+
+    fun updateSessionDuration(durationMs: Long) {
+        _sessionDuration.value = durationMs
     }
 
     private val _isEditingPreset = MutableStateFlow(false)
@@ -754,7 +761,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun downloadPreset(preset: CommunityPreset) {
-        saveCustomPreset(preset.name, preset.zones.map { it.toZoneSpec() })
+        saveCustomPreset(preset.name, preset.zones.map { it.toZoneSpec() }, preset.author)
         analytics.logCommunityPresetDownloaded(preset.name, preset.author)
         viewModelScope.launch {
             communityRepository.incrementDownloadCount(preset.id)
@@ -762,7 +769,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    fun saveCustomPreset(name: String, zones: List<AudioProcessor.ZoneSpec>) {
+    fun saveCustomPreset(name: String, zones: List<AudioProcessor.ZoneSpec>, author: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val file = File(ctx.filesDir, "zones.config")
@@ -774,7 +781,8 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 val json = JSONObject(content)
 
                 val presetJson = JSONObject()
-                presetJson.put("description", "Custom: $name")
+                val description = if (author != null) "Custom: $name by $author" else "Custom: $name"
+                presetJson.put("description", description)
                 presetJson.put("phone_model", phoneModelForDevice(selectedDevice.value))
 
                 val zonesArray = JSONArray()
@@ -2309,12 +2317,14 @@ private fun BetterVizApp(
                 MainActivity.serviceStatic?.let { s ->
                     viewModel.updateVisualizerState(s.currentLightState)
                     viewModel.updateFftState(s.latestMagnitudes)
+                    viewModel.updateSessionDuration(s.getCaptureDurationMs())
                 }
                 delay(16)
             }
         } else {
             viewModel.updateVisualizerState(floatArrayOf())
             viewModel.updateFftState(floatArrayOf())
+            viewModel.updateSessionDuration(0)
         }
     }
 
@@ -2405,12 +2415,14 @@ private fun BetterVizApp(
                         Tab.Audio -> {
                             val fftData by viewModel.fftState.collectAsStateWithLifecycle()
                             val captureSource by viewModel.captureSource.collectAsStateWithLifecycle()
+                            val sessionDuration by viewModel.sessionDuration.collectAsStateWithLifecycle()
                             AudioScreen(
                                 isRunning = isRunning,
+                                sessionDuration = sessionDuration,
                                 latencyMs = latencyMs,
                                 onLatencyChanged = onLatencyChanged,
                                 latencyPresets = latencyPresets,
-                                onLatencyPresetsChanged = onLatencyPresetsChanged,
+                                onLatencyPresetsChanged = viewModel::updateLatencyPresets,
                                 autoDeviceEnabled = autoDeviceEnabled,
                                 onAutoDeviceToggle = onAutoDeviceToggle,
                                 connectedDeviceName = connectedDeviceName,

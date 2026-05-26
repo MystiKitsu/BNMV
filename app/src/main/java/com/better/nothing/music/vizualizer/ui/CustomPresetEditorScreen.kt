@@ -44,7 +44,7 @@ import kotlin.math.*
 @Composable
 fun CustomPresetEditorScreen(
     onDismiss: () -> Unit,
-    onSave: (String, List<AudioProcessor.ZoneSpec>) -> Unit,
+    onSave: (String, List<AudioProcessor.ZoneSpec>, String?) -> Unit,
     onShare: (String, String, List<AudioProcessor.ZoneSpec>) -> Unit,
     selectedDevice: Int,
 ) {
@@ -98,8 +98,8 @@ fun CustomPresetEditorScreen(
                     Button(
                         onClick = { showShareDialog = true },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            contentColor = MaterialTheme.colorScheme.primary
+                            containerColor = MaterialTheme.colorScheme.tertiary,
+                            contentColor = MaterialTheme.colorScheme.onTertiary
                         ),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.padding(end = 8.dp)
@@ -112,7 +112,7 @@ fun CustomPresetEditorScreen(
                     Button(
                         onClick = { 
                             haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                            onSave(presetName, zones.toList()) 
+                            onSave(presetName, zones.toList(), authorName)
                         },
                         shape = RoundedCornerShape(12.dp)
                     ) {

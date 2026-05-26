@@ -250,6 +250,7 @@ public class AudioCaptureService extends Service {
     private GlyphRenderer mGlyphRenderer;
     private AudioDeviceManager mAudioDeviceManager;
     private long mLastSendMs = 0L;
+    private long mCaptureStartTimeMs = 0L;
     private float[] mLatestMagnitudes = new float[0];
     private final Object mFftLock = new Object();
 
@@ -257,6 +258,11 @@ public class AudioCaptureService extends Service {
         synchronized (mFftLock) {
             return mLatestMagnitudes;
         }
+    }
+
+    public long getCaptureDurationMs() {
+        if (!sIsRunning || mCaptureStartTimeMs == 0) return 0;
+        return SystemClock.elapsedRealtime() - mCaptureStartTimeMs;
     }
     private long mLastAudioActivityMs = 0L;
     private final Handler mMainHandler = new Handler(android.os.Looper.getMainLooper());
@@ -1011,6 +1017,7 @@ public class AudioCaptureService extends Service {
 
             mCapturing = true;
             sIsRunning = true;
+            mCaptureStartTimeMs = SystemClock.elapsedRealtime();
             ensureCaptureExecutor();
             requestTileRefresh();
             Log.d(TAG, "Capture started successfully via source: " + source);
@@ -1105,6 +1112,7 @@ public class AudioCaptureService extends Service {
     private void stopCaptureLocked() {
         mCapturing = false;
         sIsRunning = false;
+        mCaptureStartTimeMs = 0;
         shutdownCaptureExecutor();
         releaseAudioRecord();
         releaseProjection();

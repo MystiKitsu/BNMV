@@ -57,6 +57,7 @@ import kotlin.math.pow
 @Composable
 fun AudioScreen(
     isRunning: Boolean,
+    sessionDuration: Long = 0L,
     latencyMs: Int,
     onLatencyChanged: (Int) -> Unit,
     latencyPresets: List<Int>,
@@ -131,7 +132,15 @@ fun AudioScreen(
         )
 
         val descriptionText = if (isRunning) {
-            stringResource(R.string.audio_description_running)
+            val seconds = (sessionDuration / 1000) % 60
+            val minutes = (sessionDuration / (1000 * 60)) % 60
+            val hours = (sessionDuration / (1000 * 60 * 60))
+            val timeStr = if (hours > 0) {
+                String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
+            } else {
+                String.format(Locale.US, "%02d:%02d", minutes, seconds)
+            }
+            stringResource(R.string.audio_description_running) + "\n\nActive Time: $timeStr"
         } else {
             stringResource(R.string.audio_description_idle)
         }
@@ -170,12 +179,14 @@ fun AudioScreen(
                     }
                 }
 
-                LatencyCard(
-                    latencyMs = latencyMs,
-                    onLatencyChanged = onLatencyChanged,
-                    latencyPresets = latencyPresets,
-                    onLatencyPresetsChanged = onLatencyPresetsChanged,
-                )
+                if (captureSource != AudioCaptureService.CaptureSource.MIC) {
+                    LatencyCard(
+                        latencyMs = latencyMs,
+                        onLatencyChanged = onLatencyChanged,
+                        latencyPresets = latencyPresets,
+                        onLatencyPresetsChanged = onLatencyPresetsChanged,
+                    )
+                }
 
                 FFTSpectrumCard(fftData = fftData)
                 
