@@ -1,4 +1,4 @@
-# Better Nothing Music Visualizer - TODO
+# Better Nothing Music Visualizer - TODO list!
 
 ## To Do
 
@@ -38,38 +38,38 @@
 * Add Shizuku audio source (Oliver) - Added structure & UI toggle
 
 ## Done
-- [x] Alternating strobe mode blinking of the glyphs (10ms)
-- [x] Make toggle card white accent color when on
-- [x] Make toggle card thinner
-- [x] Add author name in generated description of community presets
-- [x] Make the "save to community" button more obvious
-- [x] Add time count for the vizualizer
-- [x] Add time count for the visualizer
-- [x] Change title "About and other" to "App info and updates"
-- [x] remove latency compensation from microphone input
-- [x] Make categories for this Todo list.
-- [x] Ask Oliver if i can replace these checkmarks by some easier bullet points?
-- [x] Add flashlight visualizer (same UI as Haptics, add it at the bottom of the haptics screen for now)
-- [x] Collapse experimental features in settings tab for lighter UI
-- [x] Rename OLED black theme to "Default theme"
-- [x] Auto dark light theme for Nothing and Material You theme
-- [x] Collapse experimental settings in toggleable buttons
-- [x] Change "check for updates" text to "Update" when available
-- [x] Make the local file button smaller
-- [x] Remove latency compensations for microphone
-- [x] Add microphone audio source
-- [x] **ADDED PHONE (1) COMPATIBILITY WITHOUT DEBUG MODE!**
-- [x] Fix status bar padding preventing true edge-to-edge
-- [x] Implement haptic visualization
-- [x] Add "disable glyph session when no sound" toggle
-- [x] Fix package name situation
-- [x] Fix haptics implementation
-- [x] Remove smoothing from glyph preview
-- [x] Quick Settings tile fix
-- [x] Merge contributions from rkyzen
-- [x] Add "enable glyph debug mode" warning for Phone (1) users
-- [x] Fix range slider not blocking tab swipes
-- [x] Fetch `zones.config` from GitHub repo
-- [x] Fix Phone (2) screen off issues (battery optimization fix)
-- [x] Resolve Quick Settings tile functional issues
-- [x] *And many things we did before moving the todo list here!*
+* Alternating strobe mode blinking of the glyphs (10ms)
+* Make toggle card white accent color when on
+* Make toggle card thinner
+* Add author name in generated description of community presets
+* Make the "save to community" button more obvious
+* Add time count for the vizualizer
+* Add time count for the visualizer
+* Change title "About and other" to "App info and updates"
+* remove latency compensation from microphone input
+* Make categories for this Todo list.
+* Ask Oliver if i can replace these checkmarks by some easier bullet points?
+* Add flashlight visualizer (same UI as Haptics, add it at the bottom of the haptics screen for now)
+* Collapse experimental features in settings tab for lighter UI
+* Rename OLED black theme to "Default theme"
+* Auto dark light theme for Nothing and Material You theme
+* Collapse experimental settings in toggleable buttons
+* Change "check for updates" text to "Update" when available
+* Make the local file button smaller
+* Remove latency compensations for microphone
+* Add microphone audio source
+* **ADDED PHONE (1) COMPATIBILITY WITHOUT DEBUG MODE!**
+* Fix status bar padding preventing true edge-to-edge
+* Implement haptic visualization
+* Add "disable glyph session when no sound" toggle
+* Fix package name situation
+* Fix haptics implementation
+* Remove smoothing from glyph preview
+* Quick Settings tile fix
+* Merge contributions from rkyzen
+* Add "enable glyph debug mode" warning for Phone (1) users
+* Fix range slider not blocking tab swipes
+* Fetch `zones.config` from GitHub repo
+* Fix Phone (2) screen off issues (battery optimization fix)
+* Resolve Quick Settings tile functional issues
+* *And many things we did before moving the todo list here!*
