@@ -1,42 +1,41 @@
 # Better Nothing Music Visualizer - TODO
 
 ## To Do
-* YES I'LL CHECHE TEH FORMAT WHEN I GET HOME
 
 ### UI/UX
-- [ ] Change that app theme carrousel thing cuz it sucks
-- [ ] M3E split and round those 2 /\ buttons
-- [ ] M3E selector capture source
-- [ ] Replace dropdowns with Material 3 Expressive Split Buttons
-- [ ] Redesign about page for a proper hierarchical easy M3E design
-- [ ] Merge Git repo link card with app version card
+* Change that app theme carrousel thing cuz it sucks
+* M3E split and round those 2 /\ buttons
+* M3E selector capture source
+* Replace dropdowns with Material 3 Expressive Split Buttons
+* Redesign about page for a proper hierarchical easy M3E design
+* Merge Git repo link card with app version card
 
 ### Logic/Features
-- [ ] Reduce bit depth haptics amplitude 
-- [ ] Use rotating rounded polygon for the haptic viz visual (boost rotate and change shape when beat detected)
-- [ ] Add shitty visualizer audio source WITH DISCLAIMER THAT IT SUCKS
-- [ ] Add one-shot spam haptics engine (from Oliver)
-- [ ] Zebra breathing mode
-- [ ] Alternating strobe mode blinking of the glyphs (10ms)
-- [ ] Global "UI shift" variable (float 0.0 to 1.0, reactive to 50-150 Hz)
-- [ ] Refine beat detection engine haptics
-- [ ] Ask RichTap what is going on
-- [ ] Remove notification detection
+* Reduce bit depth haptics amplitude 
+* Use rotating rounded polygon for the haptic viz visual (boost rotate and change shape when beat detected)
+* Add shitty visualizer audio source WITH DISCLAIMER THAT IT SUCKS
+* Add one-shot spam haptics engine (from Oliver)
+* Zebra breathing mode
+* Alternating strobe mode blinking of the glyphs (10ms)
+* Global "UI shift" variable (float 0.0 to 1.0, reactive to 50-150 Hz)
+* Refine beat detection engine haptics
+* Ask RichTap what is going on
+* Remove notification detection
 
 ### Device Specific
-- [ ] **Change np1 preset with wider spectrum range (Aleks)**
-- [ ] Adapt ui depending on the audio source (Aleks)
-- [ ] Add an adjustment Hz range preset for Phone (4a)
-- [ ] Hide glyph tab if device is not a Nothing Phone
+* **Change np1 preset with wider spectrum range (Aleks)**
+* Adapt ui depending on the audio source (Aleks)
+* Add an adjustment Hz range preset for Phone (4a)
+* Hide glyph tab if device is not a Nothing Phone
 
 ### Maintenance/Misc
-- [ ] Remove the debug disclaimer in readme one we release
-- [ ] change git link embed
-- [ ] Update notification (Oliver)
+* Remove the debug disclaimer in readme one we release
+* change git link embed
+* Update notification (Oliver)
 
 ## In Progress
-- [ ] RichTap haptics (currently not working)
-- [ ] Add Shizuku audio source (Oliver) - Added structure & UI toggle
+* RichTap haptics (currently not working)
+* Add Shizuku audio source (Oliver) - Added structure & UI toggle
 
 ## Done
 - [x] Alternating strobe mode blinking of the glyphs (10ms)
