@@ -11,6 +11,7 @@ Click the banner below to join our Discord server and connect with the community
 
 [![Discord Server](https://discord.com/api/guilds/1509496060094054531/widget.png?style=banner3)](https://discord.gg/h7DYNttc8K)
 
+
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Books.png" alt="Books" width="25" height="25" /> Development Notice: Exam Season!
 
 Please note that core development on **Better Nothing Music Visualizer** will be slowing down temporarily over the next few weeks because our developers are currently busy writing their real-life exams! 📚✍️
