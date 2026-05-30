@@ -28,9 +28,9 @@ Feel free to submit a **Pull Request (PR)**! We will review them as soon as we c
 
 
 ## 🌐 Read this in other languages: 
-🇮🇳 [हिन्दी](README_HI.md)
-🇮🇳 [Marathi](README_MR.md)
-🇹🇷 [Türkçe](README_TR.md)
+🇮🇳 [हिन्दी](Docs/README_HI.md)
+🇮🇳 [Marathi](Docs/README_MR.md)
+🇹🇷 [Türkçe](Docs/README_TR.md)
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Partying%20Face.png" alt="Partying Face" width="25" height="25" /> The Android App is here!
 We have successfully moved from the simple Python script to a powerful Android app! It grabs the live audio stream from your device using **Media Projection** and processes it directly into the glyphs. This means you can visualize music from **Spotify, YouTube Music**, and basically any other app! No more local files only! The app not only visualises mucic on the glyphs, but also on the vibration motor! More on that soon!
@@ -48,9 +48,9 @@ Even if it technically isn’t, the visual response to music just isn’t very o
 | **Zones** | Standard, full physical glyphs are used | **Each glyph segment and sub-zone is used and controlled independently** |
 | **Visualisation method** | Real-time only | **Realtime with down to 20ms latency, or pre-processed audio files** |
 
-## <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f3ac/512.gif" alt="🎬" width="40" height=""> [Video demos and examples](https://github.com/Aleks-Levet/better-nothing-music-visualizer/blob/main/Demo-video-examples.md)
+## <img src="https://fonts.gstatic.com/s/e/notoemoji/latest/1f3ac/512.gif" alt="🎬" width="40" height=""> [Video demos and examples](https://github.com/Aleks-Levet/better-nothing-music-visualizer/blob/main/Docs/Demo-video-examples.md)
 
-### See the difference in action! [**Click here to easily browse our video demos!**](https://github.com/Aleks-Levet/better-nothing-music-visualizer/blob/main/Demo-video-examples.md)
+### See the difference in action! [**Click here to easily browse our video demos!**](https://github.com/Aleks-Levet/better-nothing-music-visualizer/blob/main/Docs/Demo-video-examples.md)
 
 ## 📲 Supported Nothing Phone Models
 **Currently these models are supported:**
@@ -80,7 +80,7 @@ Even if it technically isn’t, the visual response to music just isn’t very o
 
 ## 🛠️ Presets
 The visualizer's behavior, from frequency ranges to animation smoothing, is entirely controlled by the `zones.config` file. Whether you want to tweak existing presets or add support for a new phone model, you can find everything you need in our configuration guide.
-### 📖 [**Detailed zones.config Documentation**](ZONES_CONFIG.md)
+### 📖 [**Detailed zones.config Documentation**](Docs/ZONES_CONFIG.md)
 
 ## 📖 How to use the App?
 1. **Download the latest APK** from the releases.

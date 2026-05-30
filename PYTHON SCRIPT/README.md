@@ -18,15 +18,3 @@ It then outputs a **glyphed OGG** file for playback in *Glyph Composer*, *Glyphi
 
 ## 📖 How to use the python script?
 The usage is pretty simple and straightforward. Nevertheless, we made a detailed wiki page which explains the installation, usage, configuration files in detail and a troubleshooting section. You can also find out how to make new presets(not yet tho). [Just click here to see how to use **musicViz.py** as a python script](https://github.com/Aleks-Levet/better-nothing-music-visualizer/wiki/). You know what's cool? You can convert an unlimited number of files in bulk without any trouble!
-
----
-
-### <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Musical%20Notes.png" alt="Musical Notes" width="30" height="30" /> Our possible Music App (coming soon):
-We are also working on a potential **Music Player App** that can easily run the script on any audio file for you! The best part? It will be very simple to use, you just need your phone and don't need to process it manually! (this is different than what you can see at the top of the repo, different than the real time app.) 
-
-**Planned features of the app:**
-- Nothing aesthetic
-- simple and fast
-- Switch between multiple music visualisation presets with 2 taps
-- fully offline (on device processing)
-- Intuitive
