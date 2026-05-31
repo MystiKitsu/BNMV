@@ -47,7 +47,7 @@ fun FlashlightScreen(
     onFlashlightSmoothingChanged: (Float) -> Unit,
     flashlightGamma: Float,
     onFlashlightGammaChanged: (Float) -> Unit,
-    flashlightAmplitude: Float,
+    flashlightAmplitudeProvider: () -> Float,
 ) {
     val scrollState = rememberScrollState()
     val haptics = LocalHapticFeedback.current
@@ -59,6 +59,7 @@ fun FlashlightScreen(
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // ... (title and toggle) ...
         Spacer(modifier = Modifier.height(50.dp))
         ScreenTitle(text = stringResource(R.string.flashlight_header))
         
@@ -89,6 +90,7 @@ fun FlashlightScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // ... (sliders) ...
                 ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
                     CardHeader(
                         title = stringResource(
@@ -168,6 +170,7 @@ fun FlashlightScreen(
                 ) {
                     CardHeader(title = stringResource(R.string.flashlight_monitor_label))
 
+                    val flashlightAmplitude = flashlightAmplitudeProvider()
                     val isHigh = flashlightAmplitude > (flashlightThreshold + 0.05f)
                     val flashColor by animateColorAsState(
                         targetValue = if (isHigh) Color.Yellow else Color.Yellow.copy(alpha = 0.3f),

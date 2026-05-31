@@ -1467,7 +1467,12 @@ class MainActivity : ComponentActivity() {
             val m3eEnabled by viewModel.m3eEnabled.collectAsStateWithLifecycle()
             val uiAmplitude by viewModel.uiAmplitude.collectAsStateWithLifecycle()
 
-            BetterVizTheme(themeName = selectedTheme, fontName = selectedFont, m3eEnabled = m3eEnabled, uiAmplitude = uiAmplitude) {
+            BetterVizTheme(
+                themeName = selectedTheme,
+                fontName = selectedFont,
+                m3eEnabled = m3eEnabled,
+                uiAmplitudeProvider = { uiAmplitude }
+            ) {
                 // Collect each StateFlow independently. Compose only recomposes the
                 // subtree(s) that actually read a value when it changes — collecting
                 // them as separate `by` delegates achieves this granularity.
@@ -1502,6 +1507,7 @@ class MainActivity : ComponentActivity() {
                 val idleBreathingEnabled by viewModel.idleBreathingEnabled.collectAsStateWithLifecycle()
                 val idlePattern by viewModel.idlePattern.collectAsStateWithLifecycle()
                 val notificationFlashEnabled by viewModel.notificationFlashEnabled.collectAsStateWithLifecycle()
+                val strobeEnabled by viewModel.strobeEnabled.collectAsStateWithLifecycle()
                 val disableGlyphsWhenSilent by viewModel.disableGlyphsWhenSilent.collectAsStateWithLifecycle()
                 val selectedDevice by viewModel.selectedDevice.collectAsStateWithLifecycle()
                 val isEditingPreset by viewModel.isEditingPreset.collectAsStateWithLifecycle()
@@ -1741,7 +1747,7 @@ class MainActivity : ComponentActivity() {
                     onIdlePatternChanged = ::onIdlePatternChanged,
                     notificationFlashEnabled = notificationFlashEnabled,
                     onNotificationFlashEnabledChanged = ::onNotificationFlashEnabledChanged,
-                    strobeEnabled = viewModel.strobeEnabled.collectAsStateWithLifecycle().value,
+                    strobeEnabled = strobeEnabled,
                     onStrobeEnabledChanged = ::onStrobeEnabledChanged,
                     disableGlyphsWhenSilent = disableGlyphsWhenSilent,
                     onDisableGlyphsWhenSilentChanged = ::onDisableGlyphsWhenSilentChanged,
@@ -2408,7 +2414,8 @@ private fun BetterVizApp(
                             val scale = 0.8f + (1f - 0.8f) * fraction
                             scaleX = scale
                             scaleY = scale
-                            alpha = 0.4f + (1f - 0.4f) * fraction
+                            // Only show if it's the current page or being transitioned
+                            alpha = fraction * fraction // Square the fraction for faster fade-out
                         }
                 ) {
                     when (currentTab) {
@@ -2457,8 +2464,8 @@ private fun BetterVizApp(
                             onHapticGammaChanged = onHapticGammaChanged,
                             richTapFrequency = richTapFrequency,
                             onRichTapFrequencyChanged = onRichTapFrequencyChanged,
-                            hapticAmplitude = hapticAmplitude,
-                            isBeatDetected = isBeatDetected,
+                            hapticAmplitudeProvider = { hapticAmplitude },
+                            isBeatDetectedProvider = { isBeatDetected },
                         )
                         Tab.Flashlight -> FlashlightScreen(
                             flashlightEnabled = flashlightEnabled,
@@ -2474,7 +2481,7 @@ private fun BetterVizApp(
                             onFlashlightSmoothingChanged = onFlashlightSmoothingChanged,
                             flashlightGamma = flashlightGamma,
                             onFlashlightGammaChanged = onFlashlightGammaChanged,
-                            flashlightAmplitude = flashlightAmplitude,
+                            flashlightAmplitudeProvider = { flashlightAmplitude },
                         )
                         Tab.Settings -> SettingsScreen(
                             viewModel = viewModel,

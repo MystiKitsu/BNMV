@@ -50,8 +50,8 @@ fun HapticsScreen(
     onHapticGammaChanged: (Float) -> Unit,
     richTapFrequency: Int,
     onRichTapFrequencyChanged: (Int) -> Unit,
-    hapticAmplitude: Float,
-    isBeatDetected: Boolean,
+    hapticAmplitudeProvider: () -> Float,
+    isBeatDetectedProvider: () -> Boolean,
 ) {
     val scrollState = rememberScrollState()
     val haptics = LocalHapticFeedback.current
@@ -191,6 +191,9 @@ fun HapticsScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
                 ) {
                     CardHeader(title = "Haptic Monitor")
+
+                    val isBeatDetected = isBeatDetectedProvider()
+                    val hapticAmplitude = hapticAmplitudeProvider()
 
                     val flashColor by animateColorAsState(
                         targetValue = if (isBeatDetected) Color.White else MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),

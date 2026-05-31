@@ -41,6 +41,7 @@ public final class RichTapHapticEngine {
     private static boolean sIsSupported = false;
 
     private float hapticMultiplier = 1.0f;
+    private float hapticGamma = 2.0f;
     private int hapticFrequency = 50;
 
     private float decayedState = 0f;
@@ -133,6 +134,10 @@ public final class RichTapHapticEngine {
         this.hapticMultiplier = Math.max(0f, multiplier);
     }
 
+    public synchronized void setHapticGamma(float gamma) {
+        this.hapticGamma = Math.max(0.1f, gamma);
+    }
+
     public synchronized void setHapticFrequency(int frequency) {
         this.hapticFrequency = clampInt(frequency, 0, 100);
     }
@@ -155,9 +160,11 @@ public final class RichTapHapticEngine {
         if (peakTracker < EPSILON) peakTracker = EPSILON;
 
         float normalized = decayedState / peakTracker;
-        float shaped = normalized * hapticMultiplier;
+        float shaped = (float) Math.pow(normalized, hapticGamma) * hapticMultiplier;
         
         int amplitudeValue = Math.round(Math.min(1.0f, shaped) * MAX_AMPLITUDE_RICHTAP);
+        if (shaped >= 0.95f) amplitudeValue = MAX_AMPLITUDE_RICHTAP;
+
         amplitudeValue = clampInt(amplitudeValue, 0, MAX_AMPLITUDE_RICHTAP);
 
         final long now = SystemClock.elapsedRealtime();

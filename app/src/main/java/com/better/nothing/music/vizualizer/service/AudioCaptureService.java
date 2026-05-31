@@ -84,7 +84,7 @@ public class AudioCaptureService extends Service {
     private static final String TAG = "GlyphViz:Service";
     private static final String CHANNEL_ID = "glyph_viz_channel";
     private static final int NOTIF_ID = 1;
-    public enum CaptureSource { INTERNAL, MIC, SHIZUKU }
+    public enum CaptureSource { INTERNAL, MIC, VIZUALIZER, SHIZUKU }
     private volatile CaptureSource mCaptureSource = CaptureSource.INTERNAL;
 
     public static final String ACTION_STOP = "com.better.nothing.music.vizualizer.action.STOP";
@@ -391,8 +391,10 @@ public class AudioCaptureService extends Service {
         mContinuousHapticEngine.setHapticMultiplier(hapticMultiplier);
         mContinuousHapticEngine.setHapticGamma(hapticGamma);
         mRichTapHapticEngine.setHapticMultiplier(hapticMultiplier);
+        mRichTapHapticEngine.setHapticGamma(hapticGamma);
         mRichTapHapticEngine.setHapticFrequency(richTapFrequency);
         mBeatDetectionEngine.setHapticMultiplier(hapticMultiplier);
+        mBeatDetectionEngine.setHapticGamma(hapticGamma);
         
         String idlePattern = appPrefs.getString("idle_pattern", "pulse");
         mGlyphRenderer.setIdlePattern(idlePattern);
@@ -917,6 +919,9 @@ public class AudioCaptureService extends Service {
 
     public void setHapticGamma(float gamma) {
         mContinuousHapticEngine.setHapticGamma(gamma);
+        if (mRichTapHapticEngine != null) {
+            mRichTapHapticEngine.setHapticGamma(gamma);
+        }
         if (mBeatDetectionEngine != null) {
             mBeatDetectionEngine.setHapticGamma(gamma);
         }
@@ -1044,13 +1049,6 @@ public class AudioCaptureService extends Service {
                                         .build();
 
                         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                            // TODO: Consider calling
-                            //    ActivityCompat#requestPermissions
-                            // here to request the missing permissions, and then overriding
-                            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                            //                                          int[] grantResults)
-                            // to handle the case where the user grants the permission. See the documentation
-                            // for ActivityCompat#requestPermissions for more details.
                             return;
                         }
                         localRecord = new AudioRecord.Builder()
@@ -1062,6 +1060,16 @@ public class AudioCaptureService extends Service {
                                         .build())
                                 .setBufferSizeInBytes(bufferSize)
                                 .build();
+                    } else if (source == CaptureSource.VIZUALIZER) {
+                        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                            return;
+                        }
+                        localRecord = new AudioRecord(
+                                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                                SAMPLE_RATE,
+                                AudioFormat.CHANNEL_IN_MONO,
+                                AudioFormat.ENCODING_PCM_16BIT,
+                                bufferSize);
                     } else {
                         localRecord = new AudioRecord(
                                 MediaRecorder.AudioSource.MIC,

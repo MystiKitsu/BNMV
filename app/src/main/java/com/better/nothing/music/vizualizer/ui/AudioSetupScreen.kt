@@ -19,10 +19,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Terminal
@@ -80,11 +83,15 @@ fun AudioScreen(
         }
     }
 
+    var pendingCaptureSource by remember { mutableStateOf<AudioCaptureService.CaptureSource?>(null) }
     val recordAudioLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) {
-            onCaptureSourceChanged(AudioCaptureService.CaptureSource.MIC)
+        pendingCaptureSource?.let {
+            if (isGranted) {
+                onCaptureSourceChanged(it)
+            }
+            pendingCaptureSource = null
         }
     }
 
@@ -118,11 +125,12 @@ fun AudioScreen(
         CaptureSourceCard(
             selectedSource = captureSource,
             onSourceSelected = { source ->
-                if (source == AudioCaptureService.CaptureSource.MIC) {
+                if (source == AudioCaptureService.CaptureSource.MIC || source == AudioCaptureService.CaptureSource.VIZUALIZER) {
                     val status = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
                     if (status == PackageManager.PERMISSION_GRANTED) {
                         onCaptureSourceChanged(source)
                     } else {
+                        pendingCaptureSource = source
                         recordAudioLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
                 } else {
@@ -203,26 +211,29 @@ fun AudioScreen(
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun CaptureSourceCard(
     selectedSource: AudioCaptureService.CaptureSource,
     onSourceSelected: (AudioCaptureService.CaptureSource) -> Unit
 ) {
     ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
         CardHeader(title = "Capture Source")
+        val sources = mutableListOf(
+            Triple(AudioCaptureService.CaptureSource.INTERNAL, "Media Projection\n(default, best)", Icons.Default.PhoneAndroid),
+            Triple(AudioCaptureService.CaptureSource.MIC, "Microphone", Icons.Default.Mic),
+            Triple(AudioCaptureService.CaptureSource.VIZUALIZER, "Android built-in vizualizer", Icons.Default.GraphicEq)
+        )
+        if (BuildConfig.SHOW_SHIZUKU) {
+            sources.add(Triple(AudioCaptureService.CaptureSource.SHIZUKU, "Shizuku", Icons.Default.Terminal))
+        }
 
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            maxItemsInEachRow = 2,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val sources = mutableListOf(
-                AudioCaptureService.CaptureSource.INTERNAL to Icons.Default.PhoneAndroid,
-                AudioCaptureService.CaptureSource.MIC to Icons.Default.Mic
-            )
-            if (BuildConfig.SHOW_SHIZUKU) {
-                sources.add(AudioCaptureService.CaptureSource.SHIZUKU to Icons.Default.Terminal)
-            }
-
-            sources.forEach { (source, icon) ->
+            sources.forEach { (source, label, icon) ->
                 val isSelected = selectedSource == source
                 val backgroundColor by animateColorAsState(
                     if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -233,31 +244,39 @@ fun CaptureSourceCard(
 
                 Surface(
                     onClick = { onSourceSelected(source) },
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(16.dp),
                     color = backgroundColor,
                     contentColor = contentColor,
                     border = if (isSelected) BorderStroke(1.dp, contentColor.copy(alpha = 0.5f)) else null,
-                    modifier = Modifier.weight(1f).height(72.dp)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(64.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(Modifier.height(6.dp))
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
                         Text(
-                            text = source.name.lowercase().replaceFirstChar { it.uppercase() },
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 2
                         )
                     }
                 }
             }
+        }
+        if (selectedSource == AudioCaptureService.CaptureSource.VIZUALIZER) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.audio_warning_vizualizer),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

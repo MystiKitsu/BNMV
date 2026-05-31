@@ -38,7 +38,7 @@ import kotlin.math.min
 
 @Composable
 fun GlyphPreview(
-    vizState: FloatArray,
+    vizStateProvider: () -> FloatArray,
     device: Int,
     modifier: Modifier = Modifier
 ) {
@@ -46,7 +46,7 @@ fun GlyphPreview(
 
     val content = @Composable { m: Modifier ->
         GlyphPreviewContent(
-            vizState = vizState,
+            vizStateProvider = vizStateProvider,
             device = device,
             modifier = m.clickable { isFullScreen = !isFullScreen }
         )
@@ -68,7 +68,7 @@ fun GlyphPreview(
                 contentAlignment = Alignment.Center
             ) {
                 GlyphPreviewContent(
-                    vizState = vizState,
+                    vizStateProvider = vizStateProvider,
                     device = device,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -81,7 +81,7 @@ fun GlyphPreview(
 
 @Composable
 fun GlyphPreviewContent(
-    vizState: FloatArray,
+    vizStateProvider: () -> FloatArray,
     device: Int,
     modifier: Modifier = Modifier
 ) {
@@ -206,6 +206,7 @@ fun GlyphPreviewContent(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
+            val vizState = vizStateProvider()
             val viewBoxW = 182f
             val viewBoxH = when (device) {
                 DeviceProfile.DEVICE_NP2 -> 390f

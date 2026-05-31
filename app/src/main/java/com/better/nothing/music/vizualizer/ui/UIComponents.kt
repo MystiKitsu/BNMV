@@ -82,6 +82,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -188,7 +189,7 @@ fun MorphingPolygon(
 
     // Smooth amplitude to avoid jitter, but kept responsive
     val animatedAmplitude by animateFloatAsState(
-        targetValue = (amplitude * 5f).coerceAtMost(1.2f),
+        targetValue = (amplitude * 2.5f).coerceAtMost(1.2f),
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "animatedAmplitude"
     )
@@ -214,15 +215,6 @@ fun MorphingPolygon(
         composePath.transform(matrix)
 
         rotate(baseRotation) {
-            // Draw subtle bloom/shadow
-            if (animatedAmplitude > 0.1f) {
-                drawPath(
-                    path = composePath,
-                    color = color.copy(alpha = 0.2f * animatedAmplitude),
-                    style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
-                )
-            }
-
             drawPath(
                 path = composePath,
                 color = color,
@@ -307,9 +299,6 @@ fun ExpressiveSplitButton(
 
 @Composable
 fun ScreenTitle(text: String) {
-    val uiAmp = LocalUIAmplitude.current
-    val shift = (uiAmp * 12).dp
-    
     Column(modifier = Modifier.padding(bottom = 8.dp)) {
         Text(
             text  = text,
@@ -317,14 +306,6 @@ fun ScreenTitle(text: String) {
             color = MaterialTheme.colorScheme.onBackground,
             letterSpacing = (-1).sp,
             fontWeight = FontWeight.Bold
-        )
-        // Add a subtle accent line or dot pattern that reacts to UI Amplitude
-        Box(
-            modifier = Modifier
-                .padding(top = 4.dp)
-                .width(44.dp + shift)
-                .height(5.dp)
-                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.5.dp))
         )
     }
 }
@@ -450,7 +431,7 @@ fun NativeFilterChip(
         animationSpec = tween(300),
         label = "chip_content"
     )
-    val uiAmp = LocalUIAmplitude.current
+    val uiAmp = LocalUIAmplitude.current()
     val scale by animateFloatAsState(
         targetValue = if (selected) 1.05f + (uiAmp * 0.05f) else 1f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
@@ -463,7 +444,10 @@ fun NativeFilterChip(
         contentColor = contentColor,
         border = if (selected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
         modifier = modifier
-            .graphicsLayer(scaleX = scale, scaleY = scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .combinedClickable(
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
@@ -523,32 +507,15 @@ fun StartStopButton(
         label         = "contentColor"
     )
 
-    val glowAlpha by animateFloatAsState(
-        targetValue = if (running) 0.4f else 0.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = EaseInOutCubic),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
-
     Box(
         modifier = modifier
-            .graphicsLayer(scaleX = scale, scaleY = scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .padding(8.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Pulse Glow
-        if (running) {
-            Box(
-                modifier = Modifier
-                    .size(width = 170.dp, height = 64.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.error.copy(alpha = glowAlpha),
-                        shape = RoundedCornerShape(22.dp)
-                    )
-            )
-        }
         FloatingActionButton(
             onClick           = {
                 haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
@@ -561,10 +528,10 @@ fun StartStopButton(
                 .widthIn(min = 160.dp),
             containerColor = containerColor,
             contentColor   = contentColor,
-            elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation(0.dp)
+            elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
         ) {
             Row(
-                modifier             = Modifier.padding(horizontal = 24.dp),
+                modifier             = Modifier.padding(horizontal = 10.dp),
                 verticalAlignment    = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
@@ -613,9 +580,9 @@ fun NativeBottomBar(
         ) {
             visibleTabs.forEach { tab ->
                 val isSelected = tab == selectedTab
-                val uiAmp = LocalUIAmplitude.current
+                val uiAmp = LocalUIAmplitude.current()
                 val iconScale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.25f + (uiAmp * 0.15f) else 1.0f,
+                    targetValue = if (isSelected) 1.25f + (uiAmp * 0.5f) else 1.0f,
                     animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
                     label = "nav_icon_scale"
                 )
@@ -639,7 +606,10 @@ fun NativeBottomBar(
                         Box(contentAlignment = Alignment.Center) {
                             val iconModifier = Modifier
                                 .size(24.dp)
-                                .graphicsLayer(scaleX = iconScale, scaleY = iconScale)
+                                .graphicsLayer {
+                                    scaleX = iconScale
+                                    scaleY = iconScale
+                                }
 
                             when (tab) {
                                 Tab.Audio -> Icon(Icons.AutoMirrored.Filled.VolumeUp, tab.label, modifier = iconModifier)
@@ -917,32 +887,69 @@ data class AppSpacing(
 )
 
 val LocalAppSpacing = staticCompositionLocalOf { AppSpacing() }
-val LocalM3EEnabled = staticCompositionLocalOf { true }
-val LocalUIAmplitude = staticCompositionLocalOf { 0f }
+val LocalM3EEnabled = compositionLocalOf { true }
+val LocalUIAmplitude = compositionLocalOf<() -> Float> { { 0f } }
 
 @Composable
 fun BetterVizTheme(
     themeName: String = "Default",
     fontName: String = "NDot",
     m3eEnabled: Boolean = true,
-    uiAmplitude: Float = 0f,
+    uiAmplitudeProvider: () -> Float = { 0f },
     content: @Composable () -> Unit
 ) {
     val useNType = fontName == "NType"
     val context = LocalContext.current
     val isDark = isSystemInDarkTheme()
 
-    val targetColorScheme = when (themeName) {
-        "Material You" -> {
-            if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        "Nothing" -> {
-            if (isDark) {
-                // Nothing Red (Branded Dark)
+    val targetColorScheme = remember(themeName, isDark) {
+        when (themeName) {
+            "Material You" -> {
+                if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            }
+            "Nothing" -> {
+                if (isDark) {
+                    // Nothing Red (Branded Dark)
+                    androidx.compose.material3.darkColorScheme(
+                        background = Color.Black,
+                        surface = Color(0xFF0D0D0D),
+                        primary = Color(0xFFD71921),    // Authentic Nothing Red
+                        secondary = Color(0xFFD71921),
+                        error = Color(0xFFD71921),
+                        onBackground = Color.White,
+                        onSurface = Color.White,
+                        onPrimary = Color.White,
+                        onSecondary = Color.White,
+                        onError = Color.White,
+                        surfaceVariant = Color(0xFF1A1A1A),
+                        onSurfaceVariant = Color(0xFFB3B3B3),
+                        outline = Color(0xFF333333)
+                    )
+                } else {
+                    // Nothing Light (Branded Light)
+                    androidx.compose.material3.lightColorScheme(
+                        background = Color.White,
+                        surface = Color(0xFFF5F5F5),
+                        primary = Color(0xFF000000),
+                        secondary = Color(0xFF626262),
+                        error = Color(0xFFD71921),
+                        onBackground = Color.Black,
+                        onSurface = Color.Black,
+                        onPrimary = Color.White,
+                        onSecondary = Color.White,
+                        onError = Color.White,
+                        surfaceVariant = Color(0xFFE0E0E0),
+                        onSurfaceVariant = Color(0xFF757575),
+                        outline = Color(0xFFBDBDBD)
+                    )
+                }
+            }
+            "Nothing Red" -> {
+                // Fallback for old selection, same as Nothing Dark
                 androidx.compose.material3.darkColorScheme(
                     background = Color.Black,
                     surface = Color(0xFF0D0D0D),
-                    primary = Color(0xFFD71921),    // Authentic Nothing Red
+                    primary = Color(0xFFD71921),
                     secondary = Color(0xFFD71921),
                     error = Color(0xFFD71921),
                     onBackground = Color.White,
@@ -954,150 +961,125 @@ fun BetterVizTheme(
                     onSurfaceVariant = Color(0xFFB3B3B3),
                     outline = Color(0xFF333333)
                 )
-            } else {
-                // Nothing Light (Branded Light)
-                androidx.compose.material3.lightColorScheme(
-                    background = Color.White,
-                    surface = Color(0xFFF5F5F5),
-                    primary = Color(0xFF000000),
-                    secondary = Color(0xFF626262),
-                    error = Color(0xFFD71921),
-                    onBackground = Color.Black,
-                    onSurface = Color.Black,
-                    onPrimary = Color.White,
-                    onSecondary = Color.White,
+            }
+            "Liquorice Black" -> {
+                androidx.compose.material3.darkColorScheme(
+                    background = Color(0xFF0F0F0F),
+                    surface = Color(0xFF1A1A1A),
+                    primary = Color(0xFFD8D3DA),
+                    secondary = Color(0xFFA0FFA3),
+                    error = Color(0xFFC83B3B),
+                    onBackground = Color.White,
+                    onSurface = Color.White,
+                    onPrimary = Color(0xFF1C1A1D),
+                    onSecondary = Color(0xFF1C5A21),
                     onError = Color.White,
-                    surfaceVariant = Color(0xFFE0E0E0),
-                    onSurfaceVariant = Color(0xFF757575),
-                    outline = Color(0xFFBDBDBD)
+                    surfaceVariant = Color(0xFF242424),
+                    onSurfaceVariant = Color(0xFF676767),
+                    outline = Color(0xFF2C2C2C)
                 )
             }
-        }
-        "Nothing Red" -> {
-            // Fallback for old selection, same as Nothing Dark
-            androidx.compose.material3.darkColorScheme(
-                background = Color.Black,
-                surface = Color(0xFF0D0D0D),
-                primary = Color(0xFFD71921),
-                secondary = Color(0xFFD71921),
-                error = Color(0xFFD71921),
-                onBackground = Color.White,
-                onSurface = Color.White,
-                onPrimary = Color.White,
-                onSecondary = Color.White,
-                onError = Color.White,
-                surfaceVariant = Color(0xFF1A1A1A),
-                onSurfaceVariant = Color(0xFFB3B3B3),
-                outline = Color(0xFF333333)
-            )
-        }
-        "Liquorice Black" -> {
-            androidx.compose.material3.darkColorScheme(
-                background = Color(0xFF0F0F0F),
-                surface = Color(0xFF1A1A1A),
-                primary = Color(0xFFD8D3DA),
-                secondary = Color(0xFFA0FFA3),
-                error = Color(0xFFC83B3B),
-                onBackground = Color.White,
-                onSurface = Color.White,
-                onPrimary = Color(0xFF1C1A1D),
-                onSecondary = Color(0xFF1C5A21),
-                onError = Color.White,
-                surfaceVariant = Color(0xFF242424),
-                onSurfaceVariant = Color(0xFF676767),
-                outline = Color(0xFF2C2C2C)
-            )
-        }
-        else -> { // Default / OLED Black
-            androidx.compose.material3.darkColorScheme(
-                background = Color.Black,
-                surface = Color(0xFF1A1A1A),
-                primary = Color(0xFFD8D3DA),
-                secondary = Color(0xFFA0FFA3),
-                error = Color(0xFFC83B3B),
-                onBackground = Color.White,
-                onSurface = Color.White,
-                onPrimary = Color(0xFF1C1A1D),
-                onSecondary = Color(0xFF1C5A21),
-                onError = Color.White,
-                surfaceVariant = Color(0xFF242424),
-                onSurfaceVariant = Color(0xFF676767),
-                outline = Color(0xFF2C2C2C)
-            )
+            else -> { // Default / OLED Black
+                androidx.compose.material3.darkColorScheme(
+                    background = Color.Black,
+                    surface = Color(0xFF1A1A1A),
+                    primary = Color(0xFFD8D3DA),
+                    secondary = Color(0xFFA0FFA3),
+                    error = Color(0xFFC83B3B),
+                    onBackground = Color.White,
+                    onSurface = Color.White,
+                    onPrimary = Color(0xFF1C1A1D),
+                    onSecondary = Color(0xFF1C5A21),
+                    onError = Color.White,
+                    surfaceVariant = Color(0xFF242424),
+                    onSurfaceVariant = Color(0xFF676767),
+                    outline = Color(0xFF2C2C2C)
+                )
+            }
         }
     }
 
     val colorScheme = targetColorScheme.copy(
-        primary = animateColorAsState(targetColorScheme.primary, tween(500)).value,
-        onPrimary = animateColorAsState(targetColorScheme.onPrimary, tween(500)).value,
-        secondary = animateColorAsState(targetColorScheme.secondary, tween(500)).value,
-        onSecondary = animateColorAsState(targetColorScheme.onSecondary, tween(500)).value,
-        error = animateColorAsState(targetColorScheme.error, tween(500)).value,
-        onError = animateColorAsState(targetColorScheme.onError, tween(500)).value,
-        background = animateColorAsState(targetColorScheme.background, tween(500)).value,
-        onBackground = animateColorAsState(targetColorScheme.onBackground, tween(500)).value,
-        surface = animateColorAsState(targetColorScheme.surface, tween(500)).value,
-        onSurface = animateColorAsState(targetColorScheme.onSurface, tween(500)).value,
-        surfaceVariant = animateColorAsState(targetColorScheme.surfaceVariant, tween(500)).value,
-        onSurfaceVariant = animateColorAsState(targetColorScheme.onSurfaceVariant, tween(500)).value,
-        outline = animateColorAsState(targetColorScheme.outline, tween(500)).value,
+        primary = animateColorAsState(targetColorScheme.primary, tween(500), label = "primary").value,
+        onPrimary = animateColorAsState(targetColorScheme.onPrimary, tween(500), label = "onPrimary").value,
+        secondary = animateColorAsState(targetColorScheme.secondary, tween(500), label = "secondary").value,
+        onSecondary = animateColorAsState(targetColorScheme.onSecondary, tween(500), label = "onSecondary").value,
+        error = animateColorAsState(targetColorScheme.error, tween(500), label = "error").value,
+        onError = animateColorAsState(targetColorScheme.onError, tween(500), label = "onError").value,
+        background = animateColorAsState(targetColorScheme.background, tween(500), label = "background").value,
+        onBackground = animateColorAsState(targetColorScheme.onBackground, tween(500), label = "onBackground").value,
+        surface = animateColorAsState(targetColorScheme.surface, tween(500), label = "surface").value,
+        onSurface = animateColorAsState(targetColorScheme.onSurface, tween(500), label = "onSurface").value,
+        surfaceVariant = animateColorAsState(targetColorScheme.surfaceVariant, tween(500), label = "surfaceVariant").value,
+        onSurfaceVariant = animateColorAsState(targetColorScheme.onSurfaceVariant, tween(500), label = "onSurfaceVariant").value,
+        outline = animateColorAsState(targetColorScheme.outline, tween(500), label = "outline").value,
     )
 
-    val typography = Typography(
-        // HEADERS
-        displayLarge = TextStyle(
-            fontFamily = if (useNType) NTypeFontFamily else NDot55FontFamily,
-            fontSize = 45.sp,
-            lineHeight = 55.sp,
-            fontWeight = FontWeight.Normal
-        ),
-        headlineMedium = TextStyle(
-            fontFamily = if (useNType) NTypeFontFamily else NDotFontFamily,
-            fontSize = 30.sp,
-            lineHeight = 40.sp,
-            fontWeight = FontWeight.Normal
-        ),
-
-        // SUB-HEADERS
-        titleLarge = TextStyle(
-            fontSize = 21.sp,
-            lineHeight = 28.sp,
-            fontWeight = FontWeight.Normal
-        ),
-        titleMedium = TextStyle(
-            fontSize = 17.sp,
-            lineHeight = 24.sp,
-            fontWeight = FontWeight.Normal
-        ),
-
-        // BODY & LABELS (Keep system font for high legibility at small sizes)
-        bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Normal),
-        labelLarge = TextStyle(
-            fontSize = 13.sp,
-            lineHeight = 18.sp,
-            fontWeight = FontWeight.Medium
-        ),
-        labelMedium = TextStyle(
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            fontWeight = FontWeight.Medium
-        ),
-    )
-    CompositionLocalProvider(
-        LocalAppSpacing provides AppSpacing(),
-        LocalM3EEnabled provides m3eEnabled,
-        LocalUIAmplitude provides uiAmplitude
-    ) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            shapes = Shapes(
-                extraLarge = RoundedCornerShape(32.dp),
-                large = RoundedCornerShape(28.dp),
-                medium = RoundedCornerShape(20.dp),
-                small = RoundedCornerShape(14.dp),
+    val typography = remember(useNType) {
+        Typography(
+            // HEADERS
+            displayLarge = TextStyle(
+                fontFamily = if (useNType) NTypeFontFamily else NDot55FontFamily,
+                fontSize = 45.sp,
+                lineHeight = 55.sp,
+                fontWeight = FontWeight.Normal
             ),
-            typography = typography,
-            content = content,
+            headlineMedium = TextStyle(
+                fontFamily = if (useNType) NTypeFontFamily else NDotFontFamily,
+                fontSize = 30.sp,
+                lineHeight = 40.sp,
+                fontWeight = FontWeight.Normal
+            ),
+
+            // SUB-HEADERS
+            titleLarge = TextStyle(
+                fontSize = 21.sp,
+                lineHeight = 28.sp,
+                fontWeight = FontWeight.Normal
+            ),
+            titleMedium = TextStyle(
+                fontSize = 17.sp,
+                lineHeight = 24.sp,
+                fontWeight = FontWeight.Normal
+            ),
+
+            // BODY & LABELS (Keep system font for high legibility at small sizes)
+            bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Normal),
+            labelLarge = TextStyle(
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.Medium
+            ),
+            labelMedium = TextStyle(
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.Medium
+            ),
         )
+    }
+
+    val shapes = remember {
+        Shapes(
+            extraLarge = RoundedCornerShape(32.dp),
+            large = RoundedCornerShape(28.dp),
+            medium = RoundedCornerShape(20.dp),
+            small = RoundedCornerShape(14.dp),
+        )
+    }
+
+    val appSpacing = remember { AppSpacing() }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        shapes = shapes,
+        typography = typography
+    ) {
+        CompositionLocalProvider(
+            LocalAppSpacing provides appSpacing,
+            LocalM3EEnabled provides m3eEnabled,
+            LocalUIAmplitude provides uiAmplitudeProvider
+        ) {
+            content()
+        }
     }
 }

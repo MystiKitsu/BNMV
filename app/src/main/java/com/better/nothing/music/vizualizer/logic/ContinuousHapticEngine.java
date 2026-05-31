@@ -122,6 +122,8 @@ public final class ContinuousHapticEngine {
         float shaped = (float) Math.pow(normalized, hapticGamma) * hapticMultiplier;
         
         int amplitude = Math.round(Math.min(1.0f, shaped) * MAX_AMPLITUDE);
+        // Ensure that if the multiplier is high and there's signal, we hit 255.
+        if (shaped >= 0.95f) amplitude = MAX_AMPLITUDE;
 
         amplitude = clampInt(amplitude, 0, MAX_AMPLITUDE);
 

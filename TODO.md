@@ -3,7 +3,6 @@
 ## To Do
 
 ### UI/UX
-* Change that app theme carrousel thing cuz it sucks
 * M3E split and round those 2 /\ buttons
 * M3E selector capture source
 * Replace dropdowns with Material 3 Expressive Split Buttons
@@ -13,11 +12,9 @@
 ### Logic/Features
 * Reduce bit depth haptics amplitude 
 * Use rotating rounded polygon for the haptic viz visual (boost rotate and change shape when beat detected)
-* Add shitty visualizer audio source WITH DISCLAIMER THAT IT SUCKS
 * Add one-shot spam haptics engine (from Oliver)
 * Zebra breathing mode
 * Alternating strobe mode blinking of the glyphs (10ms)
-* Global "UI shift" variable (float 0.0 to 1.0, reactive to 50-150 Hz)
 * Refine beat detection engine haptics
 * Ask RichTap what is going on
 * Remove notification detection
@@ -35,9 +32,12 @@
 
 ## In Progress
 * RichTap haptics (currently not working)
-* Add Shizuku audio source (Oliver) - Added structure & UI toggle
 
 ## Done
+* Change that app theme carrousel thing cuz it sucks
+* Global "UI shift" variable (float 0.0 to 1.0, reactive to 50-150 Hz)
+* Add Shizuku audio source (Oliver) - Added structure & UI toggle
+* Add shitty visualizer audio source WITH DISCLAIMER THAT IT SUCKS
 * Alternating strobe mode blinking of the glyphs (10ms)
 * Make toggle card white accent color when on
 * Make toggle card thinner

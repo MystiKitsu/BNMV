@@ -260,7 +260,7 @@ internal fun GlyphsScreen(
                 }
 
                 if (isRunning) {
-                    val vizState by viewModel.visualizerState.collectAsStateWithLifecycle()
+                    val vizStateState = viewModel.visualizerState.collectAsStateWithLifecycle()
                     val previewHeight = when (selectedDevice) {
                         com.better.nothing.music.vizualizer.model.DeviceProfile.DEVICE_NP2 -> 530.dp
                         com.better.nothing.music.vizualizer.model.DeviceProfile.DEVICE_NP1,
@@ -270,7 +270,7 @@ internal fun GlyphsScreen(
                         else -> 400.dp
                     }
                     GlyphPreview(
-                        vizState = vizState,
+                        vizStateProvider = { vizStateState.value },
                         device = selectedDevice,
                         modifier = Modifier
                             .width(380.dp)
