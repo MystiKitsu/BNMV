@@ -244,6 +244,10 @@ public class AudioCaptureService extends Service {
     private boolean mIsBatteryLow = false;
 
     private boolean mOverlayEnabled = false;
+    private int mOverlayWidth = 120;
+    private int mOverlayHeight = 12;
+    private int mOverlayYOffset = 2;
+    private int mOverlayColor = android.graphics.Color.WHITE;
     private WindowManager mWindowManager;
     private VisualizerOverlayView mOverlayView;
 
@@ -411,6 +415,9 @@ public class AudioCaptureService extends Service {
         mNotificationFlashEnabled = appPrefs.getBoolean("notification_flash_enabled", false);
         mDisableGlyphsWhenSilent = appPrefs.getBoolean("disable_glyphs_when_silent", false);
         mOverlayEnabled = appPrefs.getBoolean("overlay_enabled", false);
+        mOverlayWidth = appPrefs.getInt("overlay_width", 120);
+        mOverlayHeight = appPrefs.getInt("overlay_height", 12);
+        mOverlayYOffset = appPrefs.getInt("overlay_y_offset", 2);
 
         mGlyphRenderer = new GlyphRenderer(mGamma, mIdleBreathingEnabled, mNotificationFlashEnabled, mSelectedDevice);
         mGlyphRenderer.setMaxBrightness(mMaxBrightness);
@@ -948,6 +955,50 @@ public class AudioCaptureService extends Service {
         }
     }
 
+    public void setOverlayWidth(int width) {
+        mOverlayWidth = width;
+        if (mOverlayView != null && mWorkerHandler != null) {
+            mWorkerHandler.post(this::updateOverlayLayout);
+        }
+    }
+
+    public void setOverlayHeight(int height) {
+        mOverlayHeight = height;
+        if (mOverlayView != null && mWorkerHandler != null) {
+            mWorkerHandler.post(this::updateOverlayLayout);
+        }
+    }
+
+    public void setOverlayYOffset(int offset) {
+        mOverlayYOffset = offset;
+        if (mOverlayView != null && mWorkerHandler != null) {
+            mWorkerHandler.post(this::updateOverlayLayout);
+        }
+    }
+
+    private void updateOverlayLayout() {
+        if (mOverlayView == null || mWindowManager == null) return;
+        mMainHandler.post(() -> {
+            if (mOverlayView == null || mWindowManager == null) return;
+            try {
+                WindowManager.LayoutParams params = (WindowManager.LayoutParams) mOverlayView.getLayoutParams();
+                params.width = (int) (mOverlayWidth * getResources().getDisplayMetrics().density);
+                params.height = (int) (mOverlayHeight * getResources().getDisplayMetrics().density);
+                params.y = (int) (mOverlayYOffset * getResources().getDisplayMetrics().density);
+                mWindowManager.updateViewLayout(mOverlayView, params);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to update overlay layout", e);
+            }
+        });
+    }
+
+    public void setOverlayColor(int color) {
+        mOverlayColor = color;
+        if (mOverlayView != null) {
+            mMainHandler.post(() -> mOverlayView.setColor(color));
+        }
+    }
+
     private void updateOverlayVisibility() {
         if (mOverlayEnabled && sIsRunning) {
             if (mOverlayView == null && Settings.canDrawOverlays(this)) {
@@ -962,16 +1013,21 @@ public class AudioCaptureService extends Service {
         if (mOverlayView != null) return;
         mWindowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         mOverlayView = new VisualizerOverlayView(this);
+        mOverlayView.setColor(mOverlayColor);
+
+        int height = (int) (mOverlayHeight * getResources().getDisplayMetrics().density);
+        int width = (int) (mOverlayWidth * getResources().getDisplayMetrics().density);
 
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                80, // Height in px, can be adjusted
+                width,
+                height,
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT
         );
 
-        params.gravity = Gravity.BOTTOM;
+        params.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+        params.y = (int) (mOverlayYOffset * getResources().getDisplayMetrics().density);
         try {
             mWindowManager.addView(mOverlayView, params);
         } catch (Exception e) {

@@ -52,6 +52,7 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
+import android.provider.Settings
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.graphics.Bitmap
@@ -459,6 +460,15 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private val _overlayEnabled = MutableStateFlow(false)
     val overlayEnabled = _overlayEnabled.asStateFlow()
 
+    private val _overlayWidth = MutableStateFlow(120)
+    val overlayWidth = _overlayWidth.asStateFlow()
+
+    private val _overlayHeight = MutableStateFlow(12)
+    val overlayHeight = _overlayHeight.asStateFlow()
+
+    private val _overlayYOffset = MutableStateFlow(2)
+    val overlayYOffset = _overlayYOffset.asStateFlow()
+
     // ── Zones Update ──────────────────────────────────────────────────────────
     private val _configUpdateStatus = MutableStateFlow<ConfigUpdateStatus>(ConfigUpdateStatus.Idle)
     val configUpdateStatus = _configUpdateStatus.asStateFlow()
@@ -711,7 +721,11 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                     ?: palette.dominantSwatch
 
                 withContext(Dispatchers.Main) {
-                    _musicPrimaryColor.value = swatch?.rgb?.let { Color(it) }
+                    val color = swatch?.rgb?.let { Color(it) }
+                    _musicPrimaryColor.value = color
+                    color?.let {
+                        MainActivity.serviceStatic?.setOverlayColor(it.toArgb())
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Palette generation failed", e)
@@ -1118,6 +1132,33 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
+    fun setOverlayWidth(width: Int) {
+        _overlayWidth.value = width
+        MainActivity.serviceStatic?.setOverlayWidth(width)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putInt("overlay_width", width) }
+        }
+    }
+
+    fun setOverlayHeight(height: Int) {
+        _overlayHeight.value = height
+        MainActivity.serviceStatic?.setOverlayHeight(height)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putInt("overlay_height", height) }
+        }
+    }
+
+    fun setOverlayYOffset(offset: Int) {
+        _overlayYOffset.value = offset
+        MainActivity.serviceStatic?.setOverlayYOffset(offset)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putInt("overlay_y_offset", offset) }
+        }
+    }
+
     fun setAutoDeviceEnabled(enabled: Boolean): Int {
         _autoDeviceEnabled.value = enabled
         viewModelScope.launch(Dispatchers.IO) {
@@ -1305,6 +1346,9 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 _batterySaverEnabled.value = prefs.getBoolean("battery_saver_enabled", false)
                 _batterySaverThreshold.value = prefs.getInt("battery_saver_threshold", 20)
                 _overlayEnabled.value = prefs.getBoolean("overlay_enabled", false)
+                _overlayWidth.value = prefs.getInt("overlay_width", 120)
+                _overlayHeight.value = prefs.getInt("overlay_height", 12)
+                _overlayYOffset.value = prefs.getInt("overlay_y_offset", 2)
                 _m3eEnabled.value = prefs.getBoolean("m3e_enabled", true)
 
                 val theme = prefs.getString("selected_theme", "Default") ?: "Default"
@@ -1637,6 +1681,15 @@ class MainActivity : ComponentActivity() {
         return metadata.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
     }
 
+    private val overlayPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            if (Settings.canDrawOverlays(this)) {
+                viewModel.setOverlayEnabled(true)
+            } else {
+                Toast.makeText(this, "Overlay permission denied", Toast.LENGTH_SHORT).show()
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -1936,7 +1989,10 @@ class MainActivity : ComponentActivity() {
                     onStrobeEnabledChanged = ::onStrobeEnabledChanged,
                     disableGlyphsWhenSilent = disableGlyphsWhenSilent,
                     onDisableGlyphsWhenSilentChanged = ::onDisableGlyphsWhenSilentChanged,
+                    overlayEnabled = viewModel.overlayEnabled.collectAsStateWithLifecycle().value,
+                    onOverlayEnabledChanged = ::onOverlayEnabledChanged,
                     selectedDevice = selectedDevice,
+                    currentThemeColor = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -2115,6 +2171,19 @@ class MainActivity : ComponentActivity() {
         service?.setDisableGlyphsWhenSilent(enabled)
     }
 
+    private fun onOverlayEnabledChanged(enabled: Boolean) {
+        if (enabled && !Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            overlayPermissionLauncher.launch(intent)
+        } else {
+            viewModel.setOverlayEnabled(enabled)
+            service?.setOverlayEnabled(enabled)
+        }
+    }
+
     private fun isNotificationServiceEnabled(): Boolean {
         val pkgName = packageName
         val flat = android.provider.Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
@@ -2280,6 +2349,11 @@ class MainActivity : ComponentActivity() {
         service?.setStrobeEnabled(viewModel.strobeEnabled.value)
         service?.setDynamicGainEnabled(viewModel.dynamicGainEnabled.value)
         service?.setBatterySaverEnabled(viewModel.batterySaverEnabled.value, viewModel.batterySaverThreshold.value)
+        service?.setOverlayEnabled(viewModel.overlayEnabled.value)
+        service?.setOverlayWidth(viewModel.overlayWidth.value)
+        service?.setOverlayHeight(viewModel.overlayHeight.value)
+        service?.setOverlayYOffset(viewModel.overlayYOffset.value)
+        viewModel.musicPrimaryColor.value?.let { service?.setOverlayColor(it.toArgb()) }
 
         service?.setHapticEnabled(viewModel.hapticMotorEnabled.value)
         service?.setHapticMode(viewModel.hapticMode.value)
@@ -2504,7 +2578,10 @@ private fun BetterVizApp(
     onStrobeEnabledChanged: (Boolean) -> Unit,
     disableGlyphsWhenSilent: Boolean,
     onDisableGlyphsWhenSilentChanged: (Boolean) -> Unit,
+    overlayEnabled: Boolean,
+    onOverlayEnabledChanged: (Boolean) -> Unit,
     selectedDevice: Int,
+    currentThemeColor: Color,
 ) {
     val autoDeviceEnabled by viewModel.autoDeviceEnabled.collectAsStateWithLifecycle()
     val connectedDeviceName by viewModel.connectedDeviceName.collectAsStateWithLifecycle()
@@ -2567,6 +2644,18 @@ private fun BetterVizApp(
         val targetPage = availableTabs.indexOf(tab)
         if (targetPage != -1 && targetPage != pagerState.currentPage) {
             pagerState.animateScrollToPage(targetPage, animationSpec = HeavyEasingSpec)
+        }
+    }
+
+    // ─── Sync Theme Color -> Service ────────────────────────────────────────
+    val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
+    val musicPrimaryColor by viewModel.musicPrimaryColor.collectAsStateWithLifecycle()
+
+    LaunchedEffect(currentThemeColor, selectedTheme, musicPrimaryColor) {
+        if (selectedTheme == "Music" && musicPrimaryColor != null) {
+            MainActivity.serviceStatic?.setOverlayColor(musicPrimaryColor!!.toArgb())
+        } else {
+            MainActivity.serviceStatic?.setOverlayColor(currentThemeColor.toArgb())
         }
     }
 
@@ -2699,6 +2788,8 @@ private fun BetterVizApp(
                             onStrobeEnabledChanged = onStrobeEnabledChanged,
                             disableGlyphsWhenSilent = disableGlyphsWhenSilent,
                             onDisableGlyphsWhenSilentChanged = onDisableGlyphsWhenSilentChanged,
+                            overlayEnabled = overlayEnabled,
+                            onOverlayEnabledChanged = onOverlayEnabledChanged,
                         )
                     }
                 }

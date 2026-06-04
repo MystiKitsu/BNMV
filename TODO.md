@@ -41,6 +41,7 @@
 * RichTap haptics (currently not working)
 
 ## Done
+* Navigation Bar Overlay: Graphical bar visualizer on top of nav bar
 * Dynamic Peak Normalization: Auto-Gain for quiet audio (Experimental)
 * Battery Saver Threshold: Dims visualization when low battery (Experimental)
 * Dynamic UI Theming: Use Palette API to match app colors with album art

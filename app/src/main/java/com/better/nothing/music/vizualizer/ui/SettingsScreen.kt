@@ -45,11 +45,16 @@ internal fun SettingsScreen(
     onStrobeEnabledChanged: (Boolean) -> Unit,
     disableGlyphsWhenSilent: Boolean,
     onDisableGlyphsWhenSilentChanged: (Boolean) -> Unit,
+    overlayEnabled: Boolean,
+    onOverlayEnabledChanged: (Boolean) -> Unit,
 ) {
     val m3eEnabled by viewModel.m3eEnabled.collectAsStateWithLifecycle()
     val dynamicGainEnabled by viewModel.dynamicGainEnabled.collectAsStateWithLifecycle()
     val batterySaverEnabled by viewModel.batterySaverEnabled.collectAsStateWithLifecycle()
     val batterySaverThreshold by viewModel.batterySaverThreshold.collectAsStateWithLifecycle()
+    val overlayWidth by viewModel.overlayWidth.collectAsStateWithLifecycle()
+    val overlayHeight by viewModel.overlayHeight.collectAsStateWithLifecycle()
+    val overlayYOffset by viewModel.overlayYOffset.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
 
     val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
@@ -424,12 +429,103 @@ internal fun SettingsScreen(
                             modifier = Modifier.weight(1f)
                         )
                         FeatureCard(
+                            title = "Nav Overlay",
+                            icon = Icons.Default.Layers,
+                            checked = overlayEnabled,
+                            onCheckedChange = onOverlayEnabledChanged,
+                            modifier = Modifier.weight(1f)
+                        )
+                        FeatureCard(
                             title = "Silent Auto-Off",
                             icon = Icons.AutoMirrored.Filled.VolumeOff,
                             checked = disableGlyphsWhenSilent,
                             onCheckedChange = onDisableGlyphsWhenSilentChanged,
                             modifier = Modifier.weight(1f)
                         )
+                    }
+
+                    AnimatedVisibility(visible = overlayEnabled) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Width Slider
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Overlay Width",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "${overlayWidth}dp",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            ExpressiveSlider(
+                                value = overlayWidth.toFloat(),
+                                onValueChange = { viewModel.setOverlayWidth(it.toInt()) },
+                                valueRange = 40f..360f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            // Height Slider
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Overlay Height",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "${overlayHeight}dp",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            ExpressiveSlider(
+                                value = overlayHeight.toFloat(),
+                                onValueChange = { viewModel.setOverlayHeight(it.toInt()) },
+                                valueRange = 4f..64f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            // Y Offset Slider
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Vertical Position",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "${overlayYOffset}dp",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            ExpressiveSlider(
+                                value = overlayYOffset.toFloat(),
+                                onValueChange = { viewModel.setOverlayYOffset(it.toInt()) },
+                                valueRange = -20f..80f,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        maxItemsInEachRow = 2,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         FeatureCard(
                             title = "Dynamic Gain",
                             icon = Icons.AutoMirrored.Filled.TrendingUp,
