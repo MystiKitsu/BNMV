@@ -121,13 +121,13 @@ public final class ContinuousHapticEngine {
         // crushing low-end detail. Now strictly follows the Gamma slider.
         float shaped = (float) Math.pow(normalized, hapticGamma) * hapticMultiplier;
         
-        int amplitude = Math.round(Math.min(1.0f, shaped) * MAX_AMPLITUDE);
+        int nextAmplitude = Math.round(Math.min(1.0f, shaped) * MAX_AMPLITUDE);
         // Ensure that if the multiplier is high and there's signal, we hit 255.
-        if (shaped >= 0.95f) amplitude = MAX_AMPLITUDE;
+        if (shaped >= 0.95f) nextAmplitude = MAX_AMPLITUDE;
 
-        amplitude = clampInt(amplitude, 0, MAX_AMPLITUDE);
+        nextAmplitude = clampInt(nextAmplitude, 0, MAX_AMPLITUDE);
 
-        if (amplitude <= 0) {
+        if (nextAmplitude <= 0) {
             stopHapticsInternal();
             return;
         }
@@ -135,13 +135,13 @@ public final class ContinuousHapticEngine {
         final long now = SystemClock.elapsedRealtime();
         
         // Skip if it's strictly the same to save overhead
-        if (waveformActive && amplitude == lastAmplitude) {
+        if (waveformActive && nextAmplitude == lastAmplitude) {
             return;
         }
         
         // Only resubmit if change is significant OR enough time has passed
         // This prevents the "jitter" of tiny updates while remaining responsive.
-        boolean significantChange = Math.abs(amplitude - lastAmplitude) >= AMPLITUDE_THRESHOLD;
+        boolean significantChange = Math.abs(nextAmplitude - lastAmplitude) >= AMPLITUDE_THRESHOLD;
         boolean cooldownOver = (now - lastSubmitMs) >= MIN_RESUBMIT_INTERVAL_MS;
 
         if (waveformActive && !significantChange && (now - lastSubmitMs) < 100) {
@@ -152,8 +152,8 @@ public final class ContinuousHapticEngine {
             return;
         }
 
-        Log.d(TAG, String.format(java.util.Locale.US, "Haptic Peak: %.4f | Amp: %d | Multi: %.1f", rawPeak, amplitude, hapticMultiplier));
-        submitContinuousWaveform(amplitude);
+        Log.d(TAG, String.format(java.util.Locale.US, "Haptic Peak: %.4f | Amp: %d | Multi: %.1f", rawPeak, nextAmplitude, hapticMultiplier));
+        submitContinuousWaveform(nextAmplitude);
     }
 
     public synchronized void stopHaptics() {

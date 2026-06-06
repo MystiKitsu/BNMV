@@ -12,7 +12,7 @@ public class AudioDeviceManager extends AudioDeviceCallback {
 
     private final Runnable latencyCallback;
 
-    public AudioDeviceManager(Context context, Runnable latencyCallback) {
+    public AudioDeviceManager(Context unused, Runnable latencyCallback) {
         this.latencyCallback = latencyCallback;
     }
 

@@ -25,21 +25,21 @@ public class AudioProcessor {
     private DoubleFFT_1D fft;
 
     public AudioProcessor() {
-        updateFFTSize(0, 44100); // Default
+        updateFFTSize(); // Default
     }
 
-    public void updateFFTSize(int latencyMs) {
-        updateFFTSize(latencyMs, 44100);
+    public void updateFFTSize() {
+        updateFFTSize(44100);
     }
 
-    public void updateFFTSize(int latencyMs, int sampleRate) {
+    public void updateFFTSize(int sampleRate) {
         int newFftSize = 4096; // Fixed size for temporal snappiness
-        this.sampleRate = sampleRate;
 
-        if (this.fftSize == newFftSize && this.fft != null && this.hzPerBin == (float) sampleRate / (float) newFftSize) {
+        if (this.fftSize == newFftSize && this.fft != null && this.sampleRate == sampleRate) {
             return;
         }
 
+        this.sampleRate = sampleRate;
         this.fftSize = newFftSize;
         this.analysisWindow = fftSize;
         this.hzPerBin = (float) sampleRate / (float) fftSize;

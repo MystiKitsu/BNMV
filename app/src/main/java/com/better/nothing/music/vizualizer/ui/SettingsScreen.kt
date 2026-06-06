@@ -150,7 +150,8 @@ internal fun SettingsScreen(
                         isSelected = isSelected,
                         onClick = { 
                             if (key == "Music" && !viewModel.isNotificationAccessGranted()) {
-                                Toast.makeText(localContext, localContext.getString(R.string.music_theme_notification_access), Toast.LENGTH_LONG).show()
+                                val message = localContext.getString(R.string.music_theme_notification_access)
+                                Toast.makeText(localContext, message, Toast.LENGTH_LONG).show()
                                 localContext.startActivity(android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
                             } else {
                                 viewModel.setSelectedTheme(key)
@@ -288,7 +289,8 @@ internal fun SettingsScreen(
                                 showPasswordDialog = false
                                 passwordInput = ""
                             } else {
-                                Toast.makeText(localContext, localContext.getString(R.string.incorrect_password), Toast.LENGTH_SHORT).show()
+                                val message = localContext.getString(R.string.incorrect_password)
+                                Toast.makeText(localContext, message, Toast.LENGTH_SHORT).show()
                             }
                         }
                     ) {
