@@ -90,7 +90,6 @@
 
     <!-- About Screen -->
     <string name="about_title">应用信息和更新</string>
-    <string name="about_description">我们需要一个像样的“关于”页面！！与此同时，请查看 GitHub 获取信息。</string>
     <string name="about_intro">Better Nothing 音乐可视化工具通过高保真实时频率分析释放 Glyph 界面的全部潜力。</string>
     <string name="about_section_why">为什么我们比 Nothing 的实现更好：</string>
     <string name="about_why_1">• 12 位亮度（4096 级）对标 ~2 位原生（3 级）</string>
@@ -153,9 +152,6 @@
     <string name="overlay_height">覆盖层高度</string>
     <string name="vertical_position">垂直位置</string>
     <string name="dynamic_gain">动态增益</string>
-    <string name="battery_saver">省电模式</string>
-    <string name="saver_threshold">省电阈值</string>
-    <string name="battery_saver_desc">当电量低于此水平时降低 Glyph 亮度以节省电量。</string>
 
     <string name="tab_audio">音频</string>
     <string name="tab_glyphs">Glyph</string>

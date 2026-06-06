@@ -90,7 +90,6 @@
 
     <!-- About Screen -->
     <string name="about_title">Информация и обновления</string>
-    <string name="about_description">НАМ НУЖЕН НОРМАЛЬНЫЙ ЭКРАН «О ПРИЛОЖЕНИИ»!! А пока, пожалуйста, проверьте GitHub для получения информации.</string>
     <string name="about_intro">Better Nothing Музыкальный визуализатор раскрывает весь потенциал интерфейса Glyph с помощью высокоточного частотного анализа в реальном времени.</string>
     <string name="about_section_why">Почему мы лучше реализации от Nothing:</string>
     <string name="about_why_1">• 12-битная яркость (4096 уровней) против ~2-битной стандартной (3 уровня)</string>
@@ -153,9 +152,6 @@
     <string name="overlay_height">Высота оверлея</string>
     <string name="vertical_position">Вертикальное положение</string>
     <string name="dynamic_gain">Динамическое усиление</string>
-    <string name="battery_saver">Экономия заряда</string>
-    <string name="saver_threshold">Порог экономии</string>
-    <string name="battery_saver_desc">Снижает яркость Glyph, когда уровень заряда батареи ниже этого уровня, для экономии энергии.</string>
 
     <string name="tab_audio">Аудио</string>
     <string name="tab_glyphs">Глифы</string>

@@ -90,7 +90,6 @@
 
     <!-- About Screen -->
     <string name="about_title">Gwybodaeth ap a diweddariadau</string>
-    <string name="about_description">MAE ANGEN SGRIN AMDANOM IAWN ARNOM!! Yn y cyfamser, gwiriwch GitHub am wybodaeth.</string>
     <string name="about_intro">Mae Better Nothing Music Visualizer yn datgloi potensial llawn y Rhyngwyneb Glyph gyda dadansoddiad amlder amser real, manylder uchel.</string>
     <string name="about_section_why">Pam rydyn ni\'n well na gweithrediad Nothing:</string>
     <string name="about_why_1">• Disgleirdeb 12-bit (4096 lefel) vs ~2-bit stoc (3 lefel)</string>
@@ -153,9 +152,6 @@
     <string name="overlay_height">Uchder y Troslun</string>
     <string name="vertical_position">Safle Fertigol</string>
     <string name="dynamic_gain">Ennill Dynamig</string>
-    <string name="battery_saver">Arbedwr Batri</string>
-    <string name="saver_threshold">Trothwy Arbedwr</string>
-    <string name="battery_saver_desc">Yn lleihau disgleirdeb Glyph pan fydd y batri yn is na\'r lefel hon i arbed pŵer.</string>
 
     <string name="tab_audio">Sain</string>
     <string name="tab_glyphs">Glyphs</string>

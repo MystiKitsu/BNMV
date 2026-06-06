@@ -90,7 +90,6 @@
 
     <!-- About Screen -->
     <string name="about_title">アプリ情報とアップデート</string>
-    <string name="about_description">まともな「アプリについて」画面が必要です！！それまでは、詳細についてGitHubを確認してください。</string>
     <string name="about_intro">Better Nothing 音楽ビジュアライザーは、高忠実度・リアルタイムの周波数分析により、Glyphインターフェースの可能性を最大限に引き出します。</string>
     <string name="about_section_why">Nothingの実装よりも優れている理由：</string>
     <string name="about_why_1">• 12ビット輝度（4096段階） vs 約2ビットの標準（3段階）</string>
@@ -153,9 +152,6 @@
     <string name="overlay_height">オーバーレイの高さ</string>
     <string name="vertical_position">垂直方向の位置</string>
     <string name="dynamic_gain">ダイナミックゲイン</string>
-    <string name="battery_saver">バッテリーセーバー</string>
-    <string name="saver_threshold">セーバーしきい値</string>
-    <string name="battery_saver_desc">電力を節約するため、バッテリーがこのレベルを下回ったときにGlyphの明るさを下げます。</string>
 
     <string name="tab_audio">オーディオ</string>
     <string name="tab_glyphs">Glyph</string>

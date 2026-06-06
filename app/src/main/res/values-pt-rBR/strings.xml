@@ -90,7 +90,6 @@
 
     <!-- About Screen -->
     <string name="about_title">Informações do app e atualizações</string>
-    <string name="about_description">PRECISAMOS DE UMA TELA SOBRE DECENTE!! Enquanto isso, verifique o GitHub para informações.</string>
     <string name="about_intro">Better Nothing Music Visualizer desbloqueia todo o potencial da Interface Glyph com análise de frequência em tempo real de alta fidelidade.</string>
     <string name="about_section_why">Por que somos melhores que a implementação da Nothing:</string>
     <string name="about_why_1">• Brilho de 12 bits (4096 níveis) vs ~2 bits padrão (3 níveis)</string>
@@ -153,9 +152,6 @@
     <string name="overlay_height">Altura da Sobreposição</string>
     <string name="vertical_position">Posição Vertical</string>
     <string name="dynamic_gain">Ganho Dinâmico</string>
-    <string name="battery_saver">Economia de Bateria</string>
-    <string name="saver_threshold">Limite de Economia</string>
-    <string name="battery_saver_desc">Reduz o brilho do Glyph quando a bateria estiver abaixo deste nível para economizar energia.</string>
 
     <string name="tab_audio">Áudio</string>
     <string name="tab_glyphs">Glyphs</string>
