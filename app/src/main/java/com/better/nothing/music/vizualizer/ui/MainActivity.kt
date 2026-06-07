@@ -1415,10 +1415,20 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                     sumSquares += magnitude[i] * magnitude[i]
                     sum += magnitude[i]
                 }
-                val count = binHi - binLo + 1
                 val rms = if (count > 0) kotlin.math.sqrt(sumSquares / count) else 0f
-                // Increased gain from 4f to 8f and added a higher floor/ceiling
-                _hapticAmplitude.value = (rms * 8f).coerceIn(0f, 1.2f)
+                
+                // --- APPLY SETTINGS TO UI PREVIEW ---
+                val currentGain = _hapticMultiplier.value * 4f // Matching engine's base gain (SPECTRUM_GAIN)
+                val currentGamma = _hapticGamma.value
+                
+                val rawValue = rms * currentGain
+                val finalValue = if (_hapticMode.value == HapticMode.BASS_TO_AMPLITUDE) {
+                    kotlin.math.pow(rawValue.toDouble(), currentGamma.toDouble()).toFloat()
+                } else {
+                    rawValue
+                }
+                
+                _hapticAmplitude.value = finalValue.coerceIn(0f, 1.2f)
 
                 // Flashlight Amplitude Calculation
                 val fBinLo = (_flashlightFreqMin.value / hzPerBin).toInt().coerceIn(0, magnitude.lastIndex)

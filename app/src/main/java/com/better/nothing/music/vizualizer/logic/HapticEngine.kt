@@ -85,7 +85,7 @@ class BeatDetectionHapticEngine(context: Context) {
         pushDelta(delta)
 
         // Use adaptive threshold with a decaying mask to prevent double-triggering
-        val threshold = max(medianDelta() * 1.8f, thresholdMask)
+        val threshold = max(medianDelta() * 2.2f, thresholdMask)
 
         val now = SystemClock.elapsedRealtime()
         val cooldownPassed = now - lastTriggerMs >= cooldownMs
@@ -93,7 +93,7 @@ class BeatDetectionHapticEngine(context: Context) {
         // Main trigger condition
         if (
             delta > threshold &&
-            delta > 0.015f &&
+            delta > 0.025f &&
             cooldownPassed
         ) {
 
@@ -103,7 +103,7 @@ class BeatDetectionHapticEngine(context: Context) {
         }
 
         // Decay the mask over time
-        thresholdMask *= 0.82f
+        thresholdMask *= 0.85f
     }
 
     private fun pushDelta(delta: Float) {
@@ -178,8 +178,8 @@ class BeatDetectionHapticEngine(context: Context) {
 
     private fun buildWaveform(): VibrationEffect {
 
-        val sustainMs = 10
-        val decayMs = 1000
+        val sustainMs = 40
+        val decayMs = 1500
         val stepMs = 10
 
         val count = (sustainMs + decayMs) / stepMs
