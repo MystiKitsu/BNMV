@@ -4,6 +4,8 @@
 
 * Remove richtap haptics
 * Improve notification (ALEKS DOES IT)
+* Fix the amplitude haptics (Aleks)
+* Add 3.0 gamma to the UI shift vizualisation 
 
 ### UI/UX
 * M3E split and round those 2 /\ buttons
