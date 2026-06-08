@@ -53,9 +53,7 @@ Even if it technically isn’t, the visual response to music just isn’t very o
 
 ## 📲 Supported Nothing Phone Models
 **Currently these models are supported:**
-- Nothing phone (1) 
-  - Needs glyph debug mode **ON** for the app, set through an *ADB command*: `adb shell settings put global nt_glyph_interface_debug_enable 1`. This will be fixed once Nothing gives us their API key.
-    > this is not needed after the 3.1 update as we have gained an API key from nothing!
+- Nothing phone (1)
 - Nothing phone (2)
 - Nothing phone (2a)
 - Nothing phone (2a plus)

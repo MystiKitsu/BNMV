@@ -158,7 +158,7 @@ fun HapticsScreen(
                         ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
                             val label = if (hapticMode == HapticMode.BEAT_DETECTION) stringResource(R.string.haptics_speed_label, hapticGamma) else stringResource(R.string.haptics_gamma_label, hapticGamma)
                             CardHeader(title = label)
-                            val currentRange = if (hapticMode == HapticMode.BEAT_DETECTION) 4f..10f else 1f..4.0f
+                            val currentRange = if (hapticMode == HapticMode.BEAT_DETECTION) 4f..10f else 1f..2.0f
                             ExpressiveSlider(
                                 value = hapticGamma.coerceIn(currentRange),
                                 onValueChange = onHapticGammaChanged,

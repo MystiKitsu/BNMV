@@ -16,7 +16,6 @@ import com.better.nothing.music.vizualizer.model.Announcement
 import com.better.nothing.music.vizualizer.model.ZoneData
 import com.better.nothing.music.vizualizer.ui.CommunityPresetsScreen
 import com.better.nothing.music.vizualizer.ui.AnnouncementModal
-import com.better.nothing.music.vizualizer.ui.AnnouncementEditorScreen
 import com.better.nothing.music.vizualizer.ui.AnnouncementHistoryScreen
 
 import rikka.shizuku.Shizuku
@@ -131,6 +130,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.math.absoluteValue
 import kotlin.math.sqrt
+import kotlin.math.pow
 
 enum class Tab(val label: String, val labelRes: Int) {
     Audio("Audio", R.string.tab_audio), 
@@ -548,12 +548,6 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 
     private val _dynamicGainEnabled = MutableStateFlow(false)
     val dynamicGainEnabled = _dynamicGainEnabled.asStateFlow()
-
-    private val _batterySaverEnabled = MutableStateFlow(false)
-    val batterySaverEnabled = _batterySaverEnabled.asStateFlow()
-
-    private val _batterySaverThreshold = MutableStateFlow(20)
-    val batterySaverThreshold = _batterySaverThreshold.asStateFlow()
 
     private val _overlayEnabled = MutableStateFlow(false)
     val overlayEnabled = _overlayEnabled.asStateFlow()
@@ -998,11 +992,11 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     fun showAbout() { _isShowingAbout.value = true }
     fun hideAbout() { _isShowingAbout.value = false }
 
-    private val _isShowingTimeline = MutableStateFlow(false)
-    val isShowingTimeline = _isShowingTimeline.asStateFlow()
+    private val _isShowingLicense = MutableStateFlow(false)
+    val isShowingLicense = _isShowingLicense.asStateFlow()
 
-    fun showTimeline() { _isShowingTimeline.value = true }
-    fun hideTimeline() { _isShowingTimeline.value = false }
+    fun showLicense() { _isShowingLicense.value = true }
+    fun hideLicense() { _isShowingLicense.value = false }
 
     private val _isShowingCommunity = MutableStateFlow(false)
     val isShowingCommunity = _isShowingCommunity.asStateFlow()
@@ -1340,22 +1334,6 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    fun setBatterySaverEnabled(enabled: Boolean) {
-        _batterySaverEnabled.value = enabled
-        viewModelScope.launch(Dispatchers.IO) {
-            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
-                .edit { putBoolean("battery_saver_enabled", enabled) }
-        }
-    }
-
-    fun setBatterySaverThreshold(threshold: Int) {
-        _batterySaverThreshold.value = threshold
-        viewModelScope.launch(Dispatchers.IO) {
-            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
-                .edit { putInt("battery_saver_threshold", threshold) }
-        }
-    }
-
     fun setOverlayEnabled(enabled: Boolean) {
         _overlayEnabled.value = enabled
         MainActivity.serviceStatic?.setOverlayEnabled(enabled)
@@ -1462,8 +1440,19 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 }
                 val count = binHi - binLo + 1
                 val rms = if (count > 0) kotlin.math.sqrt(sumSquares / count) else 0f
-                // Increased gain from 4f to 8f and added a higher floor/ceiling
-                _hapticAmplitude.value = (rms * 8f).coerceIn(0f, 1.2f)
+                
+                // --- APPLY SETTINGS TO UI PREVIEW ---
+                val currentGain = _hapticMultiplier.value * 4f // Matching engine's base gain (SPECTRUM_GAIN)
+                val currentGamma = _hapticGamma.value
+                
+                val rawValue = rms * currentGain
+                val finalValue = if (_hapticMode.value == HapticMode.BASS_TO_AMPLITUDE) {
+                    rawValue.toDouble().pow(currentGamma.toDouble()).toFloat()
+                } else {
+                    rawValue
+                }
+                
+                _hapticAmplitude.value = finalValue.coerceIn(0f, 1.2f)
 
                 // Flashlight Amplitude Calculation
                 val fBinLo = (_flashlightFreqMin.value / hzPerBin).toInt().coerceIn(0, magnitude.lastIndex)
@@ -1589,8 +1578,6 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 _configVersion.value = AudioCaptureService.loadZonesConfigVersion(ctx)
                 _disableGlyphsWhenSilent.value = prefs.getBoolean("disable_glyphs_when_silent", false)
                 _dynamicGainEnabled.value = prefs.getBoolean("dynamic_gain_enabled", false)
-                _batterySaverEnabled.value = prefs.getBoolean("battery_saver_enabled", false)
-                _batterySaverThreshold.value = prefs.getInt("battery_saver_threshold", 20)
                 _overlayEnabled.value = prefs.getBoolean("overlay_enabled", false)
                 _overlayWidth.value = prefs.getInt("overlay_width", 120)
                 _overlayHeight.value = prefs.getInt("overlay_height", 12)
@@ -1996,7 +1983,7 @@ class MainActivity : ComponentActivity() {
                 val selectedDevice by viewModel.selectedDevice.collectAsStateWithLifecycle()
                 val isEditingPreset by viewModel.isEditingPreset.collectAsStateWithLifecycle()
                 val isShowingAbout by viewModel.isShowingAbout.collectAsStateWithLifecycle()
-                val isShowingTimeline by viewModel.isShowingTimeline.collectAsStateWithLifecycle()
+                val isShowingLicense by viewModel.isShowingLicense.collectAsStateWithLifecycle()
                 val showUpdateDialog by viewModel.showUpdateDialog.collectAsStateWithLifecycle()
                 val appUpdateStatus by viewModel.appUpdateStatus.collectAsStateWithLifecycle()
 
@@ -2100,16 +2087,16 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (isShowingTimeline) {
+                if (isShowingLicense) {
                     androidx.compose.ui.window.Dialog(
-                        onDismissRequest = viewModel::hideTimeline,
+                        onDismissRequest = viewModel::hideLicense,
                         properties = androidx.compose.ui.window.DialogProperties(
                             usePlatformDefaultWidth = false,
                             decorFitsSystemWindows = false
                         )
                     ) {
                         Box(modifier = Modifier.background(MaterialTheme.colorScheme.background)) {
-                            TimelineScreen(onDismiss = viewModel::hideTimeline)
+                            LicenseScreen(onDismiss = viewModel::hideLicense)
                         }
                     }
                 }
@@ -2682,7 +2669,6 @@ class MainActivity : ComponentActivity() {
         service?.setNotificationFlashEnabled(viewModel.notificationFlashEnabled.value)
         service?.setStrobeEnabled(viewModel.strobeEnabled.value)
         service?.setDynamicGainEnabled(viewModel.dynamicGainEnabled.value)
-        service?.setBatterySaverEnabled(viewModel.batterySaverEnabled.value, viewModel.batterySaverThreshold.value)
         service?.setOverlayEnabled(viewModel.overlayEnabled.value)
         service?.setOverlayWidth(viewModel.overlayWidth.value)
         service?.setOverlayHeight(viewModel.overlayHeight.value)

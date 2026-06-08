@@ -98,8 +98,9 @@ public final class FlashlightEngine {
     private CameraCharacteristics.Key<Integer> getTorchMaxLevelKey() {
         try {
             // This field was added in API 33.
-            return (CameraCharacteristics.Key<Integer>) CameraCharacteristics.class
-                    .getField("FLASH_INFO_STRENGTH_MAX_LEVEL").get(null);
+            // Using reflection to check for the field's existence.
+            Object field = CameraCharacteristics.class.getField("FLASH_INFO_STRENGTH_MAX_LEVEL").get(null);
+            return (CameraCharacteristics.Key<Integer>) field;
         } catch (Exception e) {
             return null;
         }
@@ -144,15 +145,15 @@ public final class FlashlightEngine {
 
         float normalized = decayedState / peakTracker;
 
-        float shaped = (float) Math.pow(normalized, flashlightGamma) * flashlightMultiplier;
+        float shapedValue = (float) Math.pow(normalized, flashlightGamma) * flashlightMultiplier;
         
-        if (shaped < flashlightThreshold) {
-            shaped = 0f;
+        if (shapedValue < flashlightThreshold) {
+            shapedValue = 0f;
         } else {
-            shaped = (shaped - flashlightThreshold) / (1f - flashlightThreshold);
+            shapedValue = (shapedValue - flashlightThreshold) / (1f - flashlightThreshold);
         }
 
-        smoothedIntensity = (flashlightSmoothing * smoothedIntensity) + ((1f - flashlightSmoothing) * shaped);
+        smoothedIntensity = (flashlightSmoothing * smoothedIntensity) + ((1f - flashlightSmoothing) * shapedValue);
 
         int level;
         if (hasTorchStrength) {

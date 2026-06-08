@@ -35,7 +35,6 @@ import android.media.AudioRecord;
 import android.media.audiofx.Visualizer;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
-import android.net.Uri;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
@@ -86,6 +85,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class AudioCaptureService extends Service {
 
@@ -129,7 +129,7 @@ public class AudioCaptureService extends Service {
     private static final long PROJECTION_SETTLE_DELAY_MS = 500L;
 
     private static volatile boolean sIsRunning = false;
-    private static AudioCaptureService sInstance = null;
+    public static AudioCaptureService sInstance = null;
 
     private final IBinder mBinder = new LocalBinder();
     private final Object mCaptureLock = new Object();
@@ -227,21 +227,16 @@ public class AudioCaptureService extends Service {
     private List<String> mAvailablePresetKeys = Collections.emptyList();
     private int mSelectedDevice = DeviceProfile.DEVICE_UNKNOWN;
     private volatile int mLatencyCompensationMs = 0;
-    private volatile int mLatencySettingsVersion = 0;
-    private volatile int mPresetConfigVersion = 0;
-    private volatile int mHapticSettingsVersion = 0;
+    private final AtomicInteger mLatencySettingsVersion = new AtomicInteger(0);
+    private final AtomicInteger mPresetConfigVersion = new AtomicInteger(0);
+    private final AtomicInteger mHapticSettingsVersion = new AtomicInteger(0);
     private volatile float mGamma = DEFAULT_GAMMA;
     private volatile int mMaxBrightness = 4095;
 
     private boolean mIdleBreathingEnabled = false;
     private boolean mNotificationFlashEnabled = false;
-    private boolean mStrobeEnabled = false;
     private boolean mDisableGlyphsWhenSilent = false;
     private boolean mDynamicGainEnabled = false;
-    private boolean mBatterySaverEnabled = false;
-    private int mBatterySaverThreshold = 20;
-    private int mCurrentBatteryLevel = 100;
-    private boolean mIsBatteryLow = false;
 
     private boolean mOverlayEnabled = false;
     private int mOverlayWidth = 120;
@@ -273,7 +268,6 @@ public class AudioCaptureService extends Service {
     private float mRollingMaxMagnitude = 0.05f;
     private AudioProcessor mAudioProcessor;
     private GlyphRenderer mGlyphRenderer;
-    private AudioDeviceManager mAudioDeviceManager;
     private long mLastSendMs = 0L;
     private long mCaptureStartTimeMs = 0L;
     private float[] mLatestMagnitudes = new float[0];
@@ -298,11 +292,11 @@ public class AudioCaptureService extends Service {
                 long now = SystemClock.elapsedRealtime();
                 // If it's been more than 100ms since the last audio frame, manually trigger a frame for breathing
                 if (now - mLastAudioActivityMs > 100) {
-                    processFrame(new float[0], 0f, mVisualizerConfig, mPresetConfigVersion);
+                    processFrame(new float[0], 0f, mVisualizerConfig, mPresetConfigVersion.get());
                 }
             }
             if (sIsRunning) {
-                mMainHandler.postDelayed(this, 33); // ~30fps for idle breathing
+                mMainHandler.postDelayed(this, 16); // 60fps for idle breathing
             }
         }
     };
@@ -319,32 +313,9 @@ public class AudioCaptureService extends Service {
         }
     };
 
-    private final android.content.BroadcastReceiver mBatteryReceiver = new android.content.BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (Intent.ACTION_BATTERY_CHANGED.equals(intent.getAction())) {
-                int level = intent.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1);
-                int scale = intent.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, -1);
-                if (level != -1 && scale != -1) {
-                    mCurrentBatteryLevel = (int) ((level / (float) scale) * 100);
-                    updateBatterySaverState();
-                }
-            }
-        }
-    };
-
-    private void updateBatterySaverState() {
-        boolean wasLow = mIsBatteryLow;
-        mIsBatteryLow = mBatterySaverEnabled && mCurrentBatteryLevel <= mBatterySaverThreshold;
-        if (wasLow != mIsBatteryLow && mGlyphRenderer != null) {
-            applyEffectiveMaxBrightness();
-        }
-    }
-
     private void applyEffectiveMaxBrightness() {
         if (mGlyphRenderer == null) return;
-        int effectiveMax = mIsBatteryLow ? Math.min(mMaxBrightness, 1500) : mMaxBrightness;
-        mGlyphRenderer.setMaxBrightness(effectiveMax);
+        mGlyphRenderer.setMaxBrightness(mMaxBrightness);
     }
 
     private static final class PendingFrame {
@@ -388,8 +359,6 @@ public class AudioCaptureService extends Service {
         super.onCreate();
         sInstance = this;
 
-        registerReceiver(mBatteryReceiver, new android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-
         mWorkerThread = new HandlerThread("GlyphVizWorker", Process.THREAD_PRIORITY_BACKGROUND);
         mWorkerThread.start();
         mWorkerHandler = Handler.createAsync(mWorkerThread.getLooper());
@@ -403,7 +372,7 @@ public class AudioCaptureService extends Service {
         mBeatDetectionEngine = new BeatDetectionHapticEngine(this);
         mFlashlightEngine = new FlashlightEngine(this);
         mAudioProcessor = new AudioProcessor();
-        mAudioDeviceManager = new AudioDeviceManager(this, this::refreshLatencyForCurrentAudioRoute);
+        new AudioDeviceManager(this, this::refreshLatencyForCurrentAudioRoute);
 
         mSelectedDevice = DeviceProfile.detectDevice();
         mLatencyCompensationMs = loadLatencyCompensationMs(this, mSelectedDevice);
@@ -530,9 +499,6 @@ public class AudioCaptureService extends Service {
     @Override
     public void onDestroy() {
         sInstance = null;
-        try {
-            unregisterReceiver(mBatteryReceiver);
-        } catch (Exception ignored) {}
         stopCapture();
         clearGlyphSession();
         if (mRichTapHapticEngine != null) {
@@ -640,11 +606,13 @@ public class AudioCaptureService extends Service {
 
     public static void saveLatencyPresets(Context context, List<Integer> presets) {
         StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < presets.size(); i++) {
-            if (i > 0) {
+        boolean first = true;
+        for (Integer preset : presets) {
+            if (!first) {
                 builder.append(",");
             }
-            builder.append(presets.get(i));
+            builder.append(preset);
+            first = false;
         }
         getPreferences(context)
                 .edit()
@@ -760,7 +728,6 @@ public class AudioCaptureService extends Service {
 
             IBinder wrapped = new ShizukuBinderWrapper(binder);
 
-            Class<?> managerClass = Class.forName("android.media.projection.IMediaProjectionManager");
             Class<?> stubClass = Class.forName("android.media.projection.IMediaProjectionManager$Stub");
 
             Object service = null;
@@ -833,7 +800,7 @@ public class AudioCaptureService extends Service {
                     applyPresetSelection(fallback);
                 } else {
                     mVisualizerConfig = loadVisualizerConfig(mPresetKey);
-                    mPresetConfigVersion++;
+                    mPresetConfigVersion.incrementAndGet();
                     resetVisualizerState();
                     refreshNotification();
                 }
@@ -864,8 +831,8 @@ public class AudioCaptureService extends Service {
     public void setLatencyCompensationMs(int latencyMs) {
         if (mLatencyCompensationMs != latencyMs) {
             mLatencyCompensationMs = latencyMs;
-            mLatencySettingsVersion++;
-            mPresetConfigVersion++;
+            mLatencySettingsVersion.incrementAndGet();
+            mPresetConfigVersion.incrementAndGet();
         }
     }
 
@@ -876,6 +843,7 @@ public class AudioCaptureService extends Service {
         }
     }
 
+    @SuppressWarnings("unused")
     public void setSpectrumGain(float gain) {
         if (mGlyphRenderer != null) {
             mGlyphRenderer.setSpectrumGain(4.0f);
@@ -884,10 +852,10 @@ public class AudioCaptureService extends Service {
     }
 
     public void setMaxBrightness(int brightness) {
-        brightness = clampGlyphBrightness(brightness);
-        final int targetBrightness = brightness;
+        int clamped = clampGlyphBrightness(brightness);
+        final int targetBrightness = clamped;
         final boolean reopeningAfterEnable = mMaxBrightness <= 0 && targetBrightness > 0;
-        mMaxBrightness = brightness;
+        mMaxBrightness = clamped;
         
         if (mWorkerHandler == null) return;
         mWorkerHandler.post(() -> {
@@ -925,7 +893,6 @@ public class AudioCaptureService extends Service {
     }
 
     public void setStrobeEnabled(boolean enabled) {
-        mStrobeEnabled = enabled;
         if (mGlyphRenderer != null) {
             mGlyphRenderer.setStrobeEnabled(enabled);
         }
@@ -940,12 +907,6 @@ public class AudioCaptureService extends Service {
 
     public void setDynamicGainEnabled(boolean enabled) {
         mDynamicGainEnabled = enabled;
-    }
-
-    public void setBatterySaverEnabled(boolean enabled, int threshold) {
-        mBatterySaverEnabled = enabled;
-        mBatterySaverThreshold = threshold;
-        updateBatterySaverState();
     }
 
     public void setOverlayEnabled(boolean enabled) {
@@ -1076,7 +1037,7 @@ public class AudioCaptureService extends Service {
         if (mBeatDetectionEngine != null) {
             mBeatDetectionEngine.resetDetectionState();
         }
-        mHapticSettingsVersion++;
+        mHapticSettingsVersion.incrementAndGet();
     }
 
     public void setHapticMultiplier(float multiplier) {
@@ -1111,7 +1072,7 @@ public class AudioCaptureService extends Service {
     public void setFlashlightFreqRange(float minHz, float maxHz) {
         mFlashlightMinHz = minHz;
         mFlashlightMaxHz = maxHz;
-        mHapticSettingsVersion++; 
+        mHapticSettingsVersion.incrementAndGet(); 
     }
 
     public void setFlashlightMultiplier(float multiplier) {
@@ -1326,7 +1287,7 @@ public class AudioCaptureService extends Service {
             return;
         }
 
-        mAudioProcessor.updateFFTSize(mLatencyCompensationMs);
+        mAudioProcessor.updateFFTSize();
         float currentHzPerBin = mAudioProcessor.getHzPerBin();
         int fftSize = 4096;
         mHapticRange = new AudioProcessor.FrequencyRange(mHapticMinHz, mHapticMaxHz, currentHzPerBin, fftSize);
@@ -1335,15 +1296,15 @@ public class AudioCaptureService extends Service {
         short[] hop = new short[HOP];
         ArrayDeque<PendingFrame> pendingFrames = new ArrayDeque<>();
 
-        int appliedLatencyVersion = mLatencySettingsVersion;
-        int appliedPresetVersion = mPresetConfigVersion;
-        int appliedHapticVersion = mHapticSettingsVersion;
+        int appliedLatencyVersion = mLatencySettingsVersion.get();
+        int appliedPresetVersion = mPresetConfigVersion.get();
+        int appliedHapticVersion = mHapticSettingsVersion.get();
 
         while (mCapturing && !Thread.currentThread().isInterrupted()) {
             AudioProcessor.VisualizerConfig config = mVisualizerConfig;
-            int presetVersion = mPresetConfigVersion;
-            int latencyVersion = mLatencySettingsVersion;
-            int hapticVersion = mHapticSettingsVersion;
+            int presetVersion = mPresetConfigVersion.get();
+            int latencyVersion = mLatencySettingsVersion.get();
+            int hapticVersion = mHapticSettingsVersion.get();
 
             if (config == null) {
                 return;
@@ -1355,7 +1316,7 @@ public class AudioCaptureService extends Service {
                 appliedLatencyVersion = latencyVersion;
                 appliedHapticVersion = hapticVersion;
 
-                mAudioProcessor.updateFFTSize(mLatencyCompensationMs);
+                mAudioProcessor.updateFFTSize();
                 float hzPerBin = mAudioProcessor.getHzPerBin();
                 mHapticRange = new AudioProcessor.FrequencyRange(mHapticMinHz, mHapticMaxHz, hzPerBin, 4096);
                 mFlashlightRange = new AudioProcessor.FrequencyRange(mFlashlightMinHz, mFlashlightMaxHz, hzPerBin, 4096);
@@ -1372,7 +1333,7 @@ public class AudioCaptureService extends Service {
                 flashlightPeak = mAudioProcessor.computeRangeMagnitude(mFlashlightRange, result.magnitude);
             }
 
-            if (presetVersion != mPresetConfigVersion || config != mVisualizerConfig) continue;
+            if (presetVersion != mPresetConfigVersion.get() || config != mVisualizerConfig) continue;
 
             int delay = mCaptureSource == CaptureSource.MIC ? 0 : mLatencyCompensationMs;
             pendingFrames.addLast(new PendingFrame(
@@ -1424,7 +1385,7 @@ public class AudioCaptureService extends Service {
     }
 
     private void processFrame(float[] uniqueMagnitudes, float hapticPeak, AudioProcessor.VisualizerConfig config, int configVersion) {
-        if (config == null || configVersion != mPresetConfigVersion) return;
+        if (config == null || configVersion != mPresetConfigVersion.get()) return;
 
         long now = SystemClock.elapsedRealtime();
         
@@ -1520,7 +1481,7 @@ public class AudioCaptureService extends Service {
             if (!resolvedPresetKey.equals(mPresetKey) || mVisualizerConfig == null) {
                 mVisualizerConfig = loadVisualizerConfig(resolvedPresetKey);
                 mPresetKey = resolvedPresetKey;
-                mPresetConfigVersion++;
+                mPresetConfigVersion.incrementAndGet();
                 resetVisualizerState();
                 refreshNotification();
             }
@@ -1627,7 +1588,7 @@ public class AudioCaptureService extends Service {
         SystemClock.sleep(250);
 
         try {
-            mAudioProcessor.updateFFTSize(mLatencyCompensationMs);
+            mAudioProcessor.updateFFTSize();
             float currentHzPerBin = mAudioProcessor.getHzPerBin();
             int fftSize = 4096;
             mHapticRange = new AudioProcessor.FrequencyRange(mHapticMinHz, mHapticMaxHz, currentHzPerBin, fftSize);
@@ -1638,7 +1599,7 @@ public class AudioCaptureService extends Service {
             for (int i = 0; i < 3; i++) {
                 try {
                     mVisualizer = new Visualizer(0);
-                    if (mVisualizer != null) break;
+                    break;
                 } catch (RuntimeException e) {
                     lastException = e;
                     Log.w(TAG, "Visualizer init attempt " + (i + 1) + " failed: " + e.getMessage());
@@ -1651,8 +1612,9 @@ public class AudioCaptureService extends Service {
                 throw new RuntimeException("Visualizer engine failed to initialize after retries");
             }
 
-            int captureSize = Visualizer.getCaptureSizeRange()[1];
+            int captureSize = Math.min(Visualizer.getCaptureSizeRange()[1], 1024);
             mVisualizer.setCaptureSize(captureSize);
+            int maxRate = Visualizer.getMaxCaptureRate();
             mVisualizer.setDataCaptureListener(new Visualizer.OnDataCaptureListener() {
                 @Override
                 public void onWaveFormDataCapture(Visualizer visualizer, byte[] waveform, int samplingRate) {
@@ -1663,7 +1625,7 @@ public class AudioCaptureService extends Service {
                 public void onFftDataCapture(Visualizer visualizer, byte[] fft, int samplingRate) {
                     // Using waveform captures instead of FFT directly so the existing audio processor can consume PCM-like data.
                 }
-            }, Visualizer.getMaxCaptureRate(), true, false);
+            }, maxRate, true, false);
             mVisualizer.setEnabled(true);
         } catch (Exception e) {
             Log.e(TAG, "Failed to start Visualizer capture", e);
@@ -1673,8 +1635,10 @@ public class AudioCaptureService extends Service {
 
     private void processVisualizerWaveform(byte[] waveform, int samplingRate) {
         if (!mCapturing || mVisualizerConfig == null) return;
+        
+        Log.e(TAG, "Waveform received. Size: " + waveform.length + ", Rate: " + (samplingRate / 1000.0f) + " Hz");
 
-        mAudioProcessor.updateFFTSize(mLatencyCompensationMs, samplingRate / 1000); // Visualizer API samplingRate is in mHz
+        mAudioProcessor.updateFFTSize(samplingRate / 1000); // Visualizer API samplingRate is in mHz
 
         short[] hop = new short[waveform.length];
         for (int i = 0; i < waveform.length; i++) {
@@ -1696,7 +1660,7 @@ public class AudioCaptureService extends Service {
                 result.hapticPeak,
                 flashlightPeak,
                 mVisualizerConfig,
-                mPresetConfigVersion,
+                mPresetConfigVersion.get(),
                 SystemClock.elapsedRealtime() + delay
         );
 

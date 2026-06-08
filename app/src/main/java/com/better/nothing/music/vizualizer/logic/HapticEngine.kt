@@ -16,7 +16,7 @@ class BeatDetectionHapticEngine(context: Context) {
 
     private var waveform: VibrationEffect? = null
     private var hapticMultiplier = 1.0f
-    private var hapticGamma = 4.0f
+    private var hapticGamma = 2.0f
 
     private val deltaHistory = FloatArray(61)
     private val sortedHistory = FloatArray(61)
@@ -85,7 +85,7 @@ class BeatDetectionHapticEngine(context: Context) {
         pushDelta(delta)
 
         // Use adaptive threshold with a decaying mask to prevent double-triggering
-        val threshold = max(medianDelta() * 1.8f, thresholdMask)
+        val threshold = max(medianDelta() * 2.2f, thresholdMask)
 
         val now = SystemClock.elapsedRealtime()
         val cooldownPassed = now - lastTriggerMs >= cooldownMs
@@ -93,7 +93,7 @@ class BeatDetectionHapticEngine(context: Context) {
         // Main trigger condition
         if (
             delta > threshold &&
-            delta > 0.015f &&
+            delta > 0.025f &&
             cooldownPassed
         ) {
 
@@ -103,7 +103,7 @@ class BeatDetectionHapticEngine(context: Context) {
         }
 
         // Decay the mask over time
-        thresholdMask *= 0.82f
+        thresholdMask *= 0.85f
     }
 
     private fun pushDelta(delta: Float) {
@@ -168,10 +168,6 @@ class BeatDetectionHapticEngine(context: Context) {
     private fun triggerWaveform() {
 
         try {
-
-            // Intentionally interrupt previous waveform
-            cancelVibration()
-
             vibrate(waveform!!)
 
         } catch (e: Exception) {
@@ -182,9 +178,9 @@ class BeatDetectionHapticEngine(context: Context) {
 
     private fun buildWaveform(): VibrationEffect {
 
-        val sustainMs = 10
-        val decayMs = 140
-        val stepMs = 5
+        val sustainMs = 40
+        val decayMs = 1500
+        val stepMs = 10
 
         val count = (sustainMs + decayMs) / stepMs
 
@@ -192,6 +188,10 @@ class BeatDetectionHapticEngine(context: Context) {
             LongArray(count) { stepMs.toLong() }
 
         val amplitudes = IntArray(count)
+
+        if (vibrator != null && !vibrator.hasAmplitudeControl()) {
+            Log.w(TAG, "Device does not support amplitude control. Waveform will be binary.")
+        }
 
         for (i in 0 until count) {
 
@@ -234,15 +234,12 @@ class BeatDetectionHapticEngine(context: Context) {
 
     private fun vibrate(effect: VibrationEffect) {
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-
+        if (vibrator != null) {
+            vibrator.vibrate(effect)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             vibratorManager?.vibrate(
                 CombinedVibration.createParallel(effect)
             )
-
-        } else {
-
-            vibrator?.vibrate(effect)
         }
     }
 

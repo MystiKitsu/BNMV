@@ -99,17 +99,19 @@ public final class RichTapHapticEngine {
                 RichTapUtils.getInstance().init(context);
                 
                 // Poll for support status
-                for (int i = 0; i < 5; i++) {
+                int pollCount = 0;
+                while (pollCount < 5) {
                     SystemClock.sleep(100);
                     sIsSupported = RichTapUtils.getInstance().isSupportedRichTap();
                     if (sIsSupported) break;
+                    pollCount++;
                 }
 
                 Log.d(TAG, "RichTap initialized. Supported: " + sIsSupported);
 
                 if (sIsSupported) {
                     // Extract asset to file storage
-                    sHeFilePath = dumpAssetToDataStorage(context, HE_ASSET_NAME);
+                    sHeFilePath = dumpAssetToDataStorage(context);
 
                     // Play a short startup test to confirm motor works
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -248,11 +250,11 @@ public final class RichTapHapticEngine {
         RichTapUtils.getInstance().quit();
     }
 
-    private static String dumpAssetToDataStorage(Context context, String filename) {
-        File destFile = new File(context.getFilesDir(), filename);
+    private static String dumpAssetToDataStorage(Context context) {
+        File destFile = new File(context.getFilesDir(), HE_ASSET_NAME);
         try {
             if (!destFile.exists()) {
-                InputStream input = context.getAssets().open(filename);
+                InputStream input = context.getAssets().open(HE_ASSET_NAME);
                 FileOutputStream output = new FileOutputStream(destFile);
                 byte[] buffer = new byte[1024];
                 int length;
@@ -265,7 +267,7 @@ public final class RichTapHapticEngine {
             }
             return destFile.getAbsolutePath();
         } catch (Exception e) {
-            Log.e(TAG, "Failed to dump asset: " + filename, e);
+            Log.e(TAG, "Failed to dump asset: " + HE_ASSET_NAME, e);
             return null;
         }
     }

@@ -232,41 +232,37 @@ public class GlyphRenderer {
         if (mBreathingEnvelope > 0.01f) {
             int zoneCount = nextState.length;
             for (int i = 0; i < zoneCount; i++) {
-                float intensity;
-                switch (mIdlePattern) {
-                    case "wave": {
+                float intensity = switch (mIdlePattern) {
+                    case "wave" -> {
                         double timeProg = (double) (nowMs % 2000L) / 2000L;
                         float phaseShift = (float) i / zoneCount;
-                        intensity = (float) (0.1 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg - phaseShift)));
-                        break;
+                        yield (float) (0.1 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg - phaseShift)));
                     }
-                    case "scanner": {
+                    case "scanner" -> {
                         double timeProg = (double) (nowMs % 2500L) / 2500L;
                         float scannerPos = (float) (0.5 + 0.5 * Math.sin(2.0 * Math.PI * timeProg));
                         float ledPos = (float) i / zoneCount;
                         float dist = Math.abs(ledPos - scannerPos);
-                        intensity = (float) Math.exp(-dist * dist * 40.0);
-                        break;
+                        yield (float) Math.exp(-dist * dist * 40.0);
                     }
-                    case "zebra": {
+                    case "zebra" -> {
                         double timeProg = (double) (nowMs % 2500L) / 2500L;
                         boolean even = (i % 2 == 0);
                         double sinVal = Math.sin(2.0 * Math.PI * timeProg);
-                        intensity = even ? (float)(0.5 + 0.5 * sinVal) : (float)(0.5 - 0.5 * sinVal);
-                        break;
+                        yield even ? (float) (0.5 + 0.5 * sinVal) : (float) (0.5 - 0.5 * sinVal);
                     }
-                    case "static": {
-                        intensity = 0.2f;
-                        break;
-                    }
-                    case "pulse":
-                    default: {
+                    case "static" -> 0.2f;
+                    case "pulse" -> {
                         double timeProg = (double) (nowMs % 3000L) / 3000L;
                         float phaseShift = (float) i * 0.02f;
-                        intensity = (float) (0.2 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg + phaseShift) - Math.PI / 2.0));
-                        break;
+                        yield (float) (0.2 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg + phaseShift) - Math.PI / 2.0));
                     }
-                }
+                    default -> {
+                        double timeProg = (double) (nowMs % 3000L) / 3000L;
+                        float phaseShift = (float) i * 0.02f;
+                        yield (float) (0.2 + 0.5 * Math.sin(2.0 * Math.PI * (timeProg + phaseShift) - Math.PI / 2.0));
+                    }
+                };
 
                 float breathVal = (0.02f + intensity * 0.48f) * mBreathingEnvelope;
                 if (nextState[i] < breathVal) {
