@@ -3,11 +3,10 @@
 ## To Do
 
 * Remove richtap haptics
+* Improve notification (ALEKS DOES IT)
 
 ### UI/UX
 * M3E split and round those 2 /\ buttons
-* M3E selector capture source
-* Replace dropdowns with Material 3 Expressive Split Buttons
 * Redesign about page for a proper hierarchical easy M3E design
 * Merge Git repo link card with app version card
 
@@ -20,10 +19,8 @@
 
 ### Visual
 * Screen Mirroring: On-screen visualizer overlay for when phone is face-up (1c)
-* Dynamic UI Theming: Use Palette API to match app colors with album art - DONE
 * Add one-shot spam haptics engine (from Oliver)
 * Refine beat detection engine haptics
-* Ask RichTap what is going on
 * Remove notification detection
 
 ### Device Specific
@@ -35,7 +32,10 @@
 ### Maintenance/Misc
 * Check if auto update works 
 
+---
+
 ## Done
+* Dynamic UI Theming: Use Palette API to match app colors with album art - DONE
 * Dynamic Gain Normalization: Auto-Gain for quiet audio (Experimental) - DONE
 * Navigation Bar Overlay: Graphical bar visualizer on top of nav bar
 * Dynamic Peak Normalization: Auto-Gain for quiet audio (Experimental)
