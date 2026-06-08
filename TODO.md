@@ -2,6 +2,8 @@
 
 ## To Do
 
+* Remove richtap haptics
+
 ### UI/UX
 * M3E split and round those 2 /\ buttons
 * M3E selector capture source
@@ -10,12 +12,10 @@
 * Merge Git repo link card with app version card
 
 ### Logic/Features
-* Adaptive Smoothing: Real-time decay adjustment based on music tempo (3c)
-* Dynamic Gain Normalization: Auto-Gain for quiet audio (Experimental) - DONE
-* Battery Saver Threshold: Dims visualization when low battery (Experimental) - DONE
-* Proximity Visualization: Auto-pause when phone is face-up or in pocket (5d)
-* Latency Auto-Calibration: Sync Wizard using microphone to measure delay (4a)
-* Voice Assistant Visualization: Specialized mode for voice input detection (4b)
+* Adaptive Smoothing: Real-time decay adjustment based on music tempo (3c) WHY
+* Proximity Visualization: Auto-pause when phone is face-up or in pocket (5d) WHY
+* Latency Auto-Calibration: Sync Wizard using microphone to measure delay (4a) interesting 
+* Voice Assistant Visualization: Specialized mode for voice input detection (4b) really? 
 * Reduce bit depth haptics amplitude 
 
 ### Visual
@@ -33,14 +33,10 @@
 * Hide glyph tab if device is not a Nothing Phone
 
 ### Maintenance/Misc
-* Remove the debug disclaimer in readme one we release
-* change git link embed
-* Update notification (Oliver)
-
-## In Progress
-* RichTap haptics (currently not working)
+* Check if auto update works 
 
 ## Done
+* Dynamic Gain Normalization: Auto-Gain for quiet audio (Experimental) - DONE
 * Navigation Bar Overlay: Graphical bar visualizer on top of nav bar
 * Dynamic Peak Normalization: Auto-Gain for quiet audio (Experimental)
 * Battery Saver Threshold: Dims visualization when low battery (Experimental)
@@ -59,13 +55,6 @@
 * Add time count for the visualizer
 * Change title "About and other" to "App info and updates"
 * remove latency compensation from microphone input
-* Make categories for this Todo list.
-* Ask Oliver if i can replace these checkmarks by some easier bullet points?
-* Add flashlight visualizer (same UI as Haptics, add it at the bottom of the haptics screen for now)
-* Collapse experimental features in settings tab for lighter UI
-* Rename OLED black theme to "Default theme"
-* Auto dark light theme for Nothing and Material You theme
-* Collapse experimental settings in toggleable buttons
 * Change "check for updates" text to "Update" when available
 * Make the local file button smaller
 * Remove latency compensations for microphone
