@@ -35,6 +35,8 @@ with gemini of similar
 * make the collapsed sections a bit bigger
 
 ## Aleks' fucking todo
+* **Make the haptic amplitude mode resubmit a oneshot haptic all the time, even if it doesn't change!!!** currently it doesn't resubmit when the vibration amplitude doesn't change!
+* make the oneshot duration slightly longer
 * decrease the decay for the android built in vizualiser (make the decay 60 fps even if the incoming data is 20fps)
 * Add m3e split row selectors
   * Typography menu
