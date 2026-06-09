@@ -16,7 +16,8 @@ class BeatDetectionHapticEngine(context: Context) {
 
     private var waveform: VibrationEffect? = null
     private var hapticMultiplier = 1.0f
-    private var hapticGamma = 2.0f
+    private var hapticGamma = 8.0f // Default "speed"
+    private var hapticSensitivity = 2.2f
 
     private val deltaHistory = FloatArray(61)
     private val sortedHistory = FloatArray(61)
@@ -85,7 +86,7 @@ class BeatDetectionHapticEngine(context: Context) {
         pushDelta(delta)
 
         // Use adaptive threshold with a decaying mask to prevent double-triggering
-        val threshold = max(medianDelta() * 2.2f, thresholdMask)
+        val threshold = max(medianDelta() * hapticSensitivity, thresholdMask)
 
         val now = SystemClock.elapsedRealtime()
         val cooldownPassed = now - lastTriggerMs >= cooldownMs
@@ -265,8 +266,12 @@ class BeatDetectionHapticEngine(context: Context) {
 
     fun setHapticGamma(gamma: Float) {
         if (hapticGamma != gamma) {
-            hapticGamma = gamma
+            hapticGamma = gamma.coerceIn(4f, 12f)
             waveform = buildWaveform()
         }
+    }
+
+    fun setHapticSensitivity(sensitivity: Float) {
+        hapticSensitivity = sensitivity.coerceIn(1f, 5f)
     }
 }

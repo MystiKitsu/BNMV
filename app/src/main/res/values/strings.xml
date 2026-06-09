@@ -48,9 +48,15 @@
     <string name="haptics_motor_title">Haptic visualisation</string>
     <string name="haptics_frequency_label">Frequency: %1$d - %2$d Hz</string>
     <string name="haptics_frequency_desc">Vibrates based on audio amplitude in this range.</string>
-    <string name="haptics_amplitude_label">Gain: %.1fx</string>
+    <string name="haptics_amplitude_label">Motor Gain: %.1fx</string>
+    <string name="haptics_audio_gain_label">Audio Gain: %.1fx</string>
     <string name="haptics_gamma_label">Gamma: %.1f</string>
+    <string name="haptics_decay_label">Decay: %.2f</string>
     <string name="haptics_speed_label">Speed: %.1f</string>
+    <string name="haptics_sensitivity_label">Sensitivity: %.1f</string>
+    <string name="haptics_motor_multiplier_desc">Global motor output strength multiplier.</string>
+    <string name="haptics_decay_instant">No smoothing (Instant)</string>
+    <string name="haptics_decay_smooth">Smoothing active</string>
     <!-- Flashlight Screen -->
     <string name="flashlight_title">Flashlight</string>
     <string name="flashlight_header">Flashlight visualizer</string>

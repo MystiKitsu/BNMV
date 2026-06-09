@@ -253,6 +253,11 @@ public class AudioCaptureService extends Service {
     private volatile float mHapticMinHz = 60;
     private volatile float mHapticMaxHz = 250;
     private volatile AudioProcessor.FrequencyRange mHapticRange;
+    
+    private volatile float mHapticAudioGain = 1.0f;
+    private volatile float mHapticDecay = 0.0f;
+    private volatile float mHapticBeatSensitivity = 2.2f;
+    private volatile float mHapticBeatGamma = 8.0f;
 
     private volatile boolean mFlashlightEnabled = false;
     private volatile float mFlashlightMinHz = 60;
@@ -411,11 +416,19 @@ public class AudioCaptureService extends Service {
 
         float hapticMultiplier = appPrefs.getFloat("haptic_multiplier", 1.0f);
         float hapticGamma = appPrefs.getFloat("haptic_gamma", 2.0f);
+        mHapticAudioGain = appPrefs.getFloat("haptic_audio_gain", 1.0f);
+        mHapticDecay = appPrefs.getFloat("haptic_decay", 0.0f);
+        mHapticBeatSensitivity = appPrefs.getFloat("haptic_beat_sensitivity", 2.2f);
+        mHapticBeatGamma = appPrefs.getFloat("haptic_beat_gamma", 8.0f);
         
         mContinuousHapticEngine.setHapticMultiplier(hapticMultiplier);
+        mContinuousHapticEngine.setHapticAudioGain(mHapticAudioGain);
         mContinuousHapticEngine.setHapticGamma(hapticGamma);
+        mContinuousHapticEngine.setHapticDecay(mHapticDecay);
+        
         mBeatDetectionEngine.setHapticMultiplier(hapticMultiplier);
-        mBeatDetectionEngine.setHapticGamma(hapticGamma);
+        mBeatDetectionEngine.setHapticGamma(mHapticBeatGamma);
+        mBeatDetectionEngine.setHapticSensitivity(mHapticBeatSensitivity);
         
         String idlePattern = appPrefs.getString("idle_pattern", "pulse");
         mGlyphRenderer.setIdlePattern(idlePattern);
@@ -1033,8 +1046,35 @@ public class AudioCaptureService extends Service {
         mBeatDetectionEngine.setHapticMultiplier(multiplier);
     }
 
+    public void setHapticAudioGain(float gain) {
+        mHapticAudioGain = gain;
+        if (mContinuousHapticEngine != null) {
+            mContinuousHapticEngine.setHapticAudioGain(gain);
+        }
+    }
+
+    public void setHapticDecay(float decay) {
+        mHapticDecay = decay;
+        if (mContinuousHapticEngine != null) {
+            mContinuousHapticEngine.setHapticDecay(decay);
+        }
+    }
+
     public void setHapticGamma(float gamma) {
-        mContinuousHapticEngine.setHapticGamma(gamma);
+        if (mContinuousHapticEngine != null) {
+            mContinuousHapticEngine.setHapticGamma(gamma);
+        }
+    }
+
+    public void setHapticBeatSensitivity(float sensitivity) {
+        mHapticBeatSensitivity = sensitivity;
+        if (mBeatDetectionEngine != null) {
+            mBeatDetectionEngine.setHapticSensitivity(sensitivity);
+        }
+    }
+
+    public void setHapticBeatGamma(float gamma) {
+        mHapticBeatGamma = gamma;
         if (mBeatDetectionEngine != null) {
             mBeatDetectionEngine.setHapticGamma(gamma);
         }

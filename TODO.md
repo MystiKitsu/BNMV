@@ -9,7 +9,7 @@
 * Add a disclaimer popup on first use of the media projection source that we do not record the screen, even if it looks like it.
 * and work on the translation tools so we can get hoomans to translate our app.
 * Improve notification (ALEKS DOES IT)
-* Fix the amplitude haptics (Aleks)
+* DONE: Fix the amplitude haptics (Aleks)
 * M3E split and round those 2 /\ buttons (ALEKS DOES IT)
 * Redesign about page for a proper hierarchical easy M3E design
 * Merge Git repo link card with app version card
