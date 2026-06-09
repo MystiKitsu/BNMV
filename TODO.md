@@ -1,39 +1,61 @@
 # Better Nothing Music Visualizer - TODO list!
 
-## To Do
+## To Do Fuckery
 
-* remove preset favoriting, track preset usage time
-* track audio source playing time, not audio_source_change
-* track viz mode playing time (flashlight time, haptics time, glyphs time, these will be added up in the firebase charts ifpossible)
 * rework the qs tiles, make one for glyph viz, one for haptic viz, and one for flashlight viz. enable of disable the service automatically based on if we have anything running or not.
 * Add a disclaimer popup on first use of the media projection source that we do not record the screen, even if it looks like it.
 * and work on the translation tools so we can get hoomans to translate our app.
-* Improve notification (ALEKS DOES IT)
-* DONE: Fix the amplitude haptics (Aleks)
-* M3E split and round those 2 /\ buttons (ALEKS DOES IT)
-* Redesign about page for a proper hierarchical easy M3E design
-* Merge Git repo link card with app version card
 
-
-* Adaptive Smoothing: Real-time decay adjustment based on music tempo (3c) WHY
-* Latency Auto-Calibration: Sync Wizard using microphone to measure delay (4a) interesting **OLIVER GO AHEAD**
-* Reduce bit depth haptics amplitude 
-
-
-* Refine beat detection engine haptics
 * Remove notification detection
-
-
-* Adapt ui depending on the audio source (Aleks)
+* Make the ui shift variable go from -0.3f to 1.0f
 * Add an adjustment Hz range preset for Phone (4a)
 * **Hide glyph tab if device is not a Nothing Phone AND DISABLE ALL CODE RELATED TO THE GLYPH UI**
+
+* *(Low priority)* nothing styled widget with:
+    * 3 buttons for source,
+    * 3 for the Viz outputs,
+    * 1 for start stop
+    * 2 by 2 nothing style
+
+* Add disclaimer that this app uses google analytics
 
 
 * Check if auto update works 
 
+## Oliver's todo
+* remove preset favoriting, track preset usage time instead
+* track audio source playing time, not audio_source_change
+* track viz mode playing time (flashlight time, haptics time, glyphs time, these will be added up in the firebase charts ifpossible)
+* Adaptive Smoothing: Real-time decay adjustment based on music tempo (3c) WHY
+* Latency Auto-Calibration: Sync Wizard using microphone to measure delay (4a) interesting **OLIVER GO AHEAD**
+* collapse app theme setting section just like the experimental features
+* put the typography selector under that app them section
+* make the collapsed sections a bit bigger
+
+## Aleks' fucking todo
+* Add m3e split row selectors
+  * Typography menu
+  * Idle breathing
+  * Haptic mode
+  * M3E split and round config update buttons (with different weight)(ALEKS DOES IT)
+* Redesign about page for a proper hierarchical easy M3E design
+* Merge Git repo link card with app version card
+* Improve notification (ALEKS DOES IT)
+* Add rotary haptic motor mode
+* parametric spectrum range preset for all phones
+* Adapt ui depending on the audio source (Aleks)
+* Say that BNMV is DETERMINISTIC (add to readme)
+* Add intensities to flashlight 
+* update flashlight monitor with shape = audio, and other thing next to it = flashlight intensity.
+  * make the shape flash to the flashlight brightness
+* update haptic monitor with shape = audio, and line next to it = motor amplitude 
+* make expressive ui on by default
+
 ---
 
 ## Done
+* Refine beat detection engine haptics
+* DONE: Fix the amplitude haptics (Aleks)
 * fix the app crash
 * DONE: Remove richtap haptics and 
 ALL CODE RELATED TO IT, ALSO DEPS
