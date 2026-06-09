@@ -14,20 +14,25 @@
 * Fix the amplitude haptics (Aleks)
 * Add 3.0 gamma to the UI shift vizualisation and only have downward smoothing 
 
+
 * M3E split and round those 2 /\ buttons (ALEKS DOES IT)
 * Redesign about page for a proper hierarchical easy M3E design
 * Merge Git repo link card with app version card
+
 
 * Adaptive Smoothing: Real-time decay adjustment based on music tempo (3c) WHY
 * Latency Auto-Calibration: Sync Wizard using microphone to measure delay (4a) interesting **OLIVER GO AHEAD**
 * Reduce bit depth haptics amplitude 
 
+
 * Refine beat detection engine haptics
 * Remove notification detection
+
 
 * Adapt ui depending on the audio source (Aleks)
 * Add an adjustment Hz range preset for Phone (4a)
 * **Hide glyph tab if device is not a Nothing Phone AND DISABLE ALL CODE RELATED TO THE GLYPH UI**
+
 
 * Check if auto update works 
 
