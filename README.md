@@ -42,7 +42,7 @@ Even if it technically isn’t, the visual response to music just isn’t very o
 | Feature | Nothing Stock | **Better Music Visualizer** |
 | :--- | :--- | :--- |
 | **Light levels** | ~2-bit depth (3 light levels) | **12-bit depth (4096 light levels)** |
-| **Frame Rate** | ~25 FPS | **60 FPS** |
+| **Frame Rate** | 20 FPS *(limited by the android vizualiser api)*| **60 FPS** |
 | **Precision** | Feels random, it's hard to acually see how it's synced | **Uses FFT analysis to precisely determine the intensity of each light** |
 | **Zones** | Standard, full physical glyphs are used | **Each glyph segment and sub-zone is used and controlled independently** |
 | **Visualisation method** | Real-time only | **Realtime with down to 20ms latency, or pre-processed audio files** |
