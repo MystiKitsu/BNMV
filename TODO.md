@@ -19,6 +19,8 @@
 
 * Add disclaimer that this app uses google analytics
 
+* proof check translations 
+with gemini of similar
 
 * Check if auto update works 
 
@@ -40,6 +42,7 @@
   * M3E split and round config update buttons (with different weight)(ALEKS DOES IT)
 * Redesign about page for a proper hierarchical easy M3E design
 * Merge Git repo link card with app version card
+* Change audio page big texts (such as made by aleks rkysen and oliver thing)
 * Improve notification (ALEKS DOES IT)
 * Add rotary haptic motor mode
 * parametric spectrum range preset for all phones
