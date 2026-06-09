@@ -48,8 +48,6 @@ fun HapticsScreen(
     onHapticMultiplierChanged: (Float) -> Unit,
     hapticGamma: Float,
     onHapticGammaChanged: (Float) -> Unit,
-    richTapFrequency: Int,
-    onRichTapFrequencyChanged: (Int) -> Unit,
     hapticAmplitudeProvider: () -> Float,
     isBeatDetectedProvider: () -> Boolean,
 ) {
@@ -104,7 +102,6 @@ fun HapticsScreen(
                                 when (mode) {
                                     HapticMode.BASS_TO_AMPLITUDE -> R.string.haptics_mode_bass
                                     HapticMode.BEAT_DETECTION -> R.string.haptics_mode_beat
-                                    HapticMode.RICHTAP_BASS -> R.string.haptics_mode_richtap
                                 }
                             )
                         },
@@ -143,7 +140,7 @@ fun HapticsScreen(
                     )
                 }
 
-                if (hapticMode == HapticMode.BASS_TO_AMPLITUDE || hapticMode == HapticMode.RICHTAP_BASS || hapticMode == HapticMode.BEAT_DETECTION) {
+                if (hapticMode == HapticMode.BASS_TO_AMPLITUDE || hapticMode == HapticMode.BEAT_DETECTION) {
                     ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
                         CardHeader(title = stringResource(R.string.haptics_amplitude_label, hapticMultiplier))
                         ExpressiveSlider(
@@ -154,28 +151,16 @@ fun HapticsScreen(
                         )
                     }
 
-                    if (hapticMode == HapticMode.BASS_TO_AMPLITUDE || hapticMode == HapticMode.BEAT_DETECTION) {
-                        ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                            val label = if (hapticMode == HapticMode.BEAT_DETECTION) stringResource(R.string.haptics_speed_label, hapticGamma) else stringResource(R.string.haptics_gamma_label, hapticGamma)
-                            CardHeader(title = label)
-                            val currentRange = if (hapticMode == HapticMode.BEAT_DETECTION) 4f..10f else 1f..2.0f
-                            ExpressiveSlider(
-                                value = hapticGamma.coerceIn(currentRange),
-                                onValueChange = onHapticGammaChanged,
-                                valueRange = currentRange,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    } else if (hapticMode == HapticMode.RICHTAP_BASS) {
-                        ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                            CardHeader(title = stringResource(R.string.haptics_richtap_freq_label, richTapFrequency))
-                            ExpressiveSlider(
-                                value = richTapFrequency.toFloat(),
-                                onValueChange = { onRichTapFrequencyChanged(it.toInt()) },
-                                valueRange = 0f..100f,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
+                    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+                        val label = if (hapticMode == HapticMode.BEAT_DETECTION) stringResource(R.string.haptics_speed_label, hapticGamma) else stringResource(R.string.haptics_gamma_label, hapticGamma)
+                        CardHeader(title = label)
+                        val currentRange = if (hapticMode == HapticMode.BEAT_DETECTION) 4f..10f else 1f..2.0f
+                        ExpressiveSlider(
+                            value = hapticGamma.coerceIn(currentRange),
+                            onValueChange = onHapticGammaChanged,
+                            valueRange = currentRange,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
 

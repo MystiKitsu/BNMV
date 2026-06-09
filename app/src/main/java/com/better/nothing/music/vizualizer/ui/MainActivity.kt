@@ -1156,9 +1156,6 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private val _hapticGamma = MutableStateFlow(2.0f)
     val hapticGamma = _hapticGamma.asStateFlow()
 
-    private val _richTapFrequency = MutableStateFlow(50)
-    val richTapFrequency = _richTapFrequency.asStateFlow()
-
     fun setHapticMotorEnabled(enabled: Boolean) {
         _hapticMotorEnabled.value = enabled
         viewModelScope.launch(Dispatchers.IO) {
@@ -1201,14 +1198,6 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch(Dispatchers.IO) {
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putFloat("haptic_gamma", gamma) }
-        }
-    }
-
-    fun setRichTapFrequency(frequency: Int) {
-        _richTapFrequency.value = frequency
-        viewModelScope.launch(Dispatchers.IO) {
-            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
-                .edit { putInt("richtap_frequency", frequency) }
         }
     }
 
@@ -1417,12 +1406,16 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private var deltaCount = 0
     private var lastTriggerMs = 0L
     private var thresholdMask = 0f
+    private var smoothedUiAmplitude = 0f
 
     init {
         viewModelScope.launch(Dispatchers.Default) {
             fftState.collect { magnitude ->
                 if (magnitude.isEmpty()) {
                     _hapticAmplitude.value = 0f
+                    _uiAmplitude.value = 0f
+                    _flashlightAmplitude.value = 0f
+                    smoothedUiAmplitude = 0f
                     _isBeatDetected.value = false
                     return@collect
                 }
@@ -1474,7 +1467,15 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 }
                 val uiCount = uiBinHi - uiBinLo + 1
                 val uiRms = if (uiCount > 0) kotlin.math.sqrt(uiSumSquares / uiCount) else 0f
-                _uiAmplitude.value = (uiRms * 10f).coerceIn(0f, 1.0f)
+                val target = (uiRms * 10f).coerceIn(0f, 1.0f).toDouble().pow(3.0).toFloat()
+                
+                // Asymmetric smoothing: very fast attack, slower decay
+                if (target > smoothedUiAmplitude) {
+                    smoothedUiAmplitude = smoothedUiAmplitude * 0.1f + target * 0.9f
+                } else {
+                    smoothedUiAmplitude = smoothedUiAmplitude * 0.85f + target * 0.15f
+                }
+                _uiAmplitude.value = smoothedUiAmplitude
 
                 // 2. Beat Detection (matching HapticEngine.kt logic)
                 if (_hapticMode.value == HapticMode.BEAT_DETECTION) {
@@ -1601,7 +1602,6 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 _hapticFreqMax.value = prefs.getInt("haptic_freq_max", 250).toFloat()
                 _hapticMultiplier.value = prefs.getFloat("haptic_multiplier", 1.0f)
                 _hapticGamma.value = prefs.getFloat("haptic_gamma", 2.0f)
-                _richTapFrequency.value = prefs.getInt("richtap_frequency", 50)
 
                 _flashlightEnabled.value = prefs.getBoolean("flashlight_enabled", false)
                 _flashlightFreqMin.value = prefs.getInt("flashlight_freq_min", 60).toFloat()
@@ -1962,7 +1962,6 @@ class MainActivity : ComponentActivity() {
                 val hapticFreqMax by viewModel.hapticFreqMax.collectAsStateWithLifecycle()
                 val hapticMultiplier by viewModel.hapticMultiplier.collectAsStateWithLifecycle()
                 val hapticGamma by viewModel.hapticGamma.collectAsStateWithLifecycle()
-                val richTapFrequency by viewModel.richTapFrequency.collectAsStateWithLifecycle()
                 val hapticAmplitude by viewModel.hapticAmplitude.collectAsStateWithLifecycle()
                 val isBeatDetected by viewModel.isBeatDetected.collectAsStateWithLifecycle()
 
@@ -2282,8 +2281,6 @@ class MainActivity : ComponentActivity() {
                     onHapticMultiplierChanged = ::onHapticMultiplierChanged,
                     hapticGamma = hapticGamma,
                     onHapticGammaChanged = ::onHapticGammaChanged,
-                    richTapFrequency = richTapFrequency,
-                    onRichTapFrequencyChanged = ::onRichTapFrequencyChanged,
                     hapticAmplitude = hapticAmplitude,
                     isBeatDetected = isBeatDetected,
                     flashlightEnabled = flashlightEnabled,
@@ -2425,11 +2422,6 @@ class MainActivity : ComponentActivity() {
     private fun onHapticGammaChanged(gamma: Float) {
         viewModel.setHapticGamma(gamma)
         service?.setHapticGamma(gamma)
-    }
-
-    private fun onRichTapFrequencyChanged(frequency: Int) {
-        viewModel.setRichTapFrequency(frequency)
-        service?.setRichTapFrequency(frequency)
     }
 
     private fun onFlashlightEnabledChanged(enabled: Boolean) {
@@ -2870,8 +2862,6 @@ private fun BetterVizApp(
     onHapticMultiplierChanged: (Float) -> Unit,
     hapticGamma: Float,
     onHapticGammaChanged: (Float) -> Unit,
-    richTapFrequency: Int,
-    onRichTapFrequencyChanged: (Int) -> Unit,
     hapticAmplitude: Float,
     isBeatDetected: Boolean,
     flashlightEnabled: Boolean,
@@ -3077,8 +3067,6 @@ private fun BetterVizApp(
                             onHapticMultiplierChanged = onHapticMultiplierChanged,
                             hapticGamma = hapticGamma,
                             onHapticGammaChanged = onHapticGammaChanged,
-                            richTapFrequency = richTapFrequency,
-                            onRichTapFrequencyChanged = onRichTapFrequencyChanged,
                             hapticAmplitudeProvider = { hapticAmplitude },
                             isBeatDetectedProvider = { isBeatDetected },
                         )

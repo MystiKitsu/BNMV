@@ -544,11 +544,12 @@ fun NativeFilterChip(
         label = "chip_content"
     )
     val uiAmp = LocalUIAmplitude.current()
-    val scale by animateFloatAsState(
-        targetValue = if (selected) 1.05f + (uiAmp * 0.05f) else 1f,
+    val selectionScale by animateFloatAsState(
+        targetValue = if (selected) 1.05f else 1f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
-        label = "chip_scale"
+        label = "chip_selection_scale"
     )
+    val scale = selectionScale + (if (selected) uiAmp * 0.05f else 0f)
 
     Surface(
         shape = MaterialTheme.shapes.medium,
@@ -693,11 +694,12 @@ fun NativeBottomBar(
             visibleTabs.forEach { tab ->
                 val isSelected = tab == selectedTab
                 val uiAmp = LocalUIAmplitude.current()
-                val iconScale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.25f + (uiAmp * 0.5f) else 1.0f,
+                val selectionScale by animateFloatAsState(
+                    targetValue = if (isSelected) 1.25f else 1.0f,
                     animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
-                    label = "nav_icon_scale"
+                    label = "nav_selection_scale"
                 )
+                val iconScale = selectionScale + (if (isSelected) uiAmp * 0.5f else 0f)
 
                 NavigationBarItem(
                     selected = isSelected,
