@@ -50,8 +50,6 @@ fun HapticsScreen(
     onHapticAudioGainChanged: (Float) -> Unit,
     hapticGamma: Float,
     onHapticGammaChanged: (Float) -> Unit,
-    hapticDecay: Float,
-    onHapticDecayChanged: (Float) -> Unit,
     hapticBeatSensitivity: Float,
     onHapticBeatSensitivityChanged: (Float) -> Unit,
     hapticBeatGamma: Float,
@@ -100,20 +98,17 @@ fun HapticsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                    CardHeader(title = stringResource(R.string.haptics_mode_label))
-                    ExpressiveSegmentedButtonRow(
-                        items = HapticMode.entries,
-                        selectedItem = hapticMode,
-                        onItemSelection = onHapticModeChanged,
-                        labelProvider = { mode ->
-                            stringResource(
-                                when (mode) {
-                                    HapticMode.BASS_TO_AMPLITUDE -> R.string.haptics_mode_bass
-                                    HapticMode.BEAT_DETECTION -> R.string.haptics_mode_beat
-                                }
-                            )
-                        },
+                    CardHeader(title = stringResource(R.string.haptics_amplitude_label, hapticMultiplier))
+                    ExpressiveSlider(
+                        value = hapticMultiplier,
+                        onValueChange = onHapticMultiplierChanged,
+                        valueRange = 0.3f..1.5f,
                         modifier = Modifier.fillMaxWidth()
+                    )
+                    BodyText(
+                        text = stringResource(R.string.haptics_motor_multiplier_desc),
+                        size = 12.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 }
 
@@ -149,17 +144,20 @@ fun HapticsScreen(
                 }
 
                 ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                    CardHeader(title = stringResource(R.string.haptics_amplitude_label, hapticMultiplier))
-                    ExpressiveSlider(
-                        value = hapticMultiplier,
-                        onValueChange = onHapticMultiplierChanged,
-                        valueRange = 0.3f..1.5f,
+                    CardHeader(title = stringResource(R.string.haptics_mode_label))
+                    ExpressiveSegmentedButtonRow(
+                        items = HapticMode.entries,
+                        selectedItem = hapticMode,
+                        onItemSelection = onHapticModeChanged,
+                        labelProvider = { mode ->
+                            stringResource(
+                                when (mode) {
+                                    HapticMode.BASS_TO_AMPLITUDE -> R.string.haptics_mode_bass
+                                    HapticMode.BEAT_DETECTION -> R.string.haptics_mode_beat
+                                }
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth()
-                    )
-                    BodyText(
-                        text = stringResource(R.string.haptics_motor_multiplier_desc),
-                        size = 12.sp,
-                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 }
 
@@ -183,21 +181,6 @@ fun HapticsScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-
-                    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                        CardHeader(title = stringResource(R.string.haptics_decay_label, hapticDecay))
-                        ExpressiveSlider(
-                            value = hapticDecay,
-                            onValueChange = onHapticDecayChanged,
-                            valueRange = 0.0f..0.95f,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        BodyText(
-                            text = if (hapticDecay == 0f) stringResource(R.string.haptics_decay_instant) else stringResource(R.string.haptics_decay_smooth),
-                            size = 12.sp,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                    }
                 }
 
                 if (hapticMode == HapticMode.BEAT_DETECTION) {
@@ -206,7 +189,7 @@ fun HapticsScreen(
                         ExpressiveSlider(
                             value = hapticBeatSensitivity,
                             onValueChange = onHapticBeatSensitivityChanged,
-                            valueRange = 1.0f..5.0f,
+                            valueRange = 0.3f..6.0f,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -216,7 +199,7 @@ fun HapticsScreen(
                         ExpressiveSlider(
                             value = hapticBeatGamma,
                             onValueChange = onHapticBeatGammaChanged,
-                            valueRange = 4.0f..12.0f,
+                            valueRange = 4.0f..15.0f,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }

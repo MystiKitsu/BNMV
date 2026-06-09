@@ -59,6 +59,7 @@ internal fun SettingsScreen(
     val selectedFont by viewModel.selectedFont.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     val localContext = LocalContext.current
+    var showDevModePanel by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -68,7 +69,10 @@ internal fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Spacer(modifier = Modifier.height(50.dp))
-        ScreenTitle(text = stringResource(R.string.settings_title))
+        ScreenTitle(
+            text = stringResource(R.string.settings_title),
+            onLongPress = { showDevModePanel = !showDevModePanel }
+        )
 
         // ── Links & Info ────────────────────────────────────────────────────
         FlowRow(
@@ -165,13 +169,15 @@ internal fun SettingsScreen(
         // ── Idle Breathing ──────────────────────────────────────────────────
         ExpressiveCard {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Air, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = stringResource(R.string.idle_breathing_title),
                             style = MaterialTheme.typography.titleMedium,
@@ -190,7 +196,8 @@ internal fun SettingsScreen(
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
                         checkedTrackColor = MaterialTheme.colorScheme.primary
-                    )
+                    ),
+                    modifier = Modifier.size(height = 24.dp, width = 48.dp)
                 )
             }
 
@@ -222,6 +229,7 @@ internal fun SettingsScreen(
         }
 
         // ── Developer Mode ──────────────────────────────────────────────────
+        if (showDevModePanel) {
         val devModeEnabled by viewModel.developerModeEnabled.collectAsStateWithLifecycle()
         var showPasswordDialog by remember { mutableStateOf(false) }
         var passwordInput by remember { mutableStateOf("") }
@@ -280,13 +288,15 @@ internal fun SettingsScreen(
 
         ExpressiveCard {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Code, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = stringResource(R.string.developer_mode),
                             style = MaterialTheme.typography.titleMedium,
@@ -311,7 +321,8 @@ internal fun SettingsScreen(
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
                         checkedTrackColor = MaterialTheme.colorScheme.primary
-                    )
+                    ),
+                    modifier = Modifier.size(height = 24.dp, width = 48.dp)
                 )
             }
 
@@ -349,13 +360,15 @@ internal fun SettingsScreen(
                         border = BorderStroke(1.dp, if (shizukuUnlocked) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(end = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
                                 Icon(Icons.Default.Terminal, null, tint = if (shizukuUnlocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                                Column {
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(stringResource(R.string.unlock_shizuku_source), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                     Text(stringResource(R.string.unlock_shizuku_source_desc), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                                 }
@@ -366,7 +379,8 @@ internal fun SettingsScreen(
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = Color.White,
                                     checkedTrackColor = MaterialTheme.colorScheme.primary
-                                )
+                                ),
+                                modifier = Modifier.size(height = 24.dp, width = 48.dp)
                             )
                         }
                     }
@@ -428,6 +442,7 @@ internal fun SettingsScreen(
                     }
                 }
             }
+        }
         }
 
         // ── Experimental Features ───────────────────────────────────────────

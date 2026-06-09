@@ -410,8 +410,21 @@ fun FlowRowScope.OptionTile(
 }
 
 @Composable
-fun ScreenTitle(text: String) {
-    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+fun ScreenTitle(text: String, onLongPress: (() -> Unit)? = null) {
+    Column(
+        modifier = Modifier
+            .padding(bottom = 8.dp)
+            .then(
+                if (onLongPress != null) {
+                    Modifier.combinedClickable(
+                        onClick = {},
+                        onLongClick = onLongPress
+                    )
+                } else {
+                    Modifier
+                }
+            )
+    ) {
         Text(
             text  = text,
             style = MaterialTheme.typography.displayLarge,

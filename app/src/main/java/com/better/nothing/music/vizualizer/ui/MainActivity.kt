@@ -1159,10 +1159,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private val _hapticGamma = MutableStateFlow(2.0f)
     val hapticGamma = _hapticGamma.asStateFlow()
 
-    private val _hapticDecay = MutableStateFlow(0.0f)
-    val hapticDecay = _hapticDecay.asStateFlow()
-
-    private val _hapticBeatSensitivity = MutableStateFlow(2.2f)
+    private val _hapticBeatSensitivity = MutableStateFlow(1.0f)
     val hapticBeatSensitivity = _hapticBeatSensitivity.asStateFlow()
 
     private val _hapticBeatGamma = MutableStateFlow(8.0f)
@@ -1218,14 +1215,6 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch(Dispatchers.IO) {
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putFloat("haptic_gamma", gamma) }
-        }
-    }
-
-    fun setHapticDecay(decay: Float) {
-        _hapticDecay.value = decay
-        viewModelScope.launch(Dispatchers.IO) {
-            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
-                .edit { putFloat("haptic_decay", decay) }
         }
     }
 
@@ -1484,12 +1473,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                     val currentGain = _hapticMultiplier.value * 4f * _hapticAudioGain.value
                     val target = rms * currentGain
                     
-                    val decay = _hapticDecay.value
-                    if (decay > 0) {
-                        smoothedHapticAmplitude = (smoothedHapticAmplitude * decay) + (target * (1f - decay))
-                    } else {
-                        smoothedHapticAmplitude = target
-                    }
+                    smoothedHapticAmplitude = target
                     
                     smoothedHapticAmplitude.toDouble().pow(_hapticGamma.value.toDouble()).toFloat()
                 } else {
@@ -1544,7 +1528,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                     val sorted = deltaHistory.copyOf(deltaCount).apply { sort() }
                     val median = if (deltaCount == 0) 0.01f else if (deltaCount % 2 == 1) sorted[deltaCount / 2] else (sorted[deltaCount / 2 - 1] + sorted[deltaCount / 2]) * 0.5f
                     
-                    val threshold = kotlin.math.max(median * _hapticBeatSensitivity.value, thresholdMask)
+                    val threshold = kotlin.math.max(median * (2.2f * _hapticBeatSensitivity.value), thresholdMask)
                     val now = SystemClock.elapsedRealtime()
                     
                     if (delta > threshold && delta > 0.025f && (now - lastTriggerMs) >= 60L) {
@@ -1655,9 +1639,8 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 _hapticMultiplier.value = prefs.getFloat("haptic_multiplier", 1.0f).coerceIn(0.3f, 1.5f)
                 _hapticAudioGain.value = prefs.getFloat("haptic_audio_gain", 1.0f)
                 _hapticGamma.value = prefs.getFloat("haptic_gamma", 2.0f)
-                _hapticDecay.value = prefs.getFloat("haptic_decay", 0.0f)
-                _hapticBeatSensitivity.value = prefs.getFloat("haptic_beat_sensitivity", 2.2f)
-                _hapticBeatGamma.value = prefs.getFloat("haptic_beat_gamma", 8.0f)
+                _hapticBeatSensitivity.value = prefs.getFloat("haptic_beat_sensitivity", 1.0f).coerceIn(0.3f, 6.0f)
+                _hapticBeatGamma.value = prefs.getFloat("haptic_beat_gamma", 8.0f).coerceIn(4f, 15f)
 
                 _flashlightEnabled.value = prefs.getBoolean("flashlight_enabled", false)
                 _flashlightFreqMin.value = prefs.getInt("flashlight_freq_min", 60).toFloat()
@@ -2019,7 +2002,6 @@ class MainActivity : ComponentActivity() {
                 val hapticMultiplier by viewModel.hapticMultiplier.collectAsStateWithLifecycle()
                 val hapticAudioGain by viewModel.hapticAudioGain.collectAsStateWithLifecycle()
                 val hapticGamma by viewModel.hapticGamma.collectAsStateWithLifecycle()
-                val hapticDecay by viewModel.hapticDecay.collectAsStateWithLifecycle()
                 val hapticBeatSensitivity by viewModel.hapticBeatSensitivity.collectAsStateWithLifecycle()
                 val hapticBeatGamma by viewModel.hapticBeatGamma.collectAsStateWithLifecycle()
                 val hapticAmplitude by viewModel.hapticAmplitude.collectAsStateWithLifecycle()
@@ -2343,8 +2325,6 @@ class MainActivity : ComponentActivity() {
                     onHapticAudioGainChanged = ::onHapticAudioGainChanged,
                     hapticGamma = hapticGamma,
                     onHapticGammaChanged = ::onHapticGammaChanged,
-                    hapticDecay = hapticDecay,
-                    onHapticDecayChanged = ::onHapticDecayChanged,
                     hapticBeatSensitivity = hapticBeatSensitivity,
                     onHapticBeatSensitivityChanged = ::onHapticBeatSensitivityChanged,
                     hapticBeatGamma = hapticBeatGamma,
@@ -2495,11 +2475,6 @@ class MainActivity : ComponentActivity() {
     private fun onHapticGammaChanged(gamma: Float) {
         viewModel.setHapticGamma(gamma)
         service?.setHapticGamma(gamma)
-    }
-
-    private fun onHapticDecayChanged(decay: Float) {
-        viewModel.setHapticDecay(decay)
-        service?.setHapticDecay(decay)
     }
 
     private fun onHapticBeatSensitivityChanged(sensitivity: Float) {
@@ -2761,7 +2736,6 @@ class MainActivity : ComponentActivity() {
         service?.setHapticMultiplier(viewModel.hapticMultiplier.value)
         service?.setHapticAudioGain(viewModel.hapticAudioGain.value)
         service?.setHapticGamma(viewModel.hapticGamma.value)
-        service?.setHapticDecay(viewModel.hapticDecay.value)
         service?.setHapticBeatSensitivity(viewModel.hapticBeatSensitivity.value)
         service?.setHapticBeatGamma(viewModel.hapticBeatGamma.value)
         service?.setDisableGlyphsWhenSilent(viewModel.disableGlyphsWhenSilent.value)
@@ -2956,8 +2930,6 @@ private fun BetterVizApp(
     onHapticAudioGainChanged: (Float) -> Unit,
     hapticGamma: Float,
     onHapticGammaChanged: (Float) -> Unit,
-    hapticDecay: Float,
-    onHapticDecayChanged: (Float) -> Unit,
     hapticBeatSensitivity: Float,
     onHapticBeatSensitivityChanged: (Float) -> Unit,
     hapticBeatGamma: Float,
@@ -3169,8 +3141,6 @@ private fun BetterVizApp(
                             onHapticAudioGainChanged = onHapticAudioGainChanged,
                             hapticGamma = hapticGamma,
                             onHapticGammaChanged = onHapticGammaChanged,
-                            hapticDecay = hapticDecay,
-                            onHapticDecayChanged = onHapticDecayChanged,
                             hapticBeatSensitivity = hapticBeatSensitivity,
                             onHapticBeatSensitivityChanged = onHapticBeatSensitivityChanged,
                             hapticBeatGamma = hapticBeatGamma,

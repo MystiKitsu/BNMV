@@ -47,9 +47,7 @@ public final class ContinuousHapticEngine {
     private float hapticMultiplier = 1.0f;
     private float hapticAudioGain = 1.0f;
     private float hapticGamma = 2.0f;
-    private float hapticDecay = 0.0f;
 
-    private float smoothedAmplitude = 0f;
     private int lastAmplitude = -1;
     private long lastSubmitMs = 0L;
 
@@ -76,11 +74,7 @@ public final class ContinuousHapticEngine {
         this.hapticGamma = Math.max(0.1f, gamma);
     }
 
-    public synchronized void setHapticDecay(float decay) {
-        this.hapticDecay = Math.max(0f, Math.min(0.99f, decay));
-    }
-
-    public synchronized void performHapticFeedback(float rawPeak, @SuppressWarnings("unused") @Nullable AudioProcessor.VisualizerConfig config) {
+    public synchronized void performHapticFeedback(float rawPeak, @Nullable AudioProcessor.VisualizerConfig config) {
         if (vibrator == null || !vibrator.hasVibrator()) {
             return;
         }
@@ -88,15 +82,8 @@ public final class ContinuousHapticEngine {
         // Apply raw gain, user multiplier, and audio gain.
         float current = Math.max(0f, rawPeak) * SPECTRUM_GAIN * hapticMultiplier * hapticAudioGain;
 
-        // Apply smoothing/decay
-        if (hapticDecay > 0) {
-            smoothedAmplitude = (smoothedAmplitude * hapticDecay) + (current * (1f - hapticDecay));
-        } else {
-            smoothedAmplitude = current;
-        }
-
         // Apply Gamma shaping
-        float shaped = (float) Math.pow(smoothedAmplitude, hapticGamma);
+        float shaped = (float) Math.pow(current, hapticGamma);
 
         int nextAmplitude = clampInt(Math.round(shaped * MAX_AMPLITUDE), 0, MAX_AMPLITUDE);
         if (shaped >= 0.95f) nextAmplitude = MAX_AMPLITUDE;
@@ -125,7 +112,6 @@ public final class ContinuousHapticEngine {
         if (vibrator != null) {
             vibrator.cancel();
         }
-        smoothedAmplitude = 0f;
         lastAmplitude = -1;
         lastSubmitMs = 0L;
     }

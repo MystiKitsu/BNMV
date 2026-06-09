@@ -255,8 +255,7 @@ public class AudioCaptureService extends Service {
     private volatile AudioProcessor.FrequencyRange mHapticRange;
     
     private volatile float mHapticAudioGain = 1.0f;
-    private volatile float mHapticDecay = 0.0f;
-    private volatile float mHapticBeatSensitivity = 2.2f;
+    private volatile float mHapticBeatSensitivity = 1.0f;
     private volatile float mHapticBeatGamma = 8.0f;
 
     private volatile boolean mFlashlightEnabled = false;
@@ -417,14 +416,12 @@ public class AudioCaptureService extends Service {
         float hapticMultiplier = appPrefs.getFloat("haptic_multiplier", 1.0f);
         float hapticGamma = appPrefs.getFloat("haptic_gamma", 2.0f);
         mHapticAudioGain = appPrefs.getFloat("haptic_audio_gain", 1.0f);
-        mHapticDecay = appPrefs.getFloat("haptic_decay", 0.0f);
-        mHapticBeatSensitivity = appPrefs.getFloat("haptic_beat_sensitivity", 2.2f);
+        mHapticBeatSensitivity = appPrefs.getFloat("haptic_beat_sensitivity", 1.0f);
         mHapticBeatGamma = appPrefs.getFloat("haptic_beat_gamma", 8.0f);
         
         mContinuousHapticEngine.setHapticMultiplier(hapticMultiplier);
         mContinuousHapticEngine.setHapticAudioGain(mHapticAudioGain);
         mContinuousHapticEngine.setHapticGamma(hapticGamma);
-        mContinuousHapticEngine.setHapticDecay(mHapticDecay);
         
         mBeatDetectionEngine.setHapticMultiplier(hapticMultiplier);
         mBeatDetectionEngine.setHapticGamma(mHapticBeatGamma);
@@ -1050,13 +1047,6 @@ public class AudioCaptureService extends Service {
         mHapticAudioGain = gain;
         if (mContinuousHapticEngine != null) {
             mContinuousHapticEngine.setHapticAudioGain(gain);
-        }
-    }
-
-    public void setHapticDecay(float decay) {
-        mHapticDecay = decay;
-        if (mContinuousHapticEngine != null) {
-            mContinuousHapticEngine.setHapticDecay(decay);
         }
     }
 
