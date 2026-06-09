@@ -1,9 +1,8 @@
 
 ---
 - # name: Bug report
-- about: Something isn't working as expected (Visuals, Audio, Crashes).
-- title: '[BUG] '
-- labels: bug
+- ## about: Something isn't working as expected (Visuals, Audio, Crashes).
+- ## labels: bug
 ---
 
 ## Description
