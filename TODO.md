@@ -37,6 +37,7 @@ with gemini of similar
 ## Aleks' fucking todo
 * **Make the haptic amplitude mode resubmit a oneshot haptic all the time, even if it doesn't change!!!** currently it doesn't resubmit when the vibration amplitude doesn't change!
 * make the oneshot duration slightly longer
+* enhance the built-in switches by adding an X (cross) or a done (✅) in them, like the battery guru's settings switches, and also with bouncy animations and nice haptics 
 * decrease the decay for the android built in vizualiser (make the decay 60 fps even if the incoming data is 20fps)
 * Add m3e split row selectors
   * Typography menu
