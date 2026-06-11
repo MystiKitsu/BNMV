@@ -1,3 +1,4 @@
+🌐 Read this in other languages (not updated):  🇮🇳 [हिन्दी](Docs/README_HI.md), 🇮🇳 [Marathi](Docs/README_MR.md), 🇹🇷 [Türkçe](Docs/README_TR.md)
 # <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Fire.png" alt="Fire" width="35" height="35" />Better Nothing Music Visualizer
 An android app that not only brings better music visualization on the Glyph interface of Nothing Phones, but also lets you feel your music through the haptic motor, and also lets you use the flashlight of your phone as a music visualizer!
 
@@ -15,11 +16,6 @@ This android app grabs the live audio stream from your device using sources such
 
 Click the banner below to join our Discord server and connect with the community:
 [![Discord Server](https://discord.com/api/guilds/1509496060094054531/widget.png?style=banner3)](https://discord.gg/h7DYNttc8K)
-
-## 🌐 Read this in other languages: 
-🇮🇳 [हिन्दी](Docs/README_HI.md)
-🇮🇳 [Marathi](Docs/README_MR.md)
-🇹🇷 [Türkçe](Docs/README_TR.md)
 
 ## <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Smilies/Thinking%20Face.png" alt="Thinking Face" width="25" height="25" /> Why does this exist?
 For a lot of people (including me), the *stock Glyph Music Visualiastion provided by Nothing* feels random.  
