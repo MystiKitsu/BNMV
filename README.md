@@ -4,7 +4,6 @@ An android app that not only brings better music visualization on the Glyph inte
 
 This android app grabs the live audio stream from your device using sources such as **Media Projection**, your **microphone**, the classic *Android Visualizer audio stream (not recommened)*, or even with shizuku (in the future), and processes it directly into the glyphs, the haptic motor, or your flashlight. This means you can visualize music from **Spotify, YouTube Music**, and basically any other app! It can even work on games, and also you can use the microphone to vizualise music that others play, especially at a party!
 
-
 <img 
   src="https://img.shields.io/github/downloads/Aleks-Levet/better-nothing-music-visualizer/total?style=for-the-badge&logo=github&label=Total%20app%20downloads%20from%20github:&color=ff0000&labelColor=000000"
   style="height:40px;">
