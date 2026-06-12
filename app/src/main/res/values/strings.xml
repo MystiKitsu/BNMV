@@ -181,6 +181,12 @@
     <string name="vertical_position">Vertical Position</string>
     <string name="dynamic_gain">Dynamic Gain</string>
 
+    <string name="profile">Profile</string>
+    <string name="leaderboard_nickname">Leaderboard Nickname</string>
+    <string name="profile_picture">Profile Picture</string>
+    <string name="profile_help_text">Your profile picture and nickname will be visible to others on the leaderboard.</string>
+    <string name="failed_to_upload_image">Failed to upload image: %s</string>
+
     <string name="tab_audio">Audio</string>
     <string name="tab_glyphs">Glyphs</string>
     <string name="tab_haptics">Haptics</string>

@@ -4,7 +4,7 @@ import androidx.annotation.Keep
 
 @Keep
 data class Announcement(
-    val id: Any = "",
+    val id: String = "",
     val title: String = "",
     val message: String = "",
     val timestamp: Long = System.currentTimeMillis(),

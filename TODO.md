@@ -3,7 +3,6 @@
 ## To Do Fuckery
 
 * rework the qs tiles, make one for glyph viz, one for haptic viz, and one for flashlight viz. enable of disable the service automatically based on if we have anything running or not.
-* Add a disclaimer popup on first use of the media projection source that we do not record the screen, even if it looks like it.
 * and work on the translation tools so we can get hoomans to translate our app.
 
 * Remove notification detection
@@ -25,21 +24,8 @@ with gemini of similar
 * Check if auto update works 
 
 ## Oliver's todo
-* Track preset usage time instead
 * track audio source playing time, not audio_source_change
 
-* Maybe in the About section, add a statistics card, and inside of it you can add:
-  - Total time visualized
-  - Total time used Glyph visualization
-  - Total time used haptic visualization
-  - Total time used flashlight visualization
-  - Total time used on-screen navbar navigation
-  - Total Idle Time
-  - Total non-idle time 
-  - (Aleks will make later the UI a little more expressive with wiggly bars, which are very nice, but for now just focus on these. Make a card with only values and strings)
-
-* Here's a little idea that could revolutionize the app. **It would be to add some kind of leaderboard, maybe a weekly leaderboard of who visualizes the most.** That would make people use the app *more* and also drive more engagement, which will improve the Google metrics.
-* Heck, if you want to have fun, you can add even a daily streak in the leaderboard and also the stats card! 
 * track viz mode playing time (flashlight time, haptics time, glyphs time, these will be added up in the firebase charts ifpossible)
 * Adaptive Smoothing: Real-time decay adjustment based on music tempo
 * Latency Auto-Calibration: Sync Wizard using microphone to measure delay
@@ -75,13 +61,16 @@ with gemini of similar
 ---
 
 ## Done
+* Add a disclaimer popup on first use of the media projection source that we do not record the screen, even if it looks like it.
+* Track preset usage time instead
+* Implement weekly leaderboard and usage statistics
 * Refine beat detection engine haptics
-* DONE: Fix the amplitude haptics (Aleks)
+* Fix the amplitude haptics (Aleks)
 * fix the app crash
-* DONE: Remove richtap haptics and 
+* Remove richtap haptics and 
 ALL CODE RELATED TO IT, ALSO DEPS
 * Add one-shot spam haptics engine (from Oliver)
-* DONE: Add 3.0 gamma to the UI shift vizualisation and only have downward smoothing
+* Add 3.0 gamma to the UI shift vizualisation and only have downward smoothing
 * **Change np1 preset with wider spectrum range (Aleks)**
 * Remove the debug disclaimer in readme one we release
 * Dynamic UI Theming: Use Palette API to match app colors with album art

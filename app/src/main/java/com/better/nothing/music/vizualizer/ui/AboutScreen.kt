@@ -18,6 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -32,6 +34,11 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.FlashlightOn
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -49,6 +56,12 @@ internal fun AboutScreen(
     val haptics = LocalHapticFeedback.current
     val configVersion by viewModel.configVersion.collectAsStateWithLifecycle()
     val appUpdateStatus by viewModel.appUpdateStatus.collectAsStateWithLifecycle()
+    
+    val totalTime by viewModel.totalVisualizedTime.collectAsStateWithLifecycle()
+    val glyphTime by viewModel.totalGlyphTime.collectAsStateWithLifecycle()
+    val hapticTime by viewModel.totalHapticTime.collectAsStateWithLifecycle()
+    val flashlightTime by viewModel.totalFlashlightTime.collectAsStateWithLifecycle()
+    
     var depressedClickCount by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
@@ -215,6 +228,52 @@ internal fun AboutScreen(
             )
         }
 
+        SectionHeader(text = "Usage Statistics")
+        ExpressiveCard {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatRow(
+                    icon = Icons.Default.Timer,
+                    label = "Total Visualized",
+                    value = formatTime(totalTime)
+                )
+                StatRow(
+                    icon = ImageVector.vectorResource(id = R.drawable.ic_nav_glyphs),
+                    label = "Glyph Interface",
+                    value = formatTime(glyphTime)
+                )
+                StatRow(
+                    icon = Icons.Default.Vibration,
+                    label = "Haptic Visualization",
+                    value = formatTime(hapticTime)
+                )
+                StatRow(
+                    icon = Icons.Default.FlashOn,
+                    label = "Flashlight Visualization",
+                    value = formatTime(flashlightTime)
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                )
+
+                Button(
+                    onClick = { viewModel.showLeaderboard() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Icon(Icons.Default.EmojiEvents, null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("View Leaderboard", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
         ExpressiveCard {
             BodyText(text = stringResource(R.string.about_intro), size = 15.sp)
         }
@@ -260,6 +319,43 @@ internal fun AboutScreen(
         }
         Spacer(modifier = Modifier.height(70.dp))
     }
+}
+
+@Composable
+private fun StatRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+private fun formatTime(ms: Long): String {
+    val hours = java.util.concurrent.TimeUnit.MILLISECONDS.toHours(ms)
+    val minutes = java.util.concurrent.TimeUnit.MILLISECONDS.toMinutes(ms) % 60
+    return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 }
 
 private data class CreditEntry(

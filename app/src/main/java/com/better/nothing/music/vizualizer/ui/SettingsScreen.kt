@@ -2,6 +2,7 @@ package com.better.nothing.music.vizualizer.ui
 
 import com.better.nothing.music.vizualizer.R
 import com.better.nothing.music.vizualizer.model.DeviceProfile
+import com.better.nothing.music.vizualizer.model.UserProfile
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
@@ -30,6 +31,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.res.painterResource
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -104,6 +114,126 @@ internal fun SettingsScreen(
                 icon = Icons.Default.Code,
                 onClick = { uriHandler.openUri("https://github.com/Aleks-Levet/better-nothing-music-visualizer") },
                 modifier = Modifier.weight(1f)
+            )
+        }
+
+        // ── Profile ─────────────────────────────────────────────────────────
+        ExpressiveCard {
+            CardHeader(title = stringResource(R.string.profile))
+            val userNickname by viewModel.userNickname.collectAsStateWithLifecycle()
+            val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
+            var nicknameInput by remember(userNickname) { mutableStateOf(userNickname) }
+            
+            val launcher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.GetContent()
+            ) { uri ->
+                uri?.let { viewModel.updateProfilePicture(it) }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                        .clickable { launcher.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (userProfile?.profilePictureUrl != null) {
+                        AsyncImage(
+                            model = userProfile?.profilePictureUrl,
+                            contentDescription = stringResource(R.string.profile_picture),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(20.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    ) {
+                        Icon(
+                            Icons.Default.AddAPhoto,
+                            contentDescription = null,
+                            modifier = Modifier.padding(4.dp)
+                        )
+                    }
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    OutlinedTextField(
+                        value = nicknameInput,
+                        onValueChange = { 
+                            nicknameInput = it
+                            if (it.length <= 20) viewModel.setUserNickname(it)
+                        },
+                        label = { Text(stringResource(R.string.leaderboard_nickname)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        trailingIcon = {
+                            Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
+                        }
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Choose an avatar",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            val defaultAvatars = listOf(
+                R.drawable.avatar_1,
+                R.drawable.avatar_2,
+                R.drawable.avatar_3
+            )
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(defaultAvatars) { resId ->
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { viewModel.selectDefaultAvatar(resId) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(resId),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize().padding(8.dp),
+                            tint = Color.Unspecified
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            BodyText(
+                text = stringResource(R.string.profile_help_text),
+                size = 12.sp
             )
         }
 

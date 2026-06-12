@@ -12,12 +12,17 @@ import com.better.nothing.music.vizualizer.service.VisualizerTileService
 import com.better.nothing.music.vizualizer.util.AnalyticsHelper
 import com.better.nothing.music.vizualizer.logic.CommunityRepository
 import com.better.nothing.music.vizualizer.logic.AnnouncementRepository
+import com.better.nothing.music.vizualizer.logic.LeaderboardRepository
+import com.better.nothing.music.vizualizer.logic.UserRepository
 import com.better.nothing.music.vizualizer.model.CommunityPreset
 import com.better.nothing.music.vizualizer.model.Announcement
 import com.better.nothing.music.vizualizer.model.ZoneData
+import com.better.nothing.music.vizualizer.model.LeaderboardEntry
+import com.better.nothing.music.vizualizer.model.UserProfile
 import com.better.nothing.music.vizualizer.ui.CommunityPresetsScreen
 import com.better.nothing.music.vizualizer.ui.AnnouncementModal
 import com.better.nothing.music.vizualizer.ui.AnnouncementHistoryScreen
+import com.better.nothing.music.vizualizer.ui.LeaderboardScreen
 
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuProvider
@@ -25,6 +30,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.collect
 
 import android.Manifest
 import android.app.Application
@@ -150,7 +156,32 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private val ctx = application
     private val communityRepository = CommunityRepository()
     private val announcementRepository = AnnouncementRepository()
+    private val leaderboardRepository = LeaderboardRepository()
+    private val userRepository = UserRepository()
     private val analytics = AnalyticsHelper(application)
+
+    private val _userProfile = MutableStateFlow<UserProfile?>(null)
+    val userProfile = _userProfile.asStateFlow()
+
+    private val _totalVisualizedTime = MutableStateFlow(0L)
+    val totalVisualizedTime = _totalVisualizedTime.asStateFlow()
+
+    private val _totalGlyphTime = MutableStateFlow(0L)
+    val totalGlyphTime = _totalGlyphTime.asStateFlow()
+
+    private val _totalHapticTime = MutableStateFlow(0L)
+    val totalHapticTime = _totalHapticTime.asStateFlow()
+
+    private val _totalFlashlightTime = MutableStateFlow(0L)
+    val totalFlashlightTime = _totalFlashlightTime.asStateFlow()
+
+    private val _userNickname = MutableStateFlow("Anonymous")
+    val userNickname = _userNickname.asStateFlow()
+
+    private var lastStatsSyncMs = 0L
+
+    private val _isShowingLeaderboard = MutableStateFlow(false)
+    val isShowingLeaderboard = _isShowingLeaderboard.asStateFlow()
 
     private val _devPassword = MutableStateFlow<String?>(null)
 
@@ -272,6 +303,39 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         _captureSource.value = AudioCaptureService.CaptureSource.valueOf(savedSource ?: AudioCaptureService.CaptureSource.INTERNAL.name)
 
         _shizukuSourceUnlocked.value = prefs.getBoolean("shizuku_source_unlocked", false)
+
+        _totalVisualizedTime.value = prefs.getLong("total_visualized_time", 0L)
+        _totalGlyphTime.value = prefs.getLong("total_glyph_time", 0L)
+        _totalHapticTime.value = prefs.getLong("total_haptic_time", 0L)
+        _totalFlashlightTime.value = prefs.getLong("total_flashlight_time", 0L)
+        _userNickname.value = prefs.getString("user_nickname", "Anonymous") ?: "Anonymous"
+
+        var userId = prefs.getString("user_id", null)
+        if (userId == null) {
+            userId = java.util.UUID.randomUUID().toString()
+            prefs.edit().putString("user_id", userId).apply()
+        }
+
+        viewModelScope.launch {
+            try {
+                val profile = userRepository.getUserProfile(userId)
+                if (profile != null) {
+                    _userProfile.value = profile
+                    _userNickname.value = profile.displayName
+                } else {
+                    // Create initial profile
+                    val newProfile = UserProfile(
+                        userId = userId,
+                        displayName = _userNickname.value,
+                        totalVisualizedTime = _totalVisualizedTime.value
+                    )
+                    userRepository.saveUserProfile(newProfile)
+                    _userProfile.value = newProfile
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to load/create profile", e)
+            }
+        }
 
         FirebaseDatabase.getInstance("https://bnmv-67120-default-rtdb.europe-west1.firebasedatabase.app")
             .getReference("config/dev_password")
@@ -977,10 +1041,6 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         _fftState.value = state
     }
 
-    fun updateSessionDuration(durationMs: Long) {
-        _sessionDuration.value = durationMs
-    }
-
     private val _isEditingPreset = MutableStateFlow(false)
     val isEditingPreset = _isEditingPreset.asStateFlow()
 
@@ -1004,6 +1064,131 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 
     fun showCommunity() { _isShowingCommunity.value = true }
     fun hideCommunity() { _isShowingCommunity.value = false }
+
+    fun showLeaderboard() { _isShowingLeaderboard.value = true }
+    fun hideLeaderboard() { _isShowingLeaderboard.value = false }
+
+    fun setUserNickname(name: String) {
+        _userNickname.value = name
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putString("user_nickname", name) }
+            
+            val currentProfile = _userProfile.value ?: UserProfile(
+                userId = ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE).getString("user_id", "") ?: "",
+                displayName = name
+            )
+            val updatedProfile = currentProfile.copy(displayName = name)
+            userRepository.saveUserProfile(updatedProfile)
+            _userProfile.value = updatedProfile
+            syncLeaderboard()
+        }
+    }
+
+    fun updateProfilePicture(uri: Uri) {
+        viewModelScope.launch {
+            val userId = ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE).getString("user_id", null) ?: return@launch
+            try {
+                val url = userRepository.uploadProfilePicture(userId, uri, ctx)
+                val currentProfile = _userProfile.value ?: UserProfile(
+                    userId = userId,
+                    displayName = _userNickname.value
+                )
+                val updatedProfile = currentProfile.copy(profilePictureUrl = url)
+                userRepository.saveUserProfile(updatedProfile)
+                _userProfile.value = updatedProfile
+                syncLeaderboard()
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, ctx.getString(R.string.failed_to_upload_image, e.message), Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    fun selectDefaultAvatar(resourceId: Int) {
+        viewModelScope.launch {
+            val userId = ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE).getString("user_id", null) ?: return@launch
+            try {
+                Log.d("MainViewModel", "Setting default avatar from resource $resourceId")
+                val base64Data = userRepository.uploadAvatarFromResource(userId, resourceId, ctx)
+                Log.d("MainViewModel", "Avatar encoded successfully, saving to profile")
+                
+                val currentProfile = _userProfile.value ?: UserProfile(
+                    userId = userId,
+                    displayName = _userNickname.value
+                )
+                val updatedProfile = currentProfile.copy(profilePictureUrl = base64Data)
+                userRepository.saveUserProfile(updatedProfile)
+                _userProfile.value = updatedProfile
+                syncLeaderboard()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, "Profile picture updated!", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Default avatar selection failed", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, "Update failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    fun updateSessionDuration(durationMs: Long) {
+        val delta = durationMs - _sessionDuration.value
+        if (delta > 0) {
+            _totalVisualizedTime.value += delta
+            if (runningState.value) {
+                // Approximate active times based on settings
+                if (selectedDevice.value != DeviceProfile.DEVICE_UNKNOWN) _totalGlyphTime.value += delta
+                if (hapticMotorEnabled.value) _totalHapticTime.value += delta
+                if (flashlightEnabled.value) _totalFlashlightTime.value += delta
+            }
+        }
+        _sessionDuration.value = durationMs
+
+        // Auto-save and sync every 30 seconds
+        val now = System.currentTimeMillis()
+        if (now - lastStatsSyncMs > 30000) {
+            persistStats()
+            syncLeaderboard()
+            lastStatsSyncMs = now
+        }
+    }
+
+    private fun persistStats() {
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE).edit {
+                putLong("total_visualized_time", _totalVisualizedTime.value)
+                putLong("total_glyph_time", _totalGlyphTime.value)
+                putLong("total_haptic_time", _totalHapticTime.value)
+                putLong("total_flashlight_time", _totalFlashlightTime.value)
+            }
+        }
+    }
+
+    private fun syncLeaderboard() {
+        val userId = ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+            .getString("user_id", null) ?: return
+        
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val entry = LeaderboardEntry(
+                    userId = userId,
+                    name = _userNickname.value,
+                    profilePictureUrl = _userProfile.value?.profilePictureUrl,
+                    totalTimeMs = _totalVisualizedTime.value,
+                    lastUpdated = System.currentTimeMillis()
+                )
+                leaderboardRepository.updateScore(entry)
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to sync leaderboard", e)
+            }
+        }
+    }
+
+    val leaderboardEntries = leaderboardRepository.getTopUsers()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _communityError = MutableStateFlow<String?>(null)
     val communityError = _communityError.asStateFlow()
@@ -2201,6 +2386,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val isShowingCommunity by viewModel.isShowingCommunity.collectAsStateWithLifecycle()
+                val isShowingLeaderboard by viewModel.isShowingLeaderboard.collectAsStateWithLifecycle()
+                val leaderboardEntries by viewModel.leaderboardEntries.collectAsStateWithLifecycle()
                 val communityPresets by viewModel.communityPresets.collectAsStateWithLifecycle()
                 val communityError by viewModel.communityError.collectAsStateWithLifecycle()
                 val thanksMessage by viewModel.thanksMessage.collectAsStateWithLifecycle()
@@ -2334,6 +2521,21 @@ class MainActivity : ComponentActivity() {
                             error = communityError,
                             onDownload = viewModel::downloadPreset,
                             onDismiss = viewModel::hideCommunity
+                        )
+                    }
+                }
+
+                if (isShowingLeaderboard) {
+                    androidx.compose.ui.window.Dialog(
+                        onDismissRequest = viewModel::hideLeaderboard,
+                        properties = androidx.compose.ui.window.DialogProperties(
+                            usePlatformDefaultWidth = false,
+                            decorFitsSystemWindows = false
+                        )
+                    ) {
+                        LeaderboardScreen(
+                            entries = leaderboardEntries,
+                            onDismiss = viewModel::hideLeaderboard
                         )
                     }
                 }
