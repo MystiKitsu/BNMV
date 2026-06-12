@@ -15,6 +15,10 @@
     * 3 for the Viz outputs,
     * 1 for start stop
     * 2 by 2 nothing style
+ 
+* Remove idle breathing if device isn't a nothing phone
+
+* Remove haptic tab AND DISABLE ALL CODE RELATED TO IT if device doesn't have a haptic motor
 
 * Add disclaimer that this app uses google analytics
 
@@ -58,6 +62,7 @@ with gemini of similar
   * make the shape flash to the flashlight brightness
 * update haptic monitor with shape = audio, and line next to it = motor amplitude 
 * make expressive ui on by default
+* Do tablet UI
 
 ---
 
