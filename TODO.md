@@ -37,6 +37,7 @@ with gemini of similar
 * make the collapsed sections a bit bigger
 
 ## Aleks' fucking todo
+* use the system navbar padding (fix it again)
 * Modify the BNMV liscence so only the owner can release, and everything that other developers do should be reported to the owner. And state that debug builds should never be released to the public because they are not meant to be used by the users, but only by the developers for developing purposes.
 * when the frequency range is large; they are less reactive for some reason. You don't need to divide the sum of the bins by the frequency range, the size of the frequency range. One of the causes is that the wide frequency ranges are less reactive than the narrow ones, which are usually the bass ones, so we can't really see the trebles. 
 * **Make the haptic amplitude mode resubmit a oneshot haptic all the time, even if it doesn't change!!!** currently it doesn't resubmit when the vibration amplitude doesn't change!
@@ -57,7 +58,7 @@ with gemini of similar
 * parametric spectrum range preset for all phones
 * Adapt ui depending on the audio source (Aleks)
 * Say that BNMV is DETERMINISTIC (add to readme)
-* Add intensities to flashlight 
+* Add multiples intensities to flashlight 
 * update flashlight monitor with shape = audio, and other thing next to it = flashlight intensity.
   * make the shape flash to the flashlight brightness
 * update haptic monitor with shape = audio, and line next to it = motor amplitude 
