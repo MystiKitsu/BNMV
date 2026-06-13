@@ -178,6 +178,9 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     private val _userNickname = MutableStateFlow("Anonymous")
     val userNickname = _userNickname.asStateFlow()
 
+    private val _userId = MutableStateFlow<String?>(null)
+    val userId = _userId.asStateFlow()
+
     private var lastStatsSyncMs = 0L
 
     private val _isShowingLeaderboard = MutableStateFlow(false)
@@ -310,22 +313,23 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         _totalFlashlightTime.value = prefs.getLong("total_flashlight_time", 0L)
         _userNickname.value = prefs.getString("user_nickname", "Anonymous") ?: "Anonymous"
 
-        var userId = prefs.getString("user_id", null)
-        if (userId == null) {
-            userId = java.util.UUID.randomUUID().toString()
-            prefs.edit().putString("user_id", userId).apply()
+        var uId = prefs.getString("user_id", null)
+        if (uId == null) {
+            uId = java.util.UUID.randomUUID().toString()
+            prefs.edit().putString("user_id", uId).apply()
         }
+        _userId.value = uId
 
         viewModelScope.launch {
             try {
-                val profile = userRepository.getUserProfile(userId)
+                val profile = userRepository.getUserProfile(uId)
                 if (profile != null) {
                     _userProfile.value = profile
                     _userNickname.value = profile.displayName
                 } else {
                     // Create initial profile
                     val newProfile = UserProfile(
-                        userId = userId,
+                        userId = uId,
                         displayName = _userNickname.value,
                         totalVisualizedTime = _totalVisualizedTime.value
                     )
@@ -1217,6 +1221,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 val preset = CommunityPreset(
                     name = name,
                     author = author,
+                    authorId = _userId.value ?: "",
                     phoneModel = phoneModelForDevice(selectedDevice.value),
                     zones = zones.map { ZoneData.fromZoneSpec(it) }
                 )
@@ -1229,6 +1234,22 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                 Log.e("MainViewModel", "Failed to share preset", e)
                 withContext(Dispatchers.Main) {
                     Toast.makeText(ctx, "Failed to share: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    fun deleteCommunityPreset(preset: CommunityPreset) {
+        viewModelScope.launch {
+            try {
+                communityRepository.deletePreset(preset.id)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, "Preset deleted", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to delete preset", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, "Failed to delete: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -2390,6 +2411,7 @@ class MainActivity : ComponentActivity() {
                 val leaderboardEntries by viewModel.leaderboardEntries.collectAsStateWithLifecycle()
                 val communityPresets by viewModel.communityPresets.collectAsStateWithLifecycle()
                 val communityError by viewModel.communityError.collectAsStateWithLifecycle()
+                val userId by viewModel.userId.collectAsStateWithLifecycle()
                 val thanksMessage by viewModel.thanksMessage.collectAsStateWithLifecycle()
                 val latestAnnouncement by viewModel.latestAnnouncement.collectAsStateWithLifecycle()
                 val showAnnouncementModal by viewModel.showAnnouncementModal.collectAsStateWithLifecycle()
@@ -2518,8 +2540,10 @@ class MainActivity : ComponentActivity() {
                     ) {
                         CommunityPresetsScreen(
                             presets = communityPresets,
+                            currentUserId = userId,
                             error = communityError,
                             onDownload = viewModel::downloadPreset,
+                            onDelete = viewModel::deleteCommunityPreset,
                             onDismiss = viewModel::hideCommunity
                         )
                     }

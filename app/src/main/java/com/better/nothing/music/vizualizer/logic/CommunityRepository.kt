@@ -53,6 +53,17 @@ class CommunityRepository {
             throw e
         }
     }
+
+    suspend fun deletePreset(presetId: String) {
+        try {
+            Log.d("CommunityRepo", "Deleting preset: $presetId")
+            database.child(presetId).removeValue().await()
+            Log.d("CommunityRepo", "Delete successful")
+        } catch (e: Exception) {
+            Log.e("CommunityRepo", "Delete failed", e)
+            throw e
+        }
+    }
     
     suspend fun incrementDownloadCount(presetId: String) {
         val ref = database.child(presetId).child("downloads")

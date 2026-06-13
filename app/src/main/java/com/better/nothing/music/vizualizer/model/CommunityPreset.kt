@@ -8,6 +8,7 @@ data class CommunityPreset(
     val id: String = "",
     val name: String = "",
     val author: String = "Anonymous",
+    val authorId: String = "",
     val phoneModel: String = "",
     val zones: List<ZoneData> = emptyList(),
     val timestamp: Long = System.currentTimeMillis(),

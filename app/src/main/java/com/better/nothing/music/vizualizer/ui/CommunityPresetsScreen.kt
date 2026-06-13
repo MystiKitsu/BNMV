@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,8 +25,10 @@ import java.util.*
 @Composable
 fun CommunityPresetsScreen(
     presets: List<CommunityPreset>?,
+    currentUserId: String?,
     error: String?,
     onDownload: (CommunityPreset) -> Unit,
+    onDelete: (CommunityPreset) -> Unit,
     onDismiss: () -> Unit
 ) {
     Scaffold(
@@ -68,7 +71,12 @@ fun CommunityPresetsScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(presets) { preset ->
-                        PresetCard(preset, onDownload)
+                        PresetCard(
+                            preset = preset, 
+                            onDownload = onDownload,
+                            onDelete = onDelete,
+                            isOwner = currentUserId != null && preset.authorId == currentUserId
+                        )
                     }
                 }
             }
@@ -77,7 +85,12 @@ fun CommunityPresetsScreen(
 }
 
 @Composable
-fun PresetCard(preset: CommunityPreset, onDownload: (CommunityPreset) -> Unit) {
+fun PresetCard(
+    preset: CommunityPreset, 
+    onDownload: (CommunityPreset) -> Unit,
+    onDelete: (CommunityPreset) -> Unit,
+    isOwner: Boolean
+) {
     Card(
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A)),
@@ -97,6 +110,38 @@ fun PresetCard(preset: CommunityPreset, onDownload: (CommunityPreset) -> Unit) {
                 Text(stringResource(R.string.downloads_count, date, preset.downloads), fontSize = 12.sp, color = Color.DarkGray)
             }
             
+            if (isOwner) {
+                var showConfirm by remember { mutableStateOf(false) }
+                
+                if (showConfirm) {
+                    AlertDialog(
+                        onDismissRequest = { showConfirm = false },
+                        title = { Text("Delete Preset?") },
+                        text = { Text("Are you sure you want to delete this preset from the community?") },
+                        confirmButton = {
+                            TextButton(onClick = { 
+                                onDelete(preset)
+                                showConfirm = false
+                            }) {
+                                Text("Delete", color = Color.Red)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showConfirm = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
+                }
+
+                IconButton(
+                    onClick = { showConfirm = true },
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray)
+                }
+            }
+
             IconButton(
                 onClick = { onDownload(preset) },
                 colors = IconButtonDefaults.iconButtonColors(
