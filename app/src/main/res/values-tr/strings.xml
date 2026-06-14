@@ -64,7 +64,6 @@
     <string name="flashlight_smoothing_label">Yumuşatma: %.2f</string>
     <string name="flashlight_smoothing_desc">Daha yüksek yumuşatma, ışığın titremek yerine yumuşakça yanıp sönmesini sağlar.</string>
     <string name="flashlight_gamma_label">Yoğunluk Gaması: %.1f</string>
-    <string name="flashlight_multiplier_label">Genlik Çarpanı: %.1fx</string>
     <string name="flashlight_monitor_label">Fener Monitörü</string>
 
     <string name="experimental_features">Deneysel Özellikler</string>

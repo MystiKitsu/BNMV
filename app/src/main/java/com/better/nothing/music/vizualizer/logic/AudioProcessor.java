@@ -24,6 +24,16 @@ public class AudioProcessor {
     private float[] hann;
     private DoubleFFT_1D fft;
 
+    // Improved Autogain state
+    private float mRunningMax = 0.05f;
+    private float mTargetPeak = 0.18f;
+    private float mAutoGain = 1.0f;
+    private boolean mAutoGainEnabled = false;
+
+    private static final float DECAY_FAST = 0.999f;
+    private static final float DECAY_SLOW = 0.9998f;
+    private static final float GAIN_SMOOTHING = 0.15f; // Alpha for gain smoothing
+
     public AudioProcessor() {
         updateFFTSize(); // Default
     }
@@ -33,7 +43,8 @@ public class AudioProcessor {
     }
 
     public void updateFFTSize(int sampleRate) {
-        int newFftSize = 4096; // Fixed size for temporal snappiness
+        // Reduced from 4096 to 2048 to improve temporal responsiveness and reduce window latency.
+        int newFftSize = 2048; 
 
         if (this.fftSize == newFftSize && this.fft != null && this.sampleRate == sampleRate) {
             return;
@@ -56,6 +67,18 @@ public class AudioProcessor {
 
     public float getHzPerBin() {
         return hzPerBin;
+    }
+
+    public int getFFTSize() {
+        return fftSize;
+    }
+
+    public void setAutoGainEnabled(boolean enabled) {
+        this.mAutoGainEnabled = enabled;
+        if (!enabled) {
+            mAutoGain = 1.0f;
+            mRunningMax = 0.05f;
+        }
     }
 
     public AudioFrameResult processAudioFrame(short[] hopBuffer, VisualizerConfig config, FrequencyRange hapticRange) {
@@ -87,7 +110,25 @@ public class AudioProcessor {
             // Amplify high frequencies: linear boost from 1.0x at 0Hz to ~4.0x at 20kHz
             float freq = i * hzPerBin;
             float boost = 1f + (freq / 15000f) * 5f;
-            magnitude[i] = mag * boost;
+            float rawMag = mag * boost;
+
+            if (mAutoGainEnabled) {
+                // Update running max with adaptive decay: faster if we're way above target, slower if we're below
+                float decay = rawMag > mRunningMax ? 0.95f : DECAY_SLOW;
+                mRunningMax = Math.max(mRunningMax * decay, rawMag);
+                
+                if (mRunningMax > 0.0001f) {
+                    float desiredGain = mTargetPeak / Math.max(mRunningMax, 0.005f);
+                    // Clamp gain to reasonable range [0.5, 20.0] for high quality normalization
+                    desiredGain = Math.max(0.5f, Math.min(20.0f, desiredGain));
+                    
+                    // Smooth the gain changes to prevent flickering
+                    mAutoGain = (mAutoGain * (1f - GAIN_SMOOTHING)) + (desiredGain * GAIN_SMOOTHING);
+                }
+                magnitude[i] = rawMag * mAutoGain;
+            } else {
+                magnitude[i] = rawMag;
+            }
         }
 
         // Compute magnitudes

@@ -64,7 +64,6 @@
     <string name="flashlight_smoothing_label">スムージング： %.2f</string>
     <string name="flashlight_smoothing_desc">スムージングを高くすると、ストロボのような点滅ではなく、柔らかいパルス状に光ります。</string>
     <string name="flashlight_gamma_label">輝度ガンマ： %.1f</string>
-    <string name="flashlight_multiplier_label">振幅倍率： %.1fx</string>
     <string name="flashlight_monitor_label">懐中電灯モニター</string>
 
     <string name="experimental_features">実験的機能</string>

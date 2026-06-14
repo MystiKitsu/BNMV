@@ -64,7 +64,6 @@
     <string name="flashlight_smoothing_label">Smussamento: %.2f</string>
     <string name="flashlight_smoothing_desc">Uno smussamento più alto fa pulsare la luce dolcemente invece di lampeggiare.</string>
     <string name="flashlight_gamma_label">Gamma intensità: %.1f</string>
-    <string name="flashlight_multiplier_label">Moltiplicatore ampiezza: %.1fx</string>
     <string name="flashlight_monitor_label">Monitor torcia</string>
 
     <string name="experimental_features">Funzioni sperimentali</string>

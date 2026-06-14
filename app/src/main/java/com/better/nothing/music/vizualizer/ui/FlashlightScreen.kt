@@ -3,14 +3,17 @@ package com.better.nothing.music.vizualizer.ui
 import com.better.nothing.music.vizualizer.R
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,7 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -33,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.better.nothing.music.vizualizer.model.TorchMode
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FlashlightScreen(
     flashlightEnabled: Boolean,
@@ -42,21 +47,19 @@ fun FlashlightScreen(
     flashlightFreqMin: Float,
     flashlightFreqMax: Float,
     onFlashlightFreqRangeChanged: (Float, Float) -> Unit,
-    flashlightMultiplier: Float,
-    onFlashlightMultiplierChanged: (Float) -> Unit,
     flashlightThreshold: Float,
     onFlashlightThresholdChanged: (Float) -> Unit,
-    flashlightSmoothing: Float,
-    onFlashlightSmoothingChanged: (Float) -> Unit,
-    flashlightGamma: Float,
-    onFlashlightGammaChanged: (Float) -> Unit,
+    flashlightSpeedMs: Float,
+    onFlashlightSpeedMsChanged: (Float) -> Unit,
     flashlightBeatSensitivity: Float,
     onFlashlightBeatSensitivityChanged: (Float) -> Unit,
+    flashlightIntensityLevels: Int,
     flashlightAmplitudeProvider: () -> Float,
     isBeatDetectedProvider: () -> Boolean,
 ) {
     val scrollState = rememberScrollState()
     val haptics = LocalHapticFeedback.current
+    val supportsMultiIntensity = flashlightIntensityLevels > 1
 
     Column(
         modifier = Modifier
@@ -65,10 +68,9 @@ fun FlashlightScreen(
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // ... (title and toggle) ...
         Spacer(modifier = Modifier.height(50.dp))
         ScreenTitle(text = stringResource(R.string.flashlight_header))
-        
+
         AnimatedToggleCard(
             title = stringResource(R.string.flashlight_sync_title),
             checked = flashlightEnabled,
@@ -96,7 +98,19 @@ fun FlashlightScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // ... (sliders) ...
+                ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+                    CardHeader(title = stringResource(R.string.flashlight_intensity_label, flashlightIntensityLevels))
+                    BodyText(
+                        text = if (supportsMultiIntensity) {
+                            "This torch can use multiple brightness levels."
+                        } else {
+                            "This torch is binary: it can only be on or off."
+                        },
+                        size = 12.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                }
+
                 ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
                     CardHeader(
                         title = stringResource(
@@ -129,16 +143,6 @@ fun FlashlightScreen(
                 }
 
                 ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                    CardHeader(title = stringResource(R.string.flashlight_multiplier_label, flashlightMultiplier))
-                    ExpressiveSlider(
-                        value = flashlightMultiplier,
-                        onValueChange = onFlashlightMultiplierChanged,
-                        valueRange = 0.5f..1.5f,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
                     CardHeader(title = stringResource(R.string.flashlight_mode_label))
                     ExpressiveSegmentedButtonRow(
                         items = TorchMode.entries,
@@ -158,34 +162,19 @@ fun FlashlightScreen(
 
                 if (flashlightMode == TorchMode.AMPLITUDE) {
                     ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                        CardHeader(title = stringResource(R.string.flashlight_sensitivity_label, flashlightThreshold))
+                        CardHeader(title = stringResource(R.string.flashlight_threshold_label, flashlightThreshold))
+
                         ExpressiveSlider(
                             value = flashlightThreshold,
                             onValueChange = onFlashlightThresholdChanged,
-                            valueRange = 0f..0.8f,
+                            valueRange = 0.0f..1.0f,
                             modifier = Modifier.fillMaxWidth()
                         )
-                        BodyText(text = stringResource(R.string.flashlight_sensitivity_desc), size = 11.sp)
-                    }
 
-                    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                        CardHeader(title = stringResource(R.string.flashlight_smoothing_label, flashlightSmoothing))
-                        ExpressiveSlider(
-                            value = flashlightSmoothing,
-                            onValueChange = onFlashlightSmoothingChanged,
-                            valueRange = 0f..0.95f,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        BodyText(text = stringResource(R.string.flashlight_smoothing_desc), size = 11.sp)
-                    }
-
-                    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                        CardHeader(title = stringResource(R.string.flashlight_gamma_label, flashlightGamma))
-                        ExpressiveSlider(
-                            value = flashlightGamma,
-                            onValueChange = onFlashlightGammaChanged,
-                            valueRange = 1.0f..4.0f,
-                            modifier = Modifier.fillMaxWidth()
+                        BodyText(
+                            text = stringResource(R.string.flashlight_threshold_desc),
+                            size = 12.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp)
                         )
                     }
                 }
@@ -199,6 +188,26 @@ fun FlashlightScreen(
                             valueRange = 0.3f..6.0f,
                             modifier = Modifier.fillMaxWidth()
                         )
+                        BodyText(
+                            text = stringResource(R.string.flashlight_beat_sensitivity_desc),
+                            size = 12.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                    }
+
+                    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+                        CardHeader(title = stringResource(R.string.flashlight_speed_label, flashlightSpeedMs))
+                        ExpressiveSlider(
+                            value = flashlightSpeedMs,
+                            onValueChange = onFlashlightSpeedMsChanged,
+                            valueRange = 40f..150f,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        BodyText(
+                            text = stringResource(R.string.flashlight_speed_desc),
+                            size = 12.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
                     }
                 }
 
@@ -210,15 +219,9 @@ fun FlashlightScreen(
 
                     val flashlightAmplitude = flashlightAmplitudeProvider()
                     val isBeatDetected = isBeatDetectedProvider()
-                    val isHigh = if (flashlightMode == TorchMode.AMPLITUDE) {
-                        flashlightAmplitude > (flashlightThreshold + 0.05f)
-                    } else {
-                        isBeatDetected
-                    }
-
                     val flashColor by animateColorAsState(
-                        targetValue = if (isHigh) Color.Yellow else Color.Yellow.copy(alpha = 0.3f),
-                        animationSpec = if (isHigh) snap() else spring(stiffness = Spring.StiffnessVeryLow),
+                        targetValue = if (isBeatDetected) Color.White else Color.Yellow,
+                        animationSpec = if (isBeatDetected) snap() else spring(stiffness = Spring.StiffnessVeryLow),
                         label = "flashColor"
                     )
 
@@ -228,14 +231,17 @@ fun FlashlightScreen(
                             .height(220.dp)
                             .background(
                                 brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                    colors = listOf(flashColor.copy(alpha = 0.08f * flashlightAmplitude), Color.Transparent),
+                                    colors = listOf(
+                                        flashColor.copy(alpha = 0.08f * flashlightAmplitude.coerceIn(0f, 1.2f)),
+                                        Color.Transparent
+                                    ),
                                     radius = 350f
                                 )
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         MorphingPolygon(
-                            isBeatDetected = isHigh,
+                            isBeatDetected = isBeatDetected,
                             amplitude = flashlightAmplitude,
                             color = flashColor,
                             modifier = Modifier.size(110.dp)

@@ -62,7 +62,6 @@
     <string name="flashlight_smoothing_label">Llyfnhau: %.2f</string>
     <string name="flashlight_smoothing_desc">Mae llyfnhau uwch yn gwneud i\'r golau bylsio\'n feddal yn lle strobo.</string>
     <string name="flashlight_gamma_label">Gamma Dwysedd: %.1f</string>
-    <string name="flashlight_multiplier_label">Lluosydd Osgled: %.1fx</string>
     <string name="flashlight_monitor_label">Monitor Fflachlamp</string>
 
     <string name="experimental_features">Nodweddion Arbrofol</string>

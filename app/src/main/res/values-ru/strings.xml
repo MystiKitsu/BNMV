@@ -64,7 +64,6 @@
     <string name="flashlight_smoothing_label">Сглаживание: %.2f</string>
     <string name="flashlight_smoothing_desc">Более сильное сглаживание заставляет свет пульсировать мягко, а не мерцать.</string>
     <string name="flashlight_gamma_label">Гамма интенсивности: %.1f</string>
-    <string name="flashlight_multiplier_label">Множитель амплитуды: %.1fx</string>
     <string name="flashlight_monitor_label">Монитор фонарика</string>
 
     <string name="experimental_features">Экспериментальные функции</string>

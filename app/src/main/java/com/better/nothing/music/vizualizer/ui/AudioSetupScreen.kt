@@ -73,6 +73,8 @@ fun AudioScreen(
     captureSource: AudioCaptureService.CaptureSource = AudioCaptureService.CaptureSource.INTERNAL,
     onCaptureSourceChanged: (AudioCaptureService.CaptureSource) -> Unit = {},
     shizukuUnlocked: Boolean = false,
+    dynamicGainEnabled: Boolean = false,
+    onDynamicGainToggle: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -200,6 +202,36 @@ fun AudioScreen(
                 }
 
                 FFTSpectrumCard(fftData = fftData)
+
+                ExpressiveCard {
+                    CardHeader(title = "App Pipeline Processing")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Auto-Gain Normalization",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "Ensures the visualization stays reactive even at low volumes. (Works best with Unprocessed Mic)",
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Switch(
+                            checked = dynamicGainEnabled,
+                            onCheckedChange = onDynamicGainToggle,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                    }
+                }
                 
                 ExpressiveCard(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)) {
                     BodyText(

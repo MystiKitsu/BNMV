@@ -264,7 +264,10 @@ public class AudioCaptureService extends Service {
     private volatile float mFlashlightMinHz = 60;
     private volatile float mFlashlightMaxHz = 250;
     private volatile AudioProcessor.FrequencyRange mFlashlightRange;
+    private volatile float mFlashlightThreshold = 0.15f;
     private volatile float mFlashlightBeatSensitivity = 1.0f;
+    private volatile float mFlashlightSpeedMs = 90f;
+    private volatile int mFlashlightIntensityLevels = 1;
 
     private ContinuousHapticEngine mContinuousHapticEngine;
     private BeatDetectionHapticEngine mBeatDetectionEngine;
@@ -293,15 +296,25 @@ public class AudioCaptureService extends Service {
     private final Runnable mIdlePulseRunnable = new Runnable() {
         @Override
         public void run() {
-            if (mIdleBreathingEnabled && mSessionOpen && mVisualizerConfig != null) {
-                long now = SystemClock.elapsedRealtime();
-                // If it's been more than 100ms since the last audio frame, manually trigger a frame for breathing
-                if (now - mLastAudioActivityMs > 100) {
-                    processFrame(new float[0], 0f, mVisualizerConfig, mPresetConfigVersion.get());
-                }
-            }
             if (sIsRunning) {
-                mMainHandler.postDelayed(this, 16); // 60fps for idle breathing
+                long now = SystemClock.elapsedRealtime();
+
+                if (mCaptureSource == CaptureSource.VIZUALIZER) {
+                    synchronized (mVisualizerPendingFrames) {
+                        dispatchDueFrames(mVisualizerPendingFrames);
+                    }
+                    // For built-in visualizer, force 60 FPS updates to ensure smooth decay even if data rate is low (e.g. 20 FPS)
+                    if (now - mLastSendMs >= 16 && mVisualizerConfig != null) {
+                        processFrame(new float[0], 0f, mVisualizerConfig, mPresetConfigVersion.get());
+                    }
+                } else if (mIdleBreathingEnabled && mSessionOpen && mVisualizerConfig != null) {
+                    // If it's been more than 100ms since the last audio frame, manually trigger a frame for breathing
+                    if (now - mLastAudioActivityMs > 100) {
+                        processFrame(new float[0], 0f, mVisualizerConfig, mPresetConfigVersion.get());
+                    }
+                }
+
+                mMainHandler.postDelayed(this, 16); // 60fps for engine drive and breathing
             }
         }
     };
@@ -410,11 +423,14 @@ public class AudioCaptureService extends Service {
         mFlashlightEnabled = appPrefs.getBoolean("flashlight_enabled", false);
         mFlashlightMinHz = appPrefs.getInt("flashlight_freq_min", 60);
         mFlashlightMaxHz = appPrefs.getInt("flashlight_freq_max", 250);
-        
-        mFlashlightEngine.setFlashlightMultiplier(appPrefs.getFloat("flashlight_multiplier", 1.0f));
-        mFlashlightEngine.setFlashlightThreshold(appPrefs.getFloat("flashlight_threshold", 0.15f));
-        mFlashlightEngine.setFlashlightSmoothing(appPrefs.getFloat("flashlight_smoothing", 0.7f));
-        mFlashlightEngine.setFlashlightGamma(appPrefs.getFloat("flashlight_gamma", 2.2f));
+        mFlashlightIntensityLevels = mFlashlightEngine.getTorchIntensityLevels();
+        mFlashlightThreshold = appPrefs.getFloat(
+                "flashlight_threshold",
+                mFlashlightIntensityLevels > 1 ? 1.0f : 0.15f
+        );
+        mFlashlightSpeedMs = loadFlashlightSpeedMs(appPrefs);
+        mFlashlightEngine.setFlashlightThreshold(mFlashlightThreshold);
+        mFlashlightEngine.setFlashlightSpeedMs(mFlashlightSpeedMs);
 
         float hapticMultiplier = appPrefs.getFloat("haptic_multiplier", 1.0f);
         float hapticGamma = appPrefs.getFloat("haptic_gamma", 2.0f);
@@ -588,6 +604,31 @@ public class AudioCaptureService extends Service {
                 .edit()
                 .putFloat(PREF_GAMMA, gamma)
                 .apply();
+    }
+
+    private static float loadFlashlightSpeedMs(SharedPreferences preferences) {
+        if (preferences.contains("flashlight_speed_ms")) {
+            return clampFlashlightSpeedMs(preferences.getFloat("flashlight_speed_ms", 90f));
+        }
+
+        float legacyGamma = preferences.getFloat("flashlight_gamma", 2.2f);
+        return legacyGammaToSpeedMs(legacyGamma);
+    }
+
+    private static float legacyGammaToSpeedMs(float gamma) {
+        if (gamma <= 0f) {
+            return 90f;
+        }
+        if (gamma < 10f) {
+            float clampedGamma = Math.max(1f, Math.min(4f, gamma));
+            float normalized = (clampedGamma - 1f) / 3f;
+            return 150f - (normalized * 110f);
+        }
+        return clampFlashlightSpeedMs(gamma);
+    }
+
+    private static float clampFlashlightSpeedMs(float speedMs) {
+        return Math.max(40f, Math.min(150f, speedMs));
     }
 
     public static List<Integer> loadLatencyPresets(Context context) {
@@ -910,6 +951,9 @@ public class AudioCaptureService extends Service {
 
     public void setDynamicGainEnabled(boolean enabled) {
         mDynamicGainEnabled = enabled;
+        if (mAudioProcessor != null) {
+            mAudioProcessor.setAutoGainEnabled(enabled);
+        }
     }
 
     public void setOverlayEnabled(boolean enabled) {
@@ -1086,27 +1130,10 @@ public class AudioCaptureService extends Service {
         mHapticSettingsVersion.incrementAndGet(); 
     }
 
-    public void setFlashlightMultiplier(float multiplier) {
-        if (mFlashlightEngine != null) {
-            mFlashlightEngine.setFlashlightMultiplier(multiplier);
-        }
-    }
-
-    public void setFlashlightGamma(float gamma) {
-        if (mFlashlightEngine != null) {
-            mFlashlightEngine.setFlashlightGamma(gamma);
-        }
-    }
-
     public void setFlashlightThreshold(float threshold) {
+        mFlashlightThreshold = threshold;
         if (mFlashlightEngine != null) {
             mFlashlightEngine.setFlashlightThreshold(threshold);
-        }
-    }
-
-    public void setFlashlightSmoothing(float smoothing) {
-        if (mFlashlightEngine != null) {
-            mFlashlightEngine.setFlashlightSmoothing(smoothing);
         }
     }
 
@@ -1122,6 +1149,20 @@ public class AudioCaptureService extends Service {
         if (mFlashlightEngine != null) {
             mFlashlightEngine.setFlashlightBeatSensitivity(sensitivity);
         }
+    }
+
+    public void setFlashlightSpeedMs(float speedMs) {
+        mFlashlightSpeedMs = speedMs;
+        if (mFlashlightEngine != null) {
+            mFlashlightEngine.setFlashlightSpeedMs(speedMs);
+        }
+    }
+
+    public int getFlashlightIntensityLevels() {
+        if (mFlashlightEngine != null) {
+            return mFlashlightEngine.getTorchIntensityLevels();
+        }
+        return mFlashlightIntensityLevels > 0 ? mFlashlightIntensityLevels : 1;
     }
 
     public void startCapture(int resultCode, Intent data) {
@@ -1196,7 +1237,7 @@ public class AudioCaptureService extends Service {
                             SAMPLE_RATE,
                             AudioFormat.CHANNEL_IN_MONO,
                             AudioFormat.ENCODING_PCM_16BIT);
-                    int bufferSize = Math.max(minBufSize, 4096 * 4);
+                    int bufferSize = Math.max(minBufSize, 2048 * 2);
 
                     if (source == CaptureSource.INTERNAL || source == CaptureSource.SHIZUKU) {
                         AudioPlaybackCaptureConfiguration config =
@@ -1225,8 +1266,9 @@ public class AudioCaptureService extends Service {
                         }
                         setupVisualizerCapture();
                     } else {
+                        // Use UNPROCESSED for the lowest possible latency and to bypass all system-level DSP
                         localRecord = new AudioRecord(
-                                MediaRecorder.AudioSource.MIC,
+                                MediaRecorder.AudioSource.UNPROCESSED,
                                 SAMPLE_RATE,
                                 AudioFormat.CHANNEL_IN_MONO,
                                 AudioFormat.ENCODING_PCM_16BIT,
@@ -1314,7 +1356,7 @@ public class AudioCaptureService extends Service {
 
         mAudioProcessor.updateFFTSize();
         float currentHzPerBin = mAudioProcessor.getHzPerBin();
-        int fftSize = 4096;
+        int fftSize = mAudioProcessor.getFFTSize();
         mHapticRange = new AudioProcessor.FrequencyRange(mHapticMinHz, mHapticMaxHz, currentHzPerBin, fftSize);
         mFlashlightRange = new AudioProcessor.FrequencyRange(mFlashlightMinHz, mFlashlightMaxHz, currentHzPerBin, fftSize);
 
@@ -1343,8 +1385,9 @@ public class AudioCaptureService extends Service {
 
                 mAudioProcessor.updateFFTSize();
                 float hzPerBin = mAudioProcessor.getHzPerBin();
-                mHapticRange = new AudioProcessor.FrequencyRange(mHapticMinHz, mHapticMaxHz, hzPerBin, 4096);
-                mFlashlightRange = new AudioProcessor.FrequencyRange(mFlashlightMinHz, mFlashlightMaxHz, hzPerBin, 4096);
+                int currentFftSize = mAudioProcessor.getFFTSize();
+                mHapticRange = new AudioProcessor.FrequencyRange(mHapticMinHz, mHapticMaxHz, hzPerBin, currentFftSize);
+                mFlashlightRange = new AudioProcessor.FrequencyRange(mFlashlightMinHz, mFlashlightMaxHz, hzPerBin, currentFftSize);
             }
 
             int read = record.read(hop, 0, HOP, AudioRecord.READ_BLOCKING);
@@ -1618,7 +1661,7 @@ public class AudioCaptureService extends Service {
         try {
             mAudioProcessor.updateFFTSize();
             float currentHzPerBin = mAudioProcessor.getHzPerBin();
-            int fftSize = 4096;
+            int fftSize = mAudioProcessor.getFFTSize();
             mHapticRange = new AudioProcessor.FrequencyRange(mHapticMinHz, mHapticMaxHz, currentHzPerBin, fftSize);
             mFlashlightRange = new AudioProcessor.FrequencyRange(mFlashlightMinHz, mFlashlightMaxHz, currentHzPerBin, fftSize);
 
@@ -1664,7 +1707,7 @@ public class AudioCaptureService extends Service {
     private void processVisualizerWaveform(byte[] waveform, int samplingRate) {
         if (!mCapturing || mVisualizerConfig == null) return;
         
-        Log.e(TAG, "Waveform received. Size: " + waveform.length + ", Rate: " + (samplingRate / 1000.0f) + " Hz");
+        Log.v(TAG, "Waveform received. Size: " + waveform.length + ", Rate: " + (samplingRate / 1000.0f) + " Hz");
 
         mAudioProcessor.updateFFTSize(samplingRate / 1000); // Visualizer API samplingRate is in mHz
 

@@ -64,7 +64,6 @@
     <string name="flashlight_smoothing_label">平滑度： %.2f</string>
     <string name="flashlight_smoothing_desc">较高的平滑度使光脉冲柔和而不是闪烁。</string>
     <string name="flashlight_gamma_label">强度伽马： %.1f</string>
-    <string name="flashlight_multiplier_label">振幅倍数： %.1fx</string>
     <string name="flashlight_monitor_label">手电筒监控</string>
 
     <string name="experimental_features">实验性功能</string>

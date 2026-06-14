@@ -64,7 +64,6 @@
     <string name="flashlight_smoothing_label">Suavizado: %.2f</string>
     <string name="flashlight_smoothing_desc">Un suavizado más alto hace que la luz pulse suavemente en lugar de parpadear.</string>
     <string name="flashlight_gamma_label">Gamma de intensidad: %.1f</string>
-    <string name="flashlight_multiplier_label">Multiplicador de amplitud: %.1fx</string>
     <string name="flashlight_monitor_label">Monitor de linterna</string>
 
     <string name="experimental_features">Funciones experimentales</string>

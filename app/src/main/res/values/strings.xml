@@ -64,15 +64,15 @@
     <string name="flashlight_mode_label">Flashlight Engine Mode</string>
     <string name="flashlight_mode_amplitude">Amplitude</string>
     <string name="flashlight_mode_beat">Beat Detection</string>
+    <string name="flashlight_intensity_label">Torch levels: %1$d</string>
     <string name="flashlight_frequency_label">Frequency: %1$d - %2$d Hz</string>
     <string name="flashlight_frequency_desc">The Hz range that the flashlight will react to. Lower for bass, higher for snare/vocals.</string>
-    <string name="flashlight_sensitivity_label">Sensitivity Threshold: %.2f</string>
-    <string name="flashlight_sensitivity_desc">Higher threshold filters out background noise/drums.</string>
+    <string name="flashlight_threshold_label">Threshold: %.2f</string>
+    <string name="flashlight_threshold_desc">If your torch only has one level, this turns it on and off.</string>
     <string name="flashlight_beat_sensitivity_label">Beat Sensitivity: %.1f</string>
-    <string name="flashlight_smoothing_label">Smoothing: %.2f</string>
-    <string name="flashlight_smoothing_desc">Higher smoothing makes the light pulse softly instead of strobing.</string>
-    <string name="flashlight_gamma_label">Intensity Gamma: %.1f</string>
-    <string name="flashlight_multiplier_label">Amplitude Multiplier: %.1fx</string>
+    <string name="flashlight_beat_sensitivity_desc">Higher values ignore weaker transients.</string>
+    <string name="flashlight_speed_label">Speed: %.0f ms</string>
+    <string name="flashlight_speed_desc">Lower values flash faster. 40 ms is the fastest supported limit.</string>
     <string name="flashlight_monitor_label">Flashlight Monitor</string>
 
     <string name="experimental_features">Experimental Features</string>

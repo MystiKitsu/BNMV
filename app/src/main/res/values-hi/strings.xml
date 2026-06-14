@@ -64,7 +64,6 @@
     <string name="flashlight_smoothing_label">स्मूथिंग: %.2f</string>
     <string name="flashlight_smoothing_desc">उच्च स्मूथिंग लाइट को स्ट्रोबिंग के बजाय धीरे से पल्स बनाती है।</string>
     <string name="flashlight_gamma_label">तीव्रता गामा: %.1f</string>
-    <string name="flashlight_multiplier_label">आयाम गुणक: %.1fx</string>
     <string name="flashlight_monitor_label">फ्लैशलाइट मॉनिटर</string>
 
     <string name="experimental_features">प्रायोगिक विशेषताएं</string>

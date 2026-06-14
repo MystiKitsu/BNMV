@@ -43,8 +43,6 @@ with gemini of similar
 * **Make the haptic amplitude mode resubmit a oneshot haptic all the time, even if it doesn't change!!!** currently it doesn't resubmit when the vibration amplitude doesn't change!
 * make the oneshot duration slightly longer
 * enhance the built-in switches by adding an X (cross) or a done (✅) in them, like the battery guru's settings switches, and also with bouncy animations and nice haptics
-* Fix microphone latency
-* decrease the decay for the android built in vizualiser (make the decay 60 fps even if the incoming data is 20fps)
 * Add m3e split row selectors
   * Typography menu
   * Idle breathing
@@ -68,9 +66,12 @@ with gemini of similar
 ---
 
 ## Done
+* Fix microphone latency
+* decrease the decay for the android built in vizualiser (make the decay 60 fps even if the incoming data is 20fps)
 * Add a disclaimer popup on first use of the media projection source that we do not record the screen, even if it looks like it.
 * Track preset usage time instead
 * Implement weekly leaderboard and usage statistics
+* --- 3.2.1
 * Refine beat detection engine haptics
 * Fix the amplitude haptics (Aleks)
 * fix the app crash
