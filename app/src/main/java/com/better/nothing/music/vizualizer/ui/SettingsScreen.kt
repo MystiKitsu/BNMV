@@ -237,61 +237,91 @@ internal fun SettingsScreen(
             )
         }
 
-        // ── Typography ──────────────────────────────────────────────────────
-        ExpressiveCard {
-            CardHeader(title = stringResource(R.string.typography))
-            
-            ExpressiveSegmentedButtonRow(
-                items = listOf("NDot", "NType"),
-                selectedItem = selectedFont,
-                onItemSelection = { viewModel.setSelectedFont(it) },
-                labelProvider = { if (it == "NDot") stringResource(R.string.font_ndot) else stringResource(R.string.font_ntype) },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-            BodyText(
-                text = stringResource(R.string.typography_help_text),
-                size = 12.sp
-            )
-        }
-
         // ── App Theme ───────────────────────────────────────────────────────
+        var themeExpanded by remember { mutableStateOf(false) }
+
         ExpressiveCard {
-            CardHeader(title = stringResource(R.string.app_theme))
-
-            val themeOptions = listOf(
-                Triple("Default", stringResource(R.string.theme_normal), Icons.Default.BrightnessAuto),
-                Triple("Liquorice Black", stringResource(R.string.theme_liquorice), Icons.Default.DarkMode),
-                Triple("Nothing", stringResource(R.string.theme_nothing), Icons.Default.Settings),
-                Triple("Material You", stringResource(R.string.theme_material_you), Icons.Default.Palette),
-                Triple("Music", stringResource(R.string.theme_music), Icons.Default.MusicNote)
-            )
-
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                maxItemsInEachRow = 2,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { themeExpanded = !themeExpanded },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                themeOptions.forEach { (key, label, icon) ->
-                    val isSelected = selectedTheme == key
-                    OptionTile(
-                        label = label,
-                        icon = icon,
-                        isSelected = isSelected,
-                        onClick = { 
-                            if (key == "Music" && !viewModel.isNotificationAccessGranted()) {
-                                val message = localContext.getString(R.string.music_theme_notification_access)
-                                Toast.makeText(localContext, message, Toast.LENGTH_LONG).show()
-                                localContext.startActivity(android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
-                            } else {
-                                viewModel.setSelectedTheme(key)
-                            }
-                        },
-                        modifier = Modifier.height(64.dp),
-                        maxLines = 1
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = stringResource(R.string.app_theme),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
+                }
+                Icon(
+                    imageVector = if (themeExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                )
+            }
+
+            AnimatedVisibility(visible = themeExpanded) {
+                Column(modifier = Modifier.padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // Typography
+                    Text(
+                        text = stringResource(R.string.typography),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    
+                    ExpressiveSegmentedButtonRow(
+                        items = listOf("NDot", "NType"),
+                        selectedItem = selectedFont,
+                        onItemSelection = { viewModel.setSelectedFont(it) },
+                        labelProvider = { if (it == "NDot") stringResource(R.string.font_ndot) else stringResource(R.string.font_ntype) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    BodyText(
+                        text = stringResource(R.string.typography_help_text),
+                        size = 12.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Theme Options
+                    val themeOptions = listOf(
+                        Triple("Default", stringResource(R.string.theme_normal), Icons.Default.BrightnessAuto),
+                        Triple("Liquorice Black", stringResource(R.string.theme_liquorice), Icons.Default.DarkMode),
+                        Triple("Nothing", stringResource(R.string.theme_nothing), Icons.Default.Settings),
+                        Triple("Material You", stringResource(R.string.theme_material_you), Icons.Default.Palette),
+                        Triple("Music", stringResource(R.string.theme_music), Icons.Default.MusicNote)
+                    )
+
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        maxItemsInEachRow = 2,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        themeOptions.forEach { (key, label, icon) ->
+                            val isSelected = selectedTheme == key
+                            OptionTile(
+                                label = label,
+                                icon = icon,
+                                isSelected = isSelected,
+                                onClick = { 
+                                    if (key == "Music" && !viewModel.isNotificationAccessGranted()) {
+                                        val message = localContext.getString(R.string.music_theme_notification_access)
+                                        Toast.makeText(localContext, message, Toast.LENGTH_LONG).show()
+                                        localContext.startActivity(android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"))
+                                    } else {
+                                        viewModel.setSelectedTheme(key)
+                                    }
+                                },
+                                modifier = Modifier.height(64.dp),
+                                maxLines = 1
+                            )
+                        }
+                    }
                 }
             }
         }

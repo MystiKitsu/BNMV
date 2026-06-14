@@ -21,6 +21,9 @@ public final class DeviceProfile {
     }
 
     public static int detectDevice() {
+        if (android.os.Build.VERSION.SDK_INT < 33) {
+            return DEVICE_UNKNOWN;
+        }
         if (Common.is20111()) {
             return DEVICE_NP1;
         } else if (Common.is22111()) {

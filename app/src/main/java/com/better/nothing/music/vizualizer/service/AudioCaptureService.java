@@ -464,10 +464,12 @@ public class AudioCaptureService extends Service {
         }
         resetVisualizerState();
 
-        mGM = GlyphManager.getInstance(getApplicationContext());
-        mGM.init(mGlyphCallback);
-        mGMM = GlyphMatrixManager.getInstance(getApplicationContext());
-        mGMM.init(mGlyphMatrixCallback);
+        if (mSelectedDevice != DeviceProfile.DEVICE_UNKNOWN && Build.VERSION.SDK_INT >= 33) {
+            mGM = GlyphManager.getInstance(getApplicationContext());
+            mGM.init(mGlyphCallback);
+            mGMM = GlyphMatrixManager.getInstance(getApplicationContext());
+            mGMM.init(mGlyphMatrixCallback);
+        }
 
         mMainHandler.post(mIdlePulseRunnable);
     }

@@ -452,7 +452,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         updateSelectedDevice()
         viewModelScope.launch(Dispatchers.IO) {
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
-                .edit { putBoolean("developer_mode_enabled", enabled) }
+                .edit { putBoolean("developer_mode_v2", enabled) }
         }
     }
 
@@ -1845,7 +1845,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch(Dispatchers.Default) {
             val prefs = ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
 
-            _developerModeEnabled.value = prefs.getBoolean("developer_mode_enabled", false)
+            _developerModeEnabled.value = prefs.getBoolean("developer_mode_v2", false)
             _spoofedDevice.value = prefs.getInt("spoofed_device", DeviceProfile.DEVICE_NP1)
 
             val actualDevice = DeviceProfile.detectDevice()
