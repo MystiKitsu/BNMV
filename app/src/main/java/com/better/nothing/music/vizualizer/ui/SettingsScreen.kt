@@ -1,6 +1,7 @@
 package com.better.nothing.music.vizualizer.ui
 
 import com.better.nothing.music.vizualizer.R
+import com.better.nothing.music.vizualizer.BuildConfig
 import com.better.nothing.music.vizualizer.model.DeviceProfile
 import com.better.nothing.music.vizualizer.model.UserProfile
 import android.widget.Toast
@@ -67,6 +68,7 @@ internal fun SettingsScreen(
 
     val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
     val selectedFont by viewModel.selectedFont.collectAsStateWithLifecycle()
+    val selectedDevice by viewModel.selectedDevice.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     val localContext = LocalContext.current
     var showDevModePanel by remember { mutableStateOf(false) }
@@ -327,63 +329,78 @@ internal fun SettingsScreen(
         }
 
         // ── Idle Breathing ──────────────────────────────────────────────────
-        ExpressiveCard {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Air, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.idle_breathing_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+        if (selectedDevice != DeviceProfile.DEVICE_UNKNOWN) {
+            ExpressiveCard {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            Icons.Default.Air,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
                         )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.idle_breathing_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = stringResource(R.string.idle_breathing_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+                    Switch(
+                        checked = idleBreathingEnabled,
+                        onCheckedChange = onIdleBreathingEnabledChanged,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier.size(height = 24.dp, width = 48.dp)
+                    )
+                }
+
+                AnimatedVisibility(visible = idleBreathingEnabled) {
+                    Column(
+                        modifier = Modifier.padding(top = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Text(
-                            text = stringResource(R.string.idle_breathing_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            text = stringResource(R.string.idle_pattern),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        val patternOptions = listOf(
+                            "pulse" to stringResource(R.string.idle_pattern_pulse),
+                            "wave" to stringResource(R.string.idle_pattern_wave),
+                            "scanner" to stringResource(R.string.idle_pattern_cylon),
+                            "static" to stringResource(R.string.idle_pattern_static),
+                            "zebra" to stringResource(R.string.idle_pattern_zebra)
+                        )
+
+                        ExpressiveSegmentedButtonRow(
+                            items = patternOptions.map { it.first },
+                            selectedItem = idlePattern,
+                            onItemSelection = onIdlePatternChanged,
+                            labelProvider = { key ->
+                                patternOptions.find { it.first == key }?.second ?: key
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
-                }
-                Switch(
-                    checked = idleBreathingEnabled,
-                    onCheckedChange = onIdleBreathingEnabledChanged,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = MaterialTheme.colorScheme.primary
-                    ),
-                    modifier = Modifier.size(height = 24.dp, width = 48.dp)
-                )
-            }
-
-            AnimatedVisibility(visible = idleBreathingEnabled) {
-                Column(modifier = Modifier.padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = stringResource(R.string.idle_pattern),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    val patternOptions = listOf(
-                        "pulse" to stringResource(R.string.idle_pattern_pulse),
-                        "wave" to stringResource(R.string.idle_pattern_wave),
-                        "scanner" to stringResource(R.string.idle_pattern_cylon),
-                        "static" to stringResource(R.string.idle_pattern_static),
-                        "zebra" to stringResource(R.string.idle_pattern_zebra)
-                    )
-
-                    ExpressiveSegmentedButtonRow(
-                        items = patternOptions.map { it.first },
-                        selectedItem = idlePattern,
-                        onItemSelection = onIdlePatternChanged,
-                        labelProvider = { key -> patternOptions.find { it.first == key }?.second ?: key },
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
             }
         }
@@ -503,12 +520,14 @@ internal fun SettingsScreen(
                                 Text(stringResource(R.string.global_announcements), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                 Text(stringResource(R.string.global_announcements_desc), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                             }
-                            Button(
-                                onClick = { viewModel.showAnnouncementEditor() },
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                            ) {
-                                Text(stringResource(R.string.create), style = MaterialTheme.typography.labelMedium)
+                            if (BuildConfig.DEBUG) {
+                                Button(
+                                    onClick = { viewModel.showAnnouncementEditor() },
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                ) {
+                                    Text(stringResource(R.string.create), style = MaterialTheme.typography.labelMedium)
+                                }
                             }
                         }
                     }

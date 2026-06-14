@@ -15,8 +15,6 @@
     * 3 for the Viz outputs,
     * 1 for start stop
     * 2 by 2 nothing style
- 
-* Remove idle breathing if device isn't a nothing phone
 
 * Remove haptic tab AND DISABLE ALL CODE RELATED TO IT if device doesn't have a haptic motor
 
@@ -60,13 +58,13 @@ with gemini of similar
 * Add multiples intensities to flashlight 
 * update flashlight monitor with shape = audio, and other thing next to it = flashlight intensity.
   * make the shape flash to the flashlight brightness
-* update haptic monitor with shape = audio, and line next to it = motor amplitude 
-* make expressive ui on by default
+* update haptic monitor with shape = audio, and line next to it = motor amplitude
 * Do tablet UI
 
 ---
 
 ## Done
+* Remove idle breathing if device isn't a nothing phone
 * Hide glyph tab if device is not a Nothing Phone AND DISABLE ALL CODE RELATED TO THE GLYPH UI
 * Fix microphone latency
 * decrease the decay for the android built in vizualiser (make the decay 60 fps even if the incoming data is 20fps)
