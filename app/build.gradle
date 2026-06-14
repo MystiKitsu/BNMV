@@ -78,6 +78,8 @@ dependencies {
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-database'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0'
+    implementation 'com.google.firebase:firebase-appcheck'
+    implementation 'com.google.firebase:firebase-appcheck-debug'
 
     // Coil for image loading
     implementation("io.coil-kt.coil3:coil-compose:3.5.0")
