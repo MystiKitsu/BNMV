@@ -199,7 +199,7 @@ fun FlashlightScreen(
                         CardHeader(title = if (supportsMultiIntensity) {
                             "Fade out duration: ${flashlightSpeedMs.toInt()}ms"
                         } else {
-                            stringResource(R.string.flashlight_speed_label, flashlightSpeedMs.toInt())
+                            stringResource(R.string.flashlight_speed_label, flashlightSpeedMs)
                         })
                         ExpressiveSlider(
                             value = flashlightSpeedMs,
