@@ -691,71 +691,63 @@ fun NativeBottomBar(
     visibleTabs: List<Tab>,
     onTabSelected: (Tab) -> Unit,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+    NavigationBar(
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
         tonalElevation = 8.dp,
-        modifier = Modifier.fillMaxWidth()
+        windowInsets = NavigationBarDefaults.windowInsets
     ) {
-        NavigationBar(
-            modifier = Modifier
-                .height(80.dp)
-                .padding(horizontal = 8.dp),
-            containerColor = Color.Transparent,
-            tonalElevation = 0.dp,
-            windowInsets = NavigationBarDefaults.windowInsets
-        ) {
-            visibleTabs.forEach { tab ->
-                val isSelected = tab == selectedTab
-                val uiAmp = LocalUIAmplitude.current()
-                val selectionScale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.25f else 1.0f,
-                    animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
-                    label = "nav_selection_scale"
-                )
-                val iconScale = selectionScale + (if (isSelected) uiAmp * 0.5f else 0f)
+        visibleTabs.forEach { tab ->
+            val isSelected = tab == selectedTab
+            val uiAmp = LocalUIAmplitude.current()
+            val selectionScale by animateFloatAsState(
+                targetValue = if (isSelected) 1.25f else 1.0f,
+                animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+                label = "nav_selection_scale"
+            )
+            val iconScale = selectionScale + (if (isSelected) uiAmp * 0.5f else 0f)
 
-                NavigationBarItem(
-                    selected = isSelected,
-                    onClick = {
-                        if (!isSelected) {
-                            onTabSelected(tab)
-                        }
-                    },
-                    label = {
-                        Text(
-                            text = stringResource(tab.labelRes),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    icon = {
-                        Box(contentAlignment = Alignment.Center) {
-                            val iconModifier = Modifier
-                                .size(24.dp)
-                                .graphicsLayer {
-                                    scaleX = iconScale
-                                    scaleY = iconScale
-                                }
-
-                            when (tab) {
-                                Tab.Audio -> Icon(Icons.AutoMirrored.Filled.VolumeUp, stringResource(tab.labelRes), modifier = iconModifier)
-                                Tab.Glyphs -> Icon(painter = painterResource(R.drawable.ic_nav_glyphs), contentDescription = stringResource(tab.labelRes), modifier = iconModifier)
-                                Tab.Haptics -> Icon(Icons.Filled.Vibration, stringResource(tab.labelRes), modifier = iconModifier)
-                                Tab.Flashlight -> Icon(Icons.Filled.FlashlightOn, stringResource(tab.labelRes), modifier = iconModifier)
-                                Tab.Settings -> Icon(Icons.Filled.Settings, stringResource(tab.labelRes), modifier = iconModifier)
-                            }
-                        }
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = {
+                    if (!isSelected) {
+                        onTabSelected(tab)
+                    }
+                },
+                label = {
+                    Text(
+                        text = stringResource(tab.labelRes),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                },
+                icon = {
+                    Box(contentAlignment = Alignment.Center) {
+                        val iconModifier = Modifier
+                            .size(24.dp)
+                            .graphicsLayer {
+                                scaleX = iconScale
+                                scaleY = iconScale
+                            }
+
+                        when (tab) {
+                            Tab.Audio -> Icon(Icons.AutoMirrored.Filled.VolumeUp, stringResource(tab.labelRes), modifier = iconModifier)
+                            Tab.Glyphs -> Icon(painter = painterResource(R.drawable.ic_nav_glyphs), contentDescription = stringResource(tab.labelRes), modifier = iconModifier)
+                            Tab.Haptics -> Icon(Icons.Filled.Vibration, stringResource(tab.labelRes), modifier = iconModifier)
+                            Tab.Flashlight -> Icon(Icons.Filled.FlashlightOn, stringResource(tab.labelRes), modifier = iconModifier)
+                            Tab.Settings -> Icon(Icons.Filled.Settings, stringResource(tab.labelRes), modifier = iconModifier)
+                        }
+                    }
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
+            )
         }
     }
 }

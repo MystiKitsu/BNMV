@@ -68,7 +68,6 @@ fun FlashlightScreen(
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Spacer(modifier = Modifier.height(50.dp))
         ScreenTitle(text = stringResource(R.string.flashlight_header))
 
         AnimatedToggleCard(

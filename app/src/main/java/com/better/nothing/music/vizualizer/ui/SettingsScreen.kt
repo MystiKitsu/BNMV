@@ -80,7 +80,6 @@ internal fun SettingsScreen(
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Spacer(modifier = Modifier.height(50.dp))
         ScreenTitle(
             text = stringResource(R.string.settings_title),
             onLongPress = { showDevModePanel = !showDevModePanel }

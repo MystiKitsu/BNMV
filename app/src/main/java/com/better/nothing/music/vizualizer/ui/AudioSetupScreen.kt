@@ -122,8 +122,6 @@ fun AudioScreen(
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Spacer(modifier = Modifier.height(50.dp))
-
         ScreenTitle(text = stringResource(R.string.audio_screen_title))
 
         CaptureSourceCard(

@@ -29,13 +29,10 @@ public final class ContinuousHapticEngine {
     private static final String TAG = "ContinuousHapticEngine";
 
     // Tune this to match your input cadence.
-    private static final int HAPTIC_DURATION_MS = 100;
+    private static final int HAPTIC_DURATION_MS = 150;
 
     // Don't spam the vibrator service faster than this.
     private static final long MIN_RESUBMIT_INTERVAL_MS = 20L;
-
-    // Minimum change in amplitude to trigger a resubmit (0-255).
-    private static final int AMPLITUDE_THRESHOLD = 1;
 
     private static final float SPECTRUM_GAIN = 4.0f;
 
@@ -97,11 +94,8 @@ public final class ContinuousHapticEngine {
 
         final long now = SystemClock.elapsedRealtime();
 
-        // Only resubmit if change is significant AND enough time has passed
-        boolean cooldownOver = (now - lastSubmitMs) >= MIN_RESUBMIT_INTERVAL_MS;
-        boolean significantChange = Math.abs(nextAmplitude - lastAmplitude) >= AMPLITUDE_THRESHOLD;
-
-        if (!cooldownOver || !significantChange) {
+        // Only resubmit if enough time has passed to avoid spamming the system
+        if ((now - lastSubmitMs) < MIN_RESUBMIT_INTERVAL_MS) {
             return;
         }
 

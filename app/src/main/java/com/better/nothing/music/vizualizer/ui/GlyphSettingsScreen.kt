@@ -110,8 +110,6 @@ internal fun GlyphsScreen(
             .padding(horizontal = 8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Spacer(modifier = Modifier.height(50.dp))
-
         ScreenTitle(text = stringResource(R.string.glyph_controls))
 
         // Header with external toggle for glyph visualization
