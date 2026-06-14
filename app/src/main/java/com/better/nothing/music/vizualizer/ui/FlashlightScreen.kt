@@ -196,15 +196,23 @@ fun FlashlightScreen(
                     }
 
                     ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-                        CardHeader(title = stringResource(R.string.flashlight_speed_label, flashlightSpeedMs))
+                        CardHeader(title = if (supportsMultiIntensity) {
+                            "Fade out duration: ${flashlightSpeedMs.toInt()}ms"
+                        } else {
+                            stringResource(R.string.flashlight_speed_label, flashlightSpeedMs.toInt())
+                        })
                         ExpressiveSlider(
                             value = flashlightSpeedMs,
                             onValueChange = onFlashlightSpeedMsChanged,
-                            valueRange = 20f..150f,
+                            valueRange = if (supportsMultiIntensity) 150f..700f else 20f..150f,
                             modifier = Modifier.fillMaxWidth()
                         )
                         BodyText(
-                            text = stringResource(R.string.flashlight_speed_desc),
+                            text = if (supportsMultiIntensity) {
+                                "Adjust how long the flashlight takes to fade out after each beat."
+                            } else {
+                                stringResource(R.string.flashlight_speed_desc)
+                            },
                             size = 12.sp,
                             modifier = Modifier.padding(horizontal = 8.dp)
                         )

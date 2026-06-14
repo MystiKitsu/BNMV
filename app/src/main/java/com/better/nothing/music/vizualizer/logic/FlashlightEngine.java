@@ -162,7 +162,9 @@ public final class FlashlightEngine {
     }
 
     public synchronized void setFlashlightSpeedMs(float speedMs) {
-        this.flashlightBeatSpeedMs = clamp(speedMs, 40f, 150f);
+        float min = hasVariableTorchStrength() ? 150f : 20f;
+        float max = hasVariableTorchStrength() ? 700f : 150f;
+        this.flashlightBeatSpeedMs = clamp(speedMs, min, max);
         this.beatFlashDurationMs = (long) flashlightBeatSpeedMs;
     }
 

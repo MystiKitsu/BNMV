@@ -1555,7 +1555,9 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun setFlashlightSpeedMs(speedMs: Float) {
-        val clamped = speedMs.coerceIn(40f, 150f)
+        val min = if (_flashlightIntensityLevels.value > 1) 150f else 20f
+        val max = if (_flashlightIntensityLevels.value > 1) 700f else 150f
+        val clamped = speedMs.coerceIn(min, max)
         _flashlightSpeedMs.value = clamped
         viewModelScope.launch(Dispatchers.IO) {
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
@@ -1572,8 +1574,11 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     }
 
     private fun loadFlashlightSpeedMs(prefs: android.content.SharedPreferences): Float {
+        val min = if (_flashlightIntensityLevels.value > 1) 150f else 20f
+        val max = if (_flashlightIntensityLevels.value > 1) 700f else 150f
+
         if (prefs.contains("flashlight_speed_ms")) {
-            return prefs.getFloat("flashlight_speed_ms", 90f).coerceIn(40f, 150f)
+            return prefs.getFloat("flashlight_speed_ms", 90f).coerceIn(min, max)
         }
 
         val legacyGamma = prefs.getFloat("flashlight_gamma", 2.2f)
@@ -1585,9 +1590,9 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         if (gamma < 10f) {
             val clampedGamma = gamma.coerceIn(1f, 4f)
             val normalized = (clampedGamma - 1f) / 3f
-            return 150f - (normalized * 110f)
+            return 150f - (normalized * 130f)
         }
-        return gamma.coerceIn(40f, 150f)
+        return gamma.coerceIn(20f, 150f)
     }
 
     fun setIdleBreathingEnabled(enabled: Boolean) {
