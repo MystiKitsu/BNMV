@@ -87,6 +87,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import kotlinx.coroutines.flow.MutableStateFlow;
+import kotlinx.coroutines.flow.StateFlow;
+import kotlinx.coroutines.flow.StateFlowKt;
+
 public class AudioCaptureService extends Service {
 
     private static final String TAG = "GlyphViz:Service";
@@ -129,6 +133,16 @@ public class AudioCaptureService extends Service {
     private static final long PROJECTION_SETTLE_DELAY_MS = 500L;
 
     private static volatile boolean sIsRunning = false;
+    private static final MutableStateFlow<Boolean> sIsRunningFlow = StateFlowKt.MutableStateFlow(false);
+    
+    public StateFlow<Boolean> isRunningFlow() {
+        return sIsRunningFlow;
+    }
+
+    private static void setRunning(boolean running) {
+        sIsRunning = running;
+        sIsRunningFlow.setValue(running);
+    }
     public static AudioCaptureService sInstance = null;
 
     private com.better.nothing.music.vizualizer.util.AnalyticsHelper mAnalyticsHelper;
@@ -550,6 +564,24 @@ public class AudioCaptureService extends Service {
         return sIsRunning;
     }
 
+    public boolean isVisualizerRunning() {
+        return sIsRunning;
+    }
+
+    public void startVisualizer() {
+        if (mCaptureSource == CaptureSource.MIC) {
+            startMicCapture();
+        } else if (mCaptureSource == CaptureSource.VIZUALIZER) {
+            startVizualizerCapture();
+        } else if (mCaptureSource == CaptureSource.SHIZUKU) {
+            startShizukuCapture();
+        }
+    }
+
+    public void stopVisualizer() {
+        stopCapture();
+    }
+
     public static boolean isHapticEnabledGlobal(Context context) {
         if (sIsRunning && sInstance != null) {
             return sInstance.mHapticEnabled;
@@ -722,7 +754,7 @@ public class AudioCaptureService extends Service {
                 startShizukuCapture();
             } else {
                 stopCaptureLocked();
-                sIsRunning = false;
+                setRunning(false);
                 requestTileRefresh();
             }
         }
@@ -742,7 +774,9 @@ public class AudioCaptureService extends Service {
                 "appops set --uid " + uid + " PROJECT_MEDIA allow",
                 "appops set --uid " + uid + " android:project_media allow",
                 "appops set " + pkg + " RECORD_AUDIO allow",
-                "appops set --uid " + uid + " RECORD_AUDIO allow"
+                "appops set --uid " + uid + " RECORD_AUDIO allow",
+                "appops set " + pkg + " CAPTURE_AUDIO_OUTPUT allow",
+                "appops set --uid " + uid + " CAPTURE_AUDIO_OUTPUT allow"
             };
             
             for (String cmd : cmds) {
@@ -804,7 +838,8 @@ public class AudioCaptureService extends Service {
                 return null;
             }
 
-            IBinder projectionBinder = (IBinder) createProjectionMethod.invoke(service, uid, pkg, 0, true);
+            // Use MediaProjectionManager.TYPE_MIRRORING (1) for system-wide capture if available (SCRCPY method)
+            IBinder projectionBinder = (IBinder) createProjectionMethod.invoke(service, uid, pkg, 1, true);
             if (projectionBinder == null) {
                 Log.e(TAG, "createProjection returned null binder");
                 return null;
@@ -875,6 +910,10 @@ public class AudioCaptureService extends Service {
         }
     }
 
+    public void setLatencyMs(int latencyMs) {
+        setLatencyCompensationMs(latencyMs);
+    }
+
     public void setLatencyCompensationMs(int latencyMs) {
         if (mLatencyCompensationMs != latencyMs) {
             mLatencyCompensationMs = latencyMs;
@@ -893,9 +932,20 @@ public class AudioCaptureService extends Service {
     @SuppressWarnings("unused")
     public void setSpectrumGain(float gain) {
         if (mGlyphRenderer != null) {
-            mGlyphRenderer.setSpectrumGain(4.0f);
+            mGlyphRenderer.setSpectrumGain(gain);
         }
-        ensureGlyphSession();
+    }
+
+    public void setSelectedPreset(String presetKey) {
+        applyPresetSelection(presetKey);
+    }
+
+    public void setHapticMotorEnabled(boolean enabled) {
+        mHapticEnabled = enabled;
+    }
+
+    public void setHapticMode(HapticMode mode) {
+        mHapticMode = mode;
     }
 
     public void setMaxBrightness(int brightness) {
@@ -1069,13 +1119,19 @@ public class AudioCaptureService extends Service {
         requestTileRefresh();
     }
 
-    public void setHapticMode(HapticMode mode) {
-        mHapticMode = mode;
-        if (mContinuousHapticEngine != null) mContinuousHapticEngine.stopHaptics();
-        if (mBeatDetectionEngine != null) {
-            mBeatDetectionEngine.stopHaptics();
-            mBeatDetectionEngine.resetDetectionState();
+    public void setMusicArtwork(android.graphics.Bitmap bitmap) {
+        // Optional: use for theming
+    }
+
+    public void setAudioRoute(com.better.nothing.music.vizualizer.ui.AudioRoute route) {
+        if (route != null) {
+            setLatencyCompensationMs(loadLatencyCompensationMs(this, mSelectedDevice, route.getStorageKey()));
         }
+    }
+
+    public String getActiveAudioRouteKey() {
+        AudioRouteInfo info = resolveCurrentAudioRoute();
+        return info != null ? info.storageKey : null;
     }
 
     public void setHapticFreqRange(float minHz, float maxHz) {
@@ -1187,7 +1243,7 @@ public class AudioCaptureService extends Service {
             projectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
             if (projectionManager == null) {
                 Log.e(TAG, "MediaProjectionManager is unavailable");
-                sIsRunning = false;
+                setRunning(false);
                 return;
             }
         }
@@ -1201,7 +1257,7 @@ public class AudioCaptureService extends Service {
                 if (projection == null) {
                     Log.e(TAG, "MediaProjection token was denied or expired");
                     stopForeground(STOP_FOREGROUND_REMOVE);
-                    sIsRunning = false;
+                    setRunning(false);
                     return;
                 }
                 mProjection = projection;
@@ -1209,7 +1265,7 @@ public class AudioCaptureService extends Service {
                 mProjection = getShizukuProjection();
                 if (mProjection == null) {
                     Log.e(TAG, "Failed to obtain Shizuku MediaProjection");
-                    sIsRunning = false;
+                    setRunning(false);
                     return;
                 }
                 int type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION | ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
@@ -1223,7 +1279,7 @@ public class AudioCaptureService extends Service {
             }
 
             mCapturing = true;
-            sIsRunning = true;
+            setRunning(true);
             updateOverlayVisibility();
             mCaptureStartTimeMs = SystemClock.elapsedRealtime();
             ensureCaptureExecutor();
@@ -1236,33 +1292,54 @@ public class AudioCaptureService extends Service {
                     SystemClock.sleep(PROJECTION_SETTLE_DELAY_MS);
 
                     AudioRecord localRecord = null;
+                    int captureSampleRate = (source == CaptureSource.MIC) ? SAMPLE_RATE : 48000;
+                    
                     int minBufSize = AudioRecord.getMinBufferSize(
-                            SAMPLE_RATE,
+                            captureSampleRate,
                             AudioFormat.CHANNEL_IN_MONO,
                             AudioFormat.ENCODING_PCM_16BIT);
                     int bufferSize = Math.max(minBufSize, 2048 * 2);
 
                     if (source == CaptureSource.INTERNAL || source == CaptureSource.SHIZUKU) {
-                        AudioPlaybackCaptureConfiguration config =
-                                new AudioPlaybackCaptureConfiguration.Builder(mProjection)
-                                        .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                                        .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                                        .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
-                                        .addMatchingUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                                        .build();
-
                         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                             return;
                         }
-                        localRecord = new AudioRecord.Builder()
-                                .setAudioPlaybackCaptureConfig(config)
-                                .setAudioFormat(new AudioFormat.Builder()
-                                        .setSampleRate(SAMPLE_RATE)
-                                        .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
-                                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                        .build())
-                                .setBufferSizeInBytes(bufferSize)
-                                .build();
+
+                        if (source == CaptureSource.SHIZUKU) {
+                            // Try SCRCPY-style REMOTE_SUBMIX (Source 8) which captures all audio including opt-outs
+                            try {
+                                localRecord = new AudioRecord(8, captureSampleRate,
+                                        AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize);
+                                if (localRecord.getState() != AudioRecord.STATE_INITIALIZED) {
+                                    localRecord.release();
+                                    localRecord = null;
+                                } else {
+                                    Log.d(TAG, "Successfully initialized REMOTE_SUBMIX record (SCRCPY method)");
+                                }
+                            } catch (Exception e) {
+                                Log.w(TAG, "REMOTE_SUBMIX initialization failed, falling back to MediaProjection", e);
+                            }
+                        }
+
+                        if (localRecord == null) {
+                            AudioPlaybackCaptureConfiguration config =
+                                    new AudioPlaybackCaptureConfiguration.Builder(mProjection)
+                                            .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
+                                            .addMatchingUsage(AudioAttributes.USAGE_GAME)
+                                            .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                                            .addMatchingUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                                            .build();
+
+                            localRecord = new AudioRecord.Builder()
+                                    .setAudioPlaybackCaptureConfig(config)
+                                    .setAudioFormat(new AudioFormat.Builder()
+                                            .setSampleRate(captureSampleRate)
+                                            .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+                                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                            .build())
+                                    .setBufferSizeInBytes(bufferSize)
+                                    .build();
+                        }
                     } else if (source == CaptureSource.VIZUALIZER) {
                         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                             return;
@@ -1321,7 +1398,7 @@ public class AudioCaptureService extends Service {
     private void stopCaptureLocked() {
         mAnalyticsHelper.logEvent("capture_stopped", null);
         mCapturing = false;
-        sIsRunning = false;
+        setRunning(false);
         updateOverlayVisibility();
         mCaptureStartTimeMs = 0;
         shutdownCaptureExecutor();
@@ -1358,13 +1435,14 @@ public class AudioCaptureService extends Service {
             return;
         }
 
-        mAudioProcessor.updateFFTSize();
+        mAudioProcessor.updateFFTSize(record.getSampleRate());
         float currentHzPerBin = mAudioProcessor.getHzPerBin();
         int fftSize = mAudioProcessor.getFFTSize();
         mHapticRange = new AudioProcessor.FrequencyRange(mHapticMinHz, mHapticMaxHz, currentHzPerBin, fftSize);
         mFlashlightRange = new AudioProcessor.FrequencyRange(mFlashlightMinHz, mFlashlightMaxHz, currentHzPerBin, fftSize);
 
-        short[] hop = new short[HOP];
+        int currentHopSize = Math.round(record.getSampleRate() / (float) FPS);
+        short[] hop = new short[currentHopSize];
         ArrayDeque<PendingFrame> pendingFrames = new ArrayDeque<>();
 
         int appliedLatencyVersion = mLatencySettingsVersion.get();
@@ -1387,14 +1465,17 @@ public class AudioCaptureService extends Service {
                 appliedLatencyVersion = latencyVersion;
                 appliedHapticVersion = hapticVersion;
 
-                mAudioProcessor.updateFFTSize();
+                mAudioProcessor.updateFFTSize(record.getSampleRate());
                 float hzPerBin = mAudioProcessor.getHzPerBin();
                 int currentFftSize = mAudioProcessor.getFFTSize();
                 mHapticRange = new AudioProcessor.FrequencyRange(mHapticMinHz, mHapticMaxHz, hzPerBin, currentFftSize);
                 mFlashlightRange = new AudioProcessor.FrequencyRange(mFlashlightMinHz, mFlashlightMaxHz, hzPerBin, currentFftSize);
+                
+                currentHopSize = Math.round(record.getSampleRate() / (float) FPS);
+                hop = new short[currentHopSize];
             }
 
-            int read = record.read(hop, 0, HOP, AudioRecord.READ_BLOCKING);
+            int read = record.read(hop, 0, currentHopSize, AudioRecord.READ_BLOCKING);
             if (read <= 0) continue;
 
             AudioProcessor.AudioFrameResult result = mAudioProcessor.processAudioFrame(hop, config, mHapticRange, mCaptureSource != CaptureSource.MIC);
@@ -1807,7 +1888,7 @@ public class AudioCaptureService extends Service {
 
     public static String loadZonesConfigVersion(Context context) { try { return loadZonesConfigRoot(context).optString("version", "Unknown"); } catch (Exception e) { return "Unknown"; } }
     private static JSONObject loadZonesConfigRoot(Context context) throws IOException, JSONException { return new JSONObject(loadZonesConfigText(context)); }
-    private static String loadZonesConfigText(Context context) throws IOException {
+    public static String loadZonesConfigText(Context context) throws IOException {
         File[] candidates = { new File(context.getFilesDir(), "zones.config"), context.getExternalFilesDir(null) == null ? null : new File(context.getExternalFilesDir(null), "zones.config"), new File(context.getApplicationInfo().dataDir, "zones.config") };
         for (File candidate : candidates) if (candidate != null && candidate.isFile()) return readFile(candidate);
         InputStream is = context.getAssets().open("zones.config");
