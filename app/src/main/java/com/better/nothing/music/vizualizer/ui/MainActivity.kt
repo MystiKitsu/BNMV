@@ -101,6 +101,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.math.absoluteValue
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -278,6 +279,8 @@ class MainActivity : ComponentActivity() {
             val captureSource by viewModel.captureSource.collectAsStateWithLifecycle()
             val presetInfos by viewModel.presetInfos.collectAsStateWithLifecycle()
             val selectedPreset by viewModel.selectedPreset.collectAsStateWithLifecycle()
+            val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
+            val selectedFont by viewModel.selectedFont.collectAsStateWithLifecycle()
 
             val hapticMotorEnabled by viewModel.hapticMotorEnabled.collectAsStateWithLifecycle()
             val hapticMode by viewModel.hapticMode.collectAsStateWithLifecycle()
@@ -332,94 +335,107 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            BetterVizApp(
-                viewModel = viewModel,
-                selectedTab = selectedTab,
-                onTabSelected = { viewModel.selectTab(it) },
-                isRunning = isRunning,
-                selectedDevice = selectedDevice,
-                onDeviceChanged = { viewModel.setSpoofedDevice(it) },
-                latencyPresets = latencyPresets,
-                onLatencyChanged = { onLatencyChanged(it) },
-                spectrumGain = spectrumGain,
-                onSpectrumGainChanged = { onSpectrumGainChanged(it) },
-                maxBrightness = maxBrightness,
-                onMaxBrightnessChanged = { onMaxBrightnessChanged(it) },
-                presets = presetInfos,
-                selectedPreset = selectedPreset,
-                onPresetSelected = { onPresetSelected(it) },
-                onToggleVisualizer = { toggleVisualizer() },
-                onAutoDeviceToggle = { onAutoDeviceToggle(it) },
-                hapticMotorEnabled = hapticMotorEnabled,
-                onHapticMotorEnabledChanged = { onHapticMotorEnabledChanged(it) },
-                hapticMode = hapticMode,
-                onHapticModeChanged = { onHapticModeChanged(it) },
-                hapticFreqMin = hapticFreqMin,
-                hapticFreqMax = hapticFreqMax,
-                onHapticFreqRangeChanged = { min, max -> onHapticFreqRangeChanged(min, max) },
-                hapticMultiplier = hapticMultiplier,
-                onHapticMultiplierChanged = { onHapticMultiplierChanged(it) },
-                hapticAudioGain = hapticAudioGain,
-                onHapticAudioGainChanged = { onHapticAudioGainChanged(it) },
-                hapticGamma = hapticGamma,
-                onHapticGammaChanged = { onHapticGammaChanged(it) },
-                hapticBeatSensitivity = hapticBeatSensitivity,
-                onHapticBeatSensitivityChanged = { onHapticBeatSensitivityChanged(it) },
-                hapticBeatGamma = hapticBeatGamma,
-                onHapticBeatGammaChanged = { onHapticBeatGammaChanged(it) },
-                hapticAmplitudeProvider = { hapticAmplitude },
-                isBeatDetectedProvider = { isBeatDetected },
-                flashlightEnabled = flashlightEnabled,
-                onFlashlightEnabledChanged = { onFlashlightEnabledChanged(it) },
-                flashlightMode = flashlightMode,
-                onFlashlightModeChanged = { onFlashlightModeChanged(it) },
-                flashlightFreqMin = flashlightFreqMin,
-                flashlightFreqMax = flashlightFreqMax,
-                onFlashlightFreqRangeChanged = { min, max -> onFlashlightFreqRangeChanged(min, max) },
-                flashlightThreshold = flashlightThreshold,
-                onFlashlightThresholdChanged = { onFlashlightThresholdChanged(it) },
-                flashlightSpeedMs = flashlightSpeedMs,
-                onFlashlightSpeedMsChanged = { onFlashlightSpeedMsChanged(it) },
-                flashlightBeatSensitivity = flashlightBeatSensitivity,
-                onFlashlightBeatSensitivityChanged = { onFlashlightBeatSensitivityChanged(it) },
-                flashlightIntensityLevels = flashlightIntensityLevels,
-                flashlightAmplitudeProvider = { flashlightAmplitude },
-                isFlashlightBeatDetectedProvider = { isFlashlightBeatDetected },
-                idleBreathingEnabled = idleBreathingEnabled,
-                onIdleBreathingEnabledChanged = { onIdleBreathingEnabledChanged(it) },
-                idlePattern = idlePattern,
-                onIdlePatternChanged = { onIdlePatternChanged(it) },
-                notificationFlashEnabled = notificationFlashEnabled,
-                onNotificationFlashEnabledChanged = { onNotificationFlashEnabledChanged(it) },
-                strobeEnabled = strobeEnabled,
-                onStrobeEnabledChanged = { onStrobeEnabledChanged(it) },
-                disableGlyphsWhenSilent = disableGlyphsWhenSilent,
-                onDisableGlyphsWhenSilentChanged = { onDisableGlyphsWhenSilentChanged(it) },
-                overlayEnabled = overlayEnabled,
-                onOverlayEnabledChanged = { onOverlayEnabledChanged(it) },
-                uiAmplitudeProvider = { uiAmplitude },
-                musicThemeColor = musicThemeColor,
-                totalVisualizedTime = totalVisualizedTime,
-                shizukuUnlocked = shizukuUnlocked,
-                dynamicGainEnabled = dynamicGainEnabled,
-                connectedDeviceName = musicThemeHandler.activeMediaController?.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown",
-                latencyMs = latencyMs,
-                autoDeviceEnabled = autoDeviceMemorize,
-                captureSource = captureSource,
-                fftData = fftData,
-                gammaValue = gammaValue,
-                onGammaChanged = { onGammaChanged(it) }
-            )
-
-            if (showProjectionInfoDialog) {
-                MediaProjectionInfoDialog(
-                    onConfirm = {
-                        showProjectionInfoDialog = false
-                        markProjectionInfoShown()
-                        launchProjection()
-                    },
-                    onDismiss = { showProjectionInfoDialog = false }
+            BetterVizTheme(
+                themeName = selectedTheme,
+                fontName = selectedFont,
+                musicPrimaryColor = musicThemeColor,
+                uiAmplitudeProvider = { uiAmplitude }
+            ) {
+                BetterVizApp(
+                    viewModel = viewModel,
+                    selectedTab = selectedTab,
+                    onTabSelected = { viewModel.selectTab(it) },
+                    isRunning = isRunning,
+                    selectedDevice = selectedDevice,
+                    onDeviceChanged = { viewModel.setSpoofedDevice(it) },
+                    latencyPresets = latencyPresets,
+                    onLatencyChanged = { onLatencyChanged(it) },
+                    spectrumGain = spectrumGain,
+                    onSpectrumGainChanged = { onSpectrumGainChanged(it) },
+                    maxBrightness = maxBrightness,
+                    onMaxBrightnessChanged = { onMaxBrightnessChanged(it) },
+                    presets = presetInfos,
+                    selectedPreset = selectedPreset,
+                    onPresetSelected = { onPresetSelected(it) },
+                    onToggleVisualizer = { toggleVisualizer() },
+                    onAutoDeviceToggle = { onAutoDeviceToggle(it) },
+                    hapticMotorEnabled = hapticMotorEnabled,
+                    onHapticMotorEnabledChanged = { onHapticMotorEnabledChanged(it) },
+                    hapticMode = hapticMode,
+                    onHapticModeChanged = { onHapticModeChanged(it) },
+                    hapticFreqMin = hapticFreqMin,
+                    hapticFreqMax = hapticFreqMax,
+                    onHapticFreqRangeChanged = { min, max -> onHapticFreqRangeChanged(min, max) },
+                    hapticMultiplier = hapticMultiplier,
+                    onHapticMultiplierChanged = { onHapticMultiplierChanged(it) },
+                    hapticAudioGain = hapticAudioGain,
+                    onHapticAudioGainChanged = { onHapticAudioGainChanged(it) },
+                    hapticGamma = hapticGamma,
+                    onHapticGammaChanged = { onHapticGammaChanged(it) },
+                    hapticBeatSensitivity = hapticBeatSensitivity,
+                    onHapticBeatSensitivityChanged = { onHapticBeatSensitivityChanged(it) },
+                    hapticBeatGamma = hapticBeatGamma,
+                    onHapticBeatGammaChanged = { onHapticBeatGammaChanged(it) },
+                    hapticAmplitudeProvider = { hapticAmplitude },
+                    isBeatDetectedProvider = { isBeatDetected },
+                    flashlightEnabled = flashlightEnabled,
+                    onFlashlightEnabledChanged = { onFlashlightEnabledChanged(it) },
+                    flashlightMode = flashlightMode,
+                    onFlashlightModeChanged = { onFlashlightModeChanged(it) },
+                    flashlightFreqMin = flashlightFreqMin,
+                    flashlightFreqMax = flashlightFreqMax,
+                    onFlashlightFreqRangeChanged = { min, max -> onFlashlightFreqRangeChanged(min, max) },
+                    flashlightThreshold = flashlightThreshold,
+                    onFlashlightThresholdChanged = { onFlashlightThresholdChanged(it) },
+                    flashlightSpeedMs = flashlightSpeedMs,
+                    onFlashlightSpeedMsChanged = { onFlashlightSpeedMsChanged(it) },
+                    flashlightBeatSensitivity = flashlightBeatSensitivity,
+                    onFlashlightBeatSensitivityChanged = { onFlashlightBeatSensitivityChanged(it) },
+                    flashlightIntensityLevels = flashlightIntensityLevels,
+                    flashlightAmplitudeProvider = { flashlightAmplitude },
+                    isFlashlightBeatDetectedProvider = { isFlashlightBeatDetected },
+                    idleBreathingEnabled = idleBreathingEnabled,
+                    onIdleBreathingEnabledChanged = { onIdleBreathingEnabledChanged(it) },
+                    idlePattern = idlePattern,
+                    onIdlePatternChanged = { onIdlePatternChanged(it) },
+                    notificationFlashEnabled = notificationFlashEnabled,
+                    onNotificationFlashEnabledChanged = { onNotificationFlashEnabledChanged(it) },
+                    strobeEnabled = strobeEnabled,
+                    onStrobeEnabledChanged = { onStrobeEnabledChanged(it) },
+                    disableGlyphsWhenSilent = disableGlyphsWhenSilent,
+                    onDisableGlyphsWhenSilentChanged = { onDisableGlyphsWhenSilentChanged(it) },
+                    overlayEnabled = overlayEnabled,
+                    onOverlayEnabledChanged = { onOverlayEnabledChanged(it) },
+                    uiAmplitudeProvider = { uiAmplitude },
+                    musicThemeColor = musicThemeColor,
+                    totalVisualizedTime = totalVisualizedTime,
+                    shizukuUnlocked = shizukuUnlocked,
+                    dynamicGainEnabled = dynamicGainEnabled,
+                    connectedDeviceName = musicThemeHandler.activeMediaController?.metadata?.getString(
+                        MediaMetadata.METADATA_KEY_TITLE
+                    ) ?: "Unknown",
+                    latencyMs = latencyMs,
+                    autoDeviceEnabled = autoDeviceMemorize,
+                    captureSource = captureSource,
+                    fftData = fftData,
+                    gammaValue = gammaValue,
+                    onGammaChanged = { onGammaChanged(it) }
                 )
+
+                if (showProjectionInfoDialog) {
+                    MediaProjectionInfoDialog(
+                        onConfirm = {
+                            showProjectionInfoDialog = false
+                            markProjectionInfoShown()
+                            launchProjection()
+                        },
+                        onDismiss = { showProjectionInfoDialog = false }
+                    )
+                }
+
+                // Overlays
+                MainOverlays(viewModel = viewModel, selectedDevice = selectedDevice)
+                CommunityOverlays(viewModel = viewModel)
             }
         }
     }
@@ -842,6 +858,9 @@ internal fun BetterVizApp(
                     onTabSelected = onTabSelected
                 )
             },
+            floatingActionButton = {
+                StartStopButton(running = isRunning, onClick = onToggleVisualizer)
+            },
             containerColor = MaterialTheme.colorScheme.background,
             modifier = Modifier.fillMaxSize()
         ) { padding ->
@@ -853,7 +872,21 @@ internal fun BetterVizApp(
                     userScrollEnabled = true
                 ) { page ->
                     val tab = Tab.entries[page]
-                    when (tab) {
+                    val pageOffset =
+                        ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).absoluteValue
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                val fraction = 1f - pageOffset.coerceIn(0f, 1f)
+                                val scale = 0.8f + (1f - 0.8f) * fraction
+                                scaleX = scale
+                                scaleY = scale
+                                alpha = fraction * fraction
+                            }
+                    ) {
+                        when (tab) {
                         Tab.Audio -> {
                             AudioScreen(
                                 isRunning = isRunning,
@@ -949,6 +982,7 @@ internal fun BetterVizApp(
                         }
                     }
                 }
+            }
 
                 // Overlays
                 MainOverlays(viewModel = viewModel, selectedDevice = selectedDevice)

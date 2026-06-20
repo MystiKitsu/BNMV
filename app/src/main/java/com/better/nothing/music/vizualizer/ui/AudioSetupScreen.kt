@@ -4,6 +4,7 @@ import com.better.nothing.music.vizualizer.BuildConfig
 import com.better.nothing.music.vizualizer.service.AudioCaptureService
 import com.better.nothing.music.vizualizer.R
 import android.Manifest
+import android.os.Build
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -238,10 +239,13 @@ fun CaptureSourceCard(
             sources.forEach { (source, label, icon) ->
                 val isSelected = selectedSource == source
                 val isShizuku = source == AudioCaptureService.CaptureSource.SHIZUKU
-                val isEnabled = !isShizuku || shizukuUnlocked
+                val isInternal = source == AudioCaptureService.CaptureSource.INTERNAL
+                val isEnabled = (!isShizuku || shizukuUnlocked) && (!isInternal || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
 
                 OptionTile(
-                    label = if (isShizuku && !shizukuUnlocked) "$label (Locked)" else label,
+                    label = if (isShizuku && !shizukuUnlocked) "$label (Locked)" 
+                            else if (isInternal && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) "$label (API 29+)"
+                            else label,
                     icon = icon,
                     isSelected = isSelected,
                     enabled = isEnabled,

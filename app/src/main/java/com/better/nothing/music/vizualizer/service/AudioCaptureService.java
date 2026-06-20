@@ -394,7 +394,11 @@ public class AudioCaptureService extends Service {
 
         mWorkerThread = new HandlerThread("GlyphVizWorker", Process.THREAD_PRIORITY_BACKGROUND);
         mWorkerThread.start();
-        mWorkerHandler = Handler.createAsync(mWorkerThread.getLooper());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            mWorkerHandler = Handler.createAsync(mWorkerThread.getLooper());
+        } else {
+            mWorkerHandler = new Handler(mWorkerThread.getLooper());
+        }
         mAudioManager = getSystemService(AudioManager.class);
         if (mAudioManager != null) {
             mAudioManager.registerAudioDeviceCallback(mAudioDeviceCallback, mWorkerHandler);
@@ -517,7 +521,12 @@ public class AudioCaptureService extends Service {
 
         if (intent != null && intent.hasExtra(EXTRA_RESULT_CODE) && intent.hasExtra(EXTRA_DATA)) {
             int resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, 0);
-            Intent data = intent.getParcelableExtra(EXTRA_DATA, Intent.class);
+            Intent data;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                data = intent.getParcelableExtra(EXTRA_DATA, Intent.class);
+            } else {
+                data = intent.getParcelableExtra(EXTRA_DATA);
+            }
             if (data != null) {
                 startCapture(resultCode, data);
                 return START_STICKY;
@@ -525,12 +534,24 @@ public class AudioCaptureService extends Service {
         }
 
         if (mCaptureSource == CaptureSource.MIC && sIsRunning) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+        } else {
+            startForeground(NOTIF_ID, buildNotification());
+        }
         } else if ((mCaptureSource == CaptureSource.INTERNAL || mCaptureSource == CaptureSource.SHIZUKU) && sIsRunning) {
             int type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION | ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIF_ID, buildNotification(), type);
         } else {
+            startForeground(NOTIF_ID, buildNotification());
+        }
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        } else {
+            startForeground(NOTIF_ID, buildNotification());
+        }
         }
         return START_STICKY;
     }
@@ -1252,7 +1273,11 @@ public class AudioCaptureService extends Service {
             stopCaptureLocked();
 
             if (source == CaptureSource.INTERNAL) {
-                startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+        } else {
+            startForeground(NOTIF_ID, buildNotification());
+        }
                 MediaProjection projection = projectionManager.getMediaProjection(resultCode, data);
                 if (projection == null) {
                     Log.e(TAG, "MediaProjection token was denied or expired");
@@ -1269,9 +1294,17 @@ public class AudioCaptureService extends Service {
                     return;
                 }
                 int type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION | ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
-                startForeground(NOTIF_ID, buildNotification(), type);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIF_ID, buildNotification(), type);
+        } else {
+            startForeground(NOTIF_ID, buildNotification());
+        }
             } else {
-                startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+        } else {
+            startForeground(NOTIF_ID, buildNotification());
+        }
             }
 
             if (mProjection != null && mWorkerHandler != null) {
@@ -1321,7 +1354,7 @@ public class AudioCaptureService extends Service {
                             }
                         }
 
-                        if (localRecord == null) {
+                        if (localRecord == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                             AudioPlaybackCaptureConfiguration config =
                                     new AudioPlaybackCaptureConfiguration.Builder(mProjection)
                                             .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
@@ -1896,7 +1929,13 @@ public class AudioCaptureService extends Service {
     }
 
     private static String readFile(File file) throws IOException { FileInputStream is = new FileInputStream(file); try { return readFully(is); } finally { closeQuietly(is); } }
-    private static String readFully(InputStream is) throws IOException { ByteArrayOutputStream os = new ByteArrayOutputStream(); byte[] buf = new byte[4096]; int r; while ((r = is.read(buf)) != -1) os.write(buf, 0, r); return os.toString(StandardCharsets.UTF_8); }
+    private static String readFully(InputStream is) throws IOException {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        byte[] buf = new byte[4096];
+        int r;
+        while ((r = is.read(buf)) != -1) os.write(buf, 0, r);
+        return os.toString("UTF-8");
+    }
     private static void closeQuietly(Closeable c) { if (c != null) try { c.close(); } catch (IOException ignored) {} }
     private static List<String> getAllPresetKeys(JSONObject root) { ArrayList<String> res = new ArrayList<>(); JSONArray names = root.names(); if (names != null) for (int i = 0; i < names.length(); i++) { String key = names.optString(i, ""); if (isPresetEntry(root, key)) res.add(key); } Collections.sort(res); return res; }
     private static List<PresetInfo> buildPresetInfos(JSONObject root, List<String> keys) { ArrayList<PresetInfo> res = new ArrayList<>(); for (String key : keys) { JSONObject p = root.optJSONObject(key); if (p != null) res.add(new PresetInfo(key, p.optString("description", key))); } return res; }
@@ -1933,7 +1972,12 @@ public class AudioCaptureService extends Service {
         String n = d.getType() == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER ? "Internal Speaker" : String.valueOf(d.getProductName());
         String nn = n.toLowerCase(Locale.US).replaceAll("[^a-z0-9._-]+", "_").replaceAll("^_+|_+$", "");
         if (nn.isEmpty()) nn = "unknown_output";
-        String a = d.getAddress(); String na = null; if (!a.isBlank()) na = a.toLowerCase(Locale.US).replaceAll("[^a-z0-9._-]+", "_").replaceAll("^_+|_+$", "");
+        String a = "";
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            a = d.getAddress();
+        }
+        String na = null;
+        if (a != null && !a.isEmpty()) na = a.toLowerCase(Locale.US).replaceAll("[^a-z0-9._-]+", "_").replaceAll("^_+|_+$", "");
         return new AudioRouteInfo(d.getType() + "_" + (na != null && !na.isEmpty() ? na : nn), n);
     }
 }
