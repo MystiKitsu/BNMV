@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.better.nothing.music.vizualizer.R
 import com.better.nothing.music.vizualizer.service.AudioCaptureService
+import com.better.nothing.music.vizualizer.ui.ExpressiveCard
 import com.better.nothing.music.vizualizer.ui.ExpressiveSegmentedButtonRow
 import com.better.nothing.music.vizualizer.ui.ExpressiveSplitButton
 import kotlin.math.pow
@@ -195,55 +196,63 @@ internal fun GlyphsScreen(
                     GammaCard(gammaValue = gammaValue, onGammaChanged = onGammaChanged)
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                ExpressiveCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp) // Adjust padding as needed for your screen layout
                 ) {
-                    Text(
-                        text = stringResource(R.string.visualizer_presets),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
-                    )
-                }
-
-                val favorites by viewModel.favoritePresets.collectAsStateWithLifecycle()
-                val sortedPresets = remember(presets, favorites) {
-                    presets.sortedByDescending { favorites.contains(it.key) }
-                }
-
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    // 1. Grouped Expressive Row for your presets
-                    // Wrapping it allows it to sit neatly alongside the "+ Create New" button inside the FlowRow
-                    ExpressiveSegmentedButtonRow(
-                        items = sortedPresets,
-                        // If no preset matches, safely fall back to the first item in the list
-                        selectedItem = sortedPresets.firstOrNull { it.key == selectedPreset }
-                            ?: sortedPresets.first(),
-                        onItemSelection = { preset -> onPresetSelected(preset.key) },
-                        labelProvider = { preset -> preset.key },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    ExpressiveSplitButton(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 16.dp),
-                        primaryText = "Create New",
-                        primaryIcon = Icons.Default.Add,
-                        onPrimaryClick = { viewModel.showEditor() },
-                        secondaryText = "Explore Community",
-                        secondaryIcon = Icons.Default.Public,
-                        onSecondaryClick = { viewModel.showCommunity() }
-                    )
+                            .padding(top = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.visualizer_presets),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
+
+                    val favorites by viewModel.favoritePresets.collectAsStateWithLifecycle()
+                    val sortedPresets = remember(presets, favorites) {
+                        presets.sortedByDescending { favorites.contains(it.key) }
+                    }
+
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        // 1. Grouped Expressive Row for your presets
+                        // Wrapping it allows it to sit neatly alongside the "+ Create New" button inside the FlowRow
+                        ExpressiveSegmentedButtonRow(
+                            items = sortedPresets,
+                            // If no preset matches, safely fall back to the first item in the list
+                            selectedItem = sortedPresets.firstOrNull { it.key == selectedPreset }
+                                ?: sortedPresets.first(),
+                            onItemSelection = { preset -> onPresetSelected(preset.key) },
+                            labelProvider = { preset -> preset.key },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+
+                        ExpressiveSplitButton(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                            primaryText = "Explore Community",
+                            primaryIcon = Icons.Default.Public,
+                            onPrimaryClick = { viewModel.showCommunity() },
+                            secondaryText = "Create",
+                            secondaryIcon = Icons.Default.Add,
+                            onSecondaryClick = { viewModel.showEditor() }
+                        )
+                    }
                 }
 
-                _root_ide_package_.com.better.nothing.music.vizualizer.ui.ExpressiveCard(
+                ExpressiveCard(
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
                     modifier = Modifier
                         .fillMaxWidth()
