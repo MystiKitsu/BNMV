@@ -3,6 +3,7 @@ package com.better.nothing.music.vizualizer.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun CommunityOverlays(
@@ -17,12 +18,24 @@ internal fun CommunityOverlays(
 
     if (isShowingCommunity) {
         val userId by viewModel.userId.collectAsStateWithLifecycle()
+        val presets by viewModel.communityRepository.getPresets().collectAsStateWithLifecycle(initialValue = null)
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        
         CommunityPresetsScreen(
-            presets = emptyList(), // Load from repo or state
+            presets = presets,
             currentUserId = userId,
             error = null,
-            onDownload = { /* handle download */ },
-            onDelete = { /* handle delete */ },
+            onDownload = { preset -> 
+                scope.launch {
+                    try {
+                        viewModel.communityRepository.incrementDownloadCount(preset.id)
+                    } catch (e: Exception) {
+                        // Log or show error
+                    }
+                }
+                // Add logic to actually apply/download the preset
+            },
+            onDelete = { preset -> viewModel.deleteCustomPreset(preset.id) },
             onDismiss = { viewModel.hideCommunity() }
         )
     }
@@ -36,8 +49,9 @@ internal fun CommunityOverlays(
     }
 
     if (isShowingLeaderboard) {
+        val entries by viewModel.leaderboardRepository.getTopUsers().collectAsStateWithLifecycle(initialValue = emptyList())
         LeaderboardScreen(
-            entries = emptyList(), // Load from state
+            entries = entries,
             onDismiss = { viewModel.hideLeaderboard() }
         )
     }

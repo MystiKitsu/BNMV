@@ -37,6 +37,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import com.google.firebase.database.FirebaseDatabase
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.auth.GoogleAuthProvider
 import androidx.compose.runtime.remember
 import android.os.Build
 import android.os.Bundle
@@ -187,6 +190,28 @@ class MainActivity : ComponentActivity() {
         } else {
             Toast.makeText(this, getString(R.string.audio_permission_required), Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(Exception::class.java)
+                val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+                viewModel.linkWithCredential(credential)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Google sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun launchGoogleSignIn() {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        val googleSignInClient = GoogleSignIn.getClient(this, gso)
+        googleSignInLauncher.launch(googleSignInClient.signInIntent)
     }
 
     private val mediaSessionManager by lazy {
@@ -406,6 +431,7 @@ class MainActivity : ComponentActivity() {
                     onDisableGlyphsWhenSilentChanged = { onDisableGlyphsWhenSilentChanged(it) },
                     overlayEnabled = overlayEnabled,
                     onOverlayEnabledChanged = { onOverlayEnabledChanged(it) },
+                    onGoogleSignIn = { launchGoogleSignIn() },
                     uiAmplitudeProvider = { uiAmplitude },
                     musicThemeColor = musicThemeColor,
                     totalVisualizedTime = totalVisualizedTime,
@@ -823,6 +849,7 @@ internal fun BetterVizApp(
     onDisableGlyphsWhenSilentChanged: (Boolean) -> Unit,
     overlayEnabled: Boolean,
     onOverlayEnabledChanged: (Boolean) -> Unit,
+    onGoogleSignIn: () -> Unit,
     uiAmplitudeProvider: () -> Float,
     musicThemeColor: Color,
     totalVisualizedTime: Long,
@@ -977,7 +1004,8 @@ internal fun BetterVizApp(
                                 disableGlyphsWhenSilent = disableGlyphsWhenSilent,
                                 onDisableGlyphsWhenSilentChanged = onDisableGlyphsWhenSilentChanged,
                                 overlayEnabled = overlayEnabled,
-                                onOverlayEnabledChanged = onOverlayEnabledChanged
+                                onOverlayEnabledChanged = onOverlayEnabledChanged,
+                                onGoogleSignIn = onGoogleSignIn
                             )
                         }
                     }

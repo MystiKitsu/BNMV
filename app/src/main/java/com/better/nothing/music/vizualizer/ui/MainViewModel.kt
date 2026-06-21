@@ -16,12 +16,17 @@ import com.better.nothing.music.vizualizer.logic.*
 import com.better.nothing.music.vizualizer.model.*
 import com.better.nothing.music.vizualizer.service.AudioCaptureService
 import com.better.nothing.music.vizualizer.util.AnalyticsHelper
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.EmailAuthProvider
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.AuthCredential
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
 import rikka.shizuku.Shizuku
 import kotlin.math.pow
@@ -68,6 +73,9 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
 
     val _userId = MutableStateFlow<String?>(null)
     val userId = _userId.asStateFlow()
+
+    val _isAnonymous = MutableStateFlow(true)
+    val isAnonymous = _isAnonymous.asStateFlow()
 
     sealed class AppUpdateStatus {
         object Idle : AppUpdateStatus()
@@ -150,20 +158,90 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     fun hideLeaderboard() { _isShowingLeaderboard.value = false }
 
     fun deleteCustomPreset(key: String) {
-        // Mock
+        viewModelScope.launch {
+            try {
+                communityRepository.deletePreset(key)
+                analytics.logEvent("preset_deleted", android.os.Bundle().apply { putString("preset_id", key) })
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to delete preset", e)
+            }
+        }
     }
 
     fun saveCustomPreset(name: String, zones: List<AudioProcessor.ZoneSpec>, presetKey: String? = null) {
-        // Mock
+        val uid = _userId.value ?: return
+        viewModelScope.launch {
+            try {
+                val preset = CommunityPreset(
+                    name = name,
+                    author = _userNickname.value,
+                    authorId = uid,
+                    phoneModel = phoneModelForDevice(selectedDevice.value),
+                    zones = zones.map { ZoneData.fromZoneSpec(it) },
+                    timestamp = System.currentTimeMillis()
+                )
+                communityRepository.uploadPreset(preset)
+                analytics.logPresetShared(name)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, "Preset uploaded to community!", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to upload preset", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, "Upload failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     fun checkRemoteConfigVersion() { /* Mock */ }
     fun importZonesConfig(uri: android.net.Uri) { /* Mock */ }
     fun updateZonesConfig(url: String = "") { /* Mock */ }
-    fun updateProfilePicture(uri: android.net.Uri) { /* Mock */ }
-    fun selectDefaultAvatar(resId: Int) { /* Mock */ }
+    fun updateProfilePicture(uri: android.net.Uri) {
+        val uid = _userId.value ?: return
+        viewModelScope.launch {
+            try {
+                val base64 = userRepository.uploadProfilePicture(uid, uri, ctx)
+                val profile = _userProfile.value?.copy(profilePictureUrl = base64)
+                    ?: UserProfile(userId = uid, profilePictureUrl = base64)
+                userRepository.saveUserProfile(profile)
+                _userProfile.value = profile
+                analytics.logProfileUpdate("profile_picture")
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to update profile picture", e)
+            }
+        }
+    }
+
+    fun selectDefaultAvatar(resId: Int) {
+        val uid = _userId.value ?: return
+        viewModelScope.launch {
+            try {
+                val base64 = userRepository.uploadAvatarFromResource(uid, resId, ctx)
+                val profile = _userProfile.value?.copy(profilePictureUrl = base64)
+                    ?: UserProfile(userId = uid, profilePictureUrl = base64)
+                userRepository.saveUserProfile(profile)
+                _userProfile.value = profile
+                analytics.logProfileUpdate("avatar")
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to select avatar", e)
+            }
+        }
+    }
     fun setUserNickname(nickname: String) {
         _userNickname.value = nickname
+        val uid = _userId.value ?: return
+        viewModelScope.launch {
+            try {
+                val profile = _userProfile.value?.copy(displayName = nickname)
+                    ?: UserProfile(userId = uid, displayName = nickname)
+                userRepository.saveUserProfile(profile)
+                _userProfile.value = profile
+                analytics.logProfileUpdate("nickname")
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to update nickname", e)
+            }
+        }
     }
 
     private val _overlayEnabled = MutableStateFlow(false)
@@ -221,8 +299,37 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         // Implementation for artwork extraction and color update
     }
 
+    val _isAdmin = MutableStateFlow(false)
+    val isAdmin = _isAdmin.asStateFlow()
+
     fun syncStats() {
-        // Implementation for stats sync
+        val uid = _userId.value ?: return
+        viewModelScope.launch {
+            try {
+                var profile = userRepository.getUserProfile(uid)
+                if (profile == null) {
+                    profile = UserProfile(
+                        userId = uid,
+                        displayName = _userNickname.value,
+                        createdAt = System.currentTimeMillis()
+                    )
+                    userRepository.saveUserProfile(profile)
+                }
+                _userProfile.value = profile
+                _userNickname.value = profile.displayName
+                _totalVisualizedTime.value = profile.totalVisualizedTime
+                
+                // Check if admin
+                _isAdmin.value = uid == "OLIVER_UID" || uid == "ALEKS_UID"
+                
+                analytics.logStatsSynced(
+                    profile.totalVisualizedTime,
+                    0, 0, 0 // Add other stats if tracked
+                )
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to sync stats", e)
+            }
+        }
     }
 
     fun isNotificationAccessGranted(): Boolean {
@@ -371,12 +478,30 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         _userNickname.value = prefs.getString("user_nickname", "Anonymous") ?: "Anonymous"
         _spoofLocale.value = prefs.getString("spoof_locale", null)
 
-        var uId = prefs.getString("user_id", null)
-        if (uId == null) {
-            uId = java.util.UUID.randomUUID().toString()
-            prefs.edit().putString("user_id", uId).apply()
+        val auth = FirebaseAuth.getInstance()
+        auth.addAuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            if (user != null) {
+                _userId.value = user.uid
+                _isAnonymous.value = user.isAnonymous
+                analytics.setUserId(user.uid)
+                prefs.edit().putString("user_id", user.uid).apply()
+            }
         }
-        _userId.value = uId
+
+        if (auth.currentUser == null) {
+            auth.signInAnonymously().addOnFailureListener { e ->
+                Log.e("MainViewModel", "Firebase Auth failed", e)
+                var uId = prefs.getString("user_id", null)
+                if (uId == null) {
+                    uId = java.util.UUID.randomUUID().toString()
+                    prefs.edit().putString("user_id", uId).apply()
+                }
+                _userId.value = uId
+            }
+        } else {
+            _userId.value = auth.currentUser?.uid
+        }
 
         // Track app openings and show thanks messages
         val openCount = prefs.getInt("app_open_count", 0) + 1
@@ -1092,8 +1217,61 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         return MainActivity.serviceStatic?.getActiveAudioRouteKey()
     }
 
-    fun commitPresetInfos(list: List<AudioCaptureService.PresetInfo>) {
-        _presetInfos.value = list
+    fun signOut() {
+        FirebaseAuth.getInstance().signOut()
+        _userProfile.value = null
+        // Re-trigger anonymous sign-in if needed or just let the init logic handle it
+        FirebaseAuth.getInstance().signInAnonymously()
+    }
+
+    fun linkWithCredential(credential: AuthCredential) {
+        val user = FirebaseAuth.getInstance().currentUser ?: return
+        viewModelScope.launch {
+            try {
+                user.linkWithCredential(credential).await()
+                syncStats()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, ctx.getString(R.string.account_linked), Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Linking failed", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, ctx.getString(R.string.auth_failed, e.localizedMessage), Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    fun signInWithEmail(email: String, psw: String) {
+        viewModelScope.launch {
+            try {
+                FirebaseAuth.getInstance().signInWithEmailAndPassword(email, psw).await()
+                syncStats()
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, ctx.getString(R.string.auth_failed, e.localizedMessage), Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    fun signUpWithEmail(email: String, psw: String) {
+        val user = FirebaseAuth.getInstance().currentUser
+        viewModelScope.launch {
+            try {
+                if (user != null && user.isAnonymous) {
+                    val credential = EmailAuthProvider.getCredential(email, psw)
+                    user.linkWithCredential(credential).await()
+                } else {
+                    FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, psw).await()
+                }
+                syncStats()
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, ctx.getString(R.string.auth_failed, e.localizedMessage), Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     fun onDevDepressed() {

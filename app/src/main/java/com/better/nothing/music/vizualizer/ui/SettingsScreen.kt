@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -58,13 +59,25 @@ internal fun SettingsScreen(
     onDisableGlyphsWhenSilentChanged: (Boolean) -> Unit,
     overlayEnabled: Boolean,
     onOverlayEnabledChanged: (Boolean) -> Unit,
+    onGoogleSignIn: () -> Unit,
 ) {
     val m3eEnabled by viewModel.m3eEnabled.collectAsStateWithLifecycle()
     val dynamicGainEnabled by viewModel.dynamicGainEnabled.collectAsStateWithLifecycle()
     val overlayWidth by viewModel.overlayWidth.collectAsStateWithLifecycle()
     val overlayHeight by viewModel.overlayHeight.collectAsStateWithLifecycle()
     val overlayYOffset by viewModel.overlayYOffset.collectAsStateWithLifecycle()
+    val isAnonymous by viewModel.isAnonymous.collectAsStateWithLifecycle()
+    var showAuthDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+
+    if (showAuthDialog) {
+        AuthDialog(
+            onDismiss = { showAuthDialog = false },
+            onSignIn = { e, p -> viewModel.signInWithEmail(e, p) },
+            onSignUp = { e, p -> viewModel.signUpWithEmail(e, p) },
+            onGoogleSignIn = onGoogleSignIn
+        )
+    }
 
     val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
     val selectedFont by viewModel.selectedFont.collectAsStateWithLifecycle()
@@ -191,6 +204,22 @@ internal fun SettingsScreen(
                             Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp))
                         }
                     )
+                    
+                    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+                    val currentUid = viewModel.userId.collectAsStateWithLifecycle().value
+                    Text(
+                        text = "UID: ${currentUid ?: "None"}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        modifier = Modifier
+                            .padding(top = 4.dp, start = 4.dp)
+                            .clickable {
+                                currentUid?.let {
+                                    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(it))
+                                    Toast.makeText(localContext, "UID copied to clipboard", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                    )
                 }
             }
             
@@ -236,6 +265,56 @@ internal fun SettingsScreen(
                 text = stringResource(R.string.profile_help_text),
                 size = 12.sp
             )
+        }
+
+        // ── Account ─────────────────────────────────────────────────────────
+        ExpressiveCard {
+            CardHeader(title = "Account")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (isAnonymous) Icons.Default.CloudOff else Icons.Default.CloudDone,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isAnonymous) stringResource(R.string.anonymous_user) else stringResource(R.string.authenticated_user),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = if (isAnonymous) stringResource(R.string.sync_account_desc) else "Your data is backed up.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+
+                if (isAnonymous) {
+                    Button(
+                        onClick = { showAuthDialog = true },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(stringResource(R.string.sign_in))
+                    }
+                } else {
+                    IconButton(onClick = { viewModel.signOut() }) {
+                        Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
         }
 
         // ── App Theme ───────────────────────────────────────────────────────
@@ -505,6 +584,7 @@ internal fun SettingsScreen(
             AnimatedVisibility(visible = devModeEnabled) {
                 Column(modifier = Modifier.padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // 1. Announcements
+                    val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle()
                     ExpressiveCard(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
@@ -519,7 +599,7 @@ internal fun SettingsScreen(
                                 Text(stringResource(R.string.global_announcements), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                                 Text(stringResource(R.string.global_announcements_desc), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                             }
-                            if (BuildConfig.DEBUG) {
+                            if (isAdmin || BuildConfig.DEBUG) {
                                 Button(
                                     onClick = { viewModel.showAnnouncementEditor() },
                                     shape = RoundedCornerShape(12.dp),
