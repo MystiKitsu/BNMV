@@ -87,6 +87,7 @@ import kotlinx.coroutines.flow.collectLatest
 import java.util.Locale
 import kotlin.math.log10
 import kotlin.math.pow
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun AudioScreen(
@@ -705,7 +706,7 @@ fun RowScope.FineTuneButton(
             when (interaction) {
                 is PressInteraction.Press -> isAnimating = true
                 is PressInteraction.Release, is PressInteraction.Cancel -> {
-                    delay(100)
+                    delay(100.milliseconds)
                     isAnimating = false
                 }
             }
