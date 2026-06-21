@@ -29,6 +29,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -80,6 +81,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -99,24 +101,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.Morph
 import androidx.graphics.shapes.RoundedPolygon
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.graphics.Shape
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import androidx.graphics.shapes.star
 import androidx.graphics.shapes.toPath
 import com.better.nothing.music.vizualizer.R
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.time.Duration.Companion.milliseconds
@@ -320,6 +317,7 @@ fun FlowRowScope.OptionTile(
             when (interaction) {
                 is PressInteraction.Press -> {
                     pressStartTime = SystemClock.elapsedRealtime()
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                     isWeightExpanded = true
                 }
                 is PressInteraction.Release, is PressInteraction.Cancel -> {
@@ -331,6 +329,7 @@ fun FlowRowScope.OptionTile(
                         delay(remainingFloorDelay.milliseconds)
                     }
                     isWeightExpanded = false
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
                 }
             }
         }
@@ -357,7 +356,7 @@ fun FlowRowScope.OptionTile(
     val animatedRadius by animateDpAsState(
         targetValue = targetRadius,
         animationSpec = if (m3eEnabled) {
-            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+            spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMediumLow)
         } else {
             spring(stiffness = Spring.StiffnessMedium)
         },
@@ -378,7 +377,6 @@ fun FlowRowScope.OptionTile(
     Surface(
         onClick = if (enabled) {
             {
-                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                 onClick()
             }
         } else ({}),
@@ -759,8 +757,7 @@ fun <T> ExpressiveSegmentedButtonRow(
     selectedItem: T,
     onItemSelection: (T) -> Unit,
     labelProvider: @Composable (T) -> String,
-    modifier: Modifier = Modifier,
-    iconProvider: @Composable ((T) -> Unit)? = null // Optional custom icon overrides
+    modifier: Modifier = Modifier
 ) {
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -772,53 +769,66 @@ fun <T> ExpressiveSegmentedButtonRow(
     ) {
         items.forEachIndexed { index, item ->
             val isSelected = item == selectedItem
-            val buttonShape = rememberExpressiveShape(index = index, count = items.size)
 
-            // Visual tap bounce tracker
             var isPressed by remember { mutableStateOf(false) }
 
-            // Spring specs for standard Material 3 expressive/bouncy physics
+            // Elastic bouncy spring configuration
             val bouncySpec = spring<Float>(
                 dampingRatio = Spring.DampingRatioHighBouncy,
                 stiffness = Spring.StiffnessMediumLow
             )
+            val dpBouncySpec = spring<androidx.compose.ui.unit.Dp>(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
 
-            // Animate layout expansion weight (1.2f if selected, 1.0f otherwise)
+            // 1. Dynamic layout expansion weight (grows wider horizontally)
             val animatedWeight by animateFloatAsState(
-                targetValue = if (isSelected) 1.2f else 1.0f,
+                targetValue = if (isPressed) 0.89f else if (isSelected) 1.2f else 1.0f,
                 animationSpec = bouncySpec,
                 label = "ExpressiveWeightAnimation"
             )
 
-            // Animate scale factor on click
-            val animatedScale by animateFloatAsState(
-                targetValue = if (isPressed) 0.92f else 1.0f,
-                animationSpec = bouncySpec,
-                label = "BouncyScaleAnimation"
+            // 3. Dynamic corner fluid morphing (becomes a pill when selected)
+            val fullyRounded = 40.dp
+            val slightlyRounded = 8.dp
+
+            val targetTopStart = if (isSelected || index == 0 || items.size == 1) fullyRounded else slightlyRounded
+            val targetBottomStart = if (isSelected || index == 0 || items.size == 1) fullyRounded else slightlyRounded
+            val targetTopEnd = if (isSelected || index == items.size - 1 || items.size == 1) fullyRounded else slightlyRounded
+            val targetBottomEnd = if (isSelected || index == items.size - 1 || items.size == 1) fullyRounded else slightlyRounded
+
+            val topStart by animateDpAsState(targetValue = targetTopStart, animationSpec = dpBouncySpec, label = "TopStart")
+            val bottomStart by animateDpAsState(targetValue = targetBottomStart, animationSpec = dpBouncySpec, label = "BottomStart")
+            val topEnd by animateDpAsState(targetValue = targetTopEnd, animationSpec = dpBouncySpec, label = "TopEnd")
+            val bottomEnd by animateDpAsState(targetValue = targetBottomEnd, animationSpec = dpBouncySpec, label = "BottomEnd")
+
+            val dynamicButtonShape = RoundedCornerShape(
+                topStart = topStart.coerceAtLeast(0.dp),
+                bottomStart = bottomStart.coerceAtLeast(0.dp),
+                topEnd = topEnd.coerceAtLeast(0.dp),
+                bottomEnd = bottomEnd.coerceAtLeast(0.dp)
             )
 
-            FilledTonalButton(
-                onClick = {}, // Handled manually via gesture listener
-                shape = buttonShape,
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = if (isSelected) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surfaceContainerHighest
-                    },
-                    contentColor = if (isSelected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                ),
+            val containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerHighest
+            }
+
+            val contentColor = if (isSelected) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+
+            Surface(
+                color = containerColor,
+                contentColor = contentColor,
+                shape = dynamicButtonShape,
                 modifier = Modifier
-                    .weight(animatedWeight) // Apportion width adaptively based on selection state
-                    .graphicsLayer {
-                        scaleX = animatedScale
-                        scaleY = animatedScale
-                    }
-                    .pointerInput(item) {
+                    .weight(animatedWeight) // Restored horizontal weight expansion
+                    .pointerInput(item, isSelected) {
                         detectTapGestures(
                             onPress = {
                                 val startTime = System.currentTimeMillis()
@@ -828,6 +838,7 @@ fun <T> ExpressiveSegmentedButtonRow(
                                 try {
                                     awaitRelease()
                                 } finally {
+                                    haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
                                     val elapsedTime = System.currentTimeMillis() - startTime
                                     val remainingTime = 150L - elapsedTime
 
@@ -836,61 +847,31 @@ fun <T> ExpressiveSegmentedButtonRow(
                                             delay(remainingTime.milliseconds)
                                         }
                                         isPressed = false
-                                        onItemSelection(item)
+                                        if (!isSelected) {
+                                            onItemSelection(item)
+                                        }
                                     }
                                 }
                             }
                         )
                     }
             ) {
-                // Show icon exclusively when the item is active/selected
-                if (isSelected) {
-                    if (iconProvider != null) {
-                        iconProvider(item)
-                    } else {
-                        Icon(
-                            imageVector = Icons.Rounded.Check,
-                            contentDescription = "Selected",
-                            modifier = Modifier.graphicsLayer {
-                                // Subtle entry spring synchronization
-                                scaleX = animatedScale
-                                scaleY = animatedScale
-                            }
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                }
+                Row(
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 4. Smooth Icon Slide + Fade Entry
 
-                Text(
-                    text = labelProvider(item),
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1
-                )
+                    Text(
+                        text = labelProvider(item),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
-    }
-}
-
-@Composable
-private fun rememberExpressiveShape(index: Int, count: Int): Shape {
-    val fullyRounded = 100.dp
-    val slightlyRounded = 8.dp
-
-    return when {
-        count == 1 -> RoundedCornerShape(fullyRounded)
-        index == 0 -> RoundedCornerShape(
-            topStart = fullyRounded,
-            bottomStart = fullyRounded,
-            topEnd = slightlyRounded,
-            bottomEnd = slightlyRounded
-        )
-        index == count - 1 -> RoundedCornerShape(
-            topStart = slightlyRounded,
-            bottomStart = slightlyRounded,
-            topEnd = fullyRounded,
-            bottomEnd = fullyRounded
-        )
-        else -> RoundedCornerShape(slightlyRounded)
     }
 }
 
