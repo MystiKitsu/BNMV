@@ -74,7 +74,6 @@ internal fun SettingsScreen(
     onDisableGlyphsWhenSilentChanged: (Boolean) -> Unit,
     overlayEnabled: Boolean,
     onOverlayEnabledChanged: (Boolean) -> Unit,
-    onGoogleSignIn: () -> Unit,
 ) {
     val m3eEnabled by viewModel.m3eEnabled.collectAsStateWithLifecycle()
     val dynamicGainEnabled by viewModel.dynamicGainEnabled.collectAsStateWithLifecycle()

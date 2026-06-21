@@ -250,7 +250,7 @@ class MainActivity : ComponentActivity() {
                 BetterVizApp(
                     viewModel = viewModel,
                     onToggleVisualizer = { toggleVisualizer() },
-                    onGoogleSignIn = { launchGoogleSignIn() },
+                    onGoogleSignIn = {  },
                     onOverlayPermissionRequest = { 
                         val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
                         overlayPermissionLauncher.launch(intent)
@@ -436,7 +436,7 @@ val HeavyEasingSpec = tween<Float>(durationMillis = 600)
 internal fun BetterVizApp(
     viewModel: MainViewModel,
     onToggleVisualizer: () -> Unit,
-    onGoogleSignIn: () -> Unit,
+    onGoogleSignIn: @Composable () -> Unit,
     onOverlayPermissionRequest: () -> Unit
 ) {
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
@@ -500,7 +500,7 @@ internal fun BetterVizApp(
                                 alpha = fraction * fraction
 
                                 // Calculate rotation: 0 deg when fully visible, 20 deg when hidden
-                                val maxRotation = 20f
+                                val maxRotation = 10f
                                 val rotationAmount = maxRotation * (1f - fraction)
 
                                 // Use the sign of pageOffset to determine +20 or -20
@@ -687,7 +687,6 @@ internal fun BetterVizApp(
                                             viewModel.setOverlayEnabled(enabled)
                                         }
                                     },
-                                    onGoogleSignIn = onGoogleSignIn
                                 )
                             }
                         }

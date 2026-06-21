@@ -45,7 +45,7 @@ data class AudioRoute(
     val displayName: String,
 )
 
-internal class MainViewModel(application: Application) : AndroidViewModel(application) {
+class MainViewModel(application: Application) : AndroidViewModel(application) {
     val ctx = application
     val communityRepository = CommunityRepository()
     val announcementRepository = AnnouncementRepository()
