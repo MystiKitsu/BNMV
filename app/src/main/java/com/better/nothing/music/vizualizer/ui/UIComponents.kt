@@ -2,6 +2,7 @@
 
 package com.better.nothing.music.vizualizer.ui
 
+import android.os.Build
 import android.os.SystemClock
 import android.view.MotionEvent
 import androidx.compose.animation.AnimatedContent
@@ -315,6 +316,7 @@ fun FlowRowScope.OptionTile(
     enabled: Boolean = true
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val haptics = LocalHapticFeedback.current
 
     // This state controls the weight expansion explicitly
     var isWeightExpanded by remember { mutableStateOf(false) }
@@ -383,7 +385,12 @@ fun FlowRowScope.OptionTile(
     )
 
     Surface(
-        onClick = if (enabled) onClick else ({}),
+        onClick = if (enabled) {
+            {
+                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                onClick()
+            }
+        } else ({}),
         enabled = enabled,
         interactionSource = interactionSource,
         shape = RoundedCornerShape(animatedRadius),
@@ -691,6 +698,7 @@ fun NativeBottomBar(
     visibleTabs: List<Tab>,
     onTabSelected: (Tab) -> Unit,
 ) {
+    val haptics = LocalHapticFeedback.current
     NavigationBar(
         modifier = Modifier.fillMaxWidth(),
         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
@@ -711,6 +719,7 @@ fun NativeBottomBar(
                 selected = isSelected,
                 onClick = {
                     if (!isSelected) {
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                         onTabSelected(tab)
                     }
                 },
@@ -1061,7 +1070,15 @@ fun BetterVizTheme(
                 }
             }
             "Material You" -> {
-                if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+                if (isDark) if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    dynamicDarkColorScheme(context)
+                } else {
+                    TODO("VERSION.SDK_INT < S")
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    dynamicLightColorScheme(context)
+                } else {
+                    TODO("VERSION.SDK_INT < S")
+                }
             }
             "Nothing" -> {
                 if (isDark) {
@@ -1223,7 +1240,15 @@ fun BetterVizTheme(
         )
     }
 
-    val appSpacing = remember { AppSpacing() }
+    val animatedEdge by animateDpAsState(
+        targetValue = if (themeName == "Default" || themeName == "OLED Black") 6.dp else 16.dp,
+        animationSpec = tween(500),
+        label = "edgeSpacing"
+    )
+
+    val appSpacing = remember(animatedEdge) { 
+        AppSpacing(edge = animatedEdge) 
+    }
 
     MaterialTheme(
         colorScheme = colorScheme,

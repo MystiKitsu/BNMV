@@ -808,6 +808,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putString("haptic_mode", mode.name) }
         }
+        MainActivity.serviceStatic?.setHapticMode(mode)
     }
 
     fun setHapticFreqRange(min: Float, max: Float) {
@@ -820,6 +821,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                     putInt("haptic_freq_max", max.toInt())
                 }
         }
+        MainActivity.serviceStatic?.setHapticFreqRange(min, max)
     }
 
     fun setHapticMultiplier(value: Float) {
@@ -828,6 +830,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putFloat("haptic_multiplier", value) }
         }
+        MainActivity.serviceStatic?.setHapticMultiplier(value)
     }
 
     fun setHapticAudioGain(value: Float) {
@@ -836,6 +839,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putFloat("haptic_audio_gain", value) }
         }
+        MainActivity.serviceStatic?.setHapticAudioGain(value)
     }
 
     fun setHapticGamma(value: Float) {
@@ -844,6 +848,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putFloat("haptic_gamma", value) }
         }
+        MainActivity.serviceStatic?.setHapticGamma(value)
     }
 
     fun setHapticBeatSensitivity(value: Float) {
@@ -852,6 +857,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putFloat("haptic_beat_sensitivity", value) }
         }
+        MainActivity.serviceStatic?.setHapticBeatSensitivity(value)
     }
 
     fun setHapticBeatGamma(value: Float) {
@@ -860,6 +866,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putFloat("haptic_beat_gamma", value) }
         }
+        MainActivity.serviceStatic?.setHapticBeatGamma(value)
     }
 
     // ── Flashlight ────────────────────────────────────────────────────────────
@@ -904,6 +911,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putString("flashlight_mode", mode.name) }
         }
+        MainActivity.serviceStatic?.setFlashlightMode(mode)
     }
 
     fun setFlashlightFreqRange(min: Float, max: Float) {
@@ -916,6 +924,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                     putInt("flashlight_freq_max", max.toInt())
                 }
         }
+        MainActivity.serviceStatic?.setFlashlightFreqRange(min, max)
     }
 
     fun setFlashlightThreshold(value: Float) {
@@ -924,6 +933,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putFloat("flashlight_threshold", value) }
         }
+        MainActivity.serviceStatic?.setFlashlightThreshold(value)
     }
 
     fun setFlashlightSpeedMs(value: Float) {
@@ -932,6 +942,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putFloat("flashlight_speed_ms", value) }
         }
+        MainActivity.serviceStatic?.setFlashlightSpeedMs(value)
     }
 
     fun setFlashlightBeatSensitivity(value: Float) {
@@ -940,6 +951,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
             ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
                 .edit { putFloat("flashlight_beat_sensitivity", value) }
         }
+        MainActivity.serviceStatic?.setFlashlightBeatSensitivity(value)
     }
 
     fun setFlashlightIntensityLevels(levels: Int) {
@@ -1003,6 +1015,10 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
     val _fftState = MutableStateFlow(floatArrayOf())
     val fftState = _fftState.asStateFlow()
 
+    fun setFftState(state: FloatArray) {
+        _fftState.value = state
+    }
+
     init {
         viewModelScope.launch(Dispatchers.Default) {
             fftState.collect { magnitude ->
@@ -1015,7 +1031,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
                     return@collect
                 }
 
-                val hzPerBin = 44100f / 4096f
+                val hzPerBin = 44100f / 2048f
                 val binLo = (_hapticFreqMin.value / hzPerBin).toInt().coerceIn(0, magnitude.lastIndex)
                 val binHi = (_hapticFreqMax.value / hzPerBin).toInt().coerceIn(binLo, magnitude.lastIndex)
 

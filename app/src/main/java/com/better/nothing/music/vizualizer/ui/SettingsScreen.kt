@@ -18,7 +18,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -84,6 +86,7 @@ internal fun SettingsScreen(
     val selectedDevice by viewModel.selectedDevice.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     val localContext = LocalContext.current
+    val haptics = LocalHapticFeedback.current
     var showDevModePanel by remember { mutableStateOf(false) }
 
     Column(
@@ -95,7 +98,10 @@ internal fun SettingsScreen(
     ) {
         ScreenTitle(
             text = stringResource(R.string.settings_title),
-            onLongPress = { showDevModePanel = !showDevModePanel }
+            onLongPress = { 
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                showDevModePanel = !showDevModePanel 
+            }
         )
 
         // ── Links & Info ────────────────────────────────────────────────────
@@ -324,7 +330,10 @@ internal fun SettingsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { themeExpanded = !themeExpanded },
+                    .clickable { 
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        themeExpanded = !themeExpanded 
+                    },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -761,7 +770,10 @@ internal fun SettingsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { experimentalExpanded = !experimentalExpanded },
+                    .clickable { 
+                        haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                        experimentalExpanded = !experimentalExpanded 
+                    },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -916,8 +928,12 @@ private fun LinkCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val haptics = LocalHapticFeedback.current
     Surface(
-        onClick = onClick,
+        onClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            onClick()
+        },
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,

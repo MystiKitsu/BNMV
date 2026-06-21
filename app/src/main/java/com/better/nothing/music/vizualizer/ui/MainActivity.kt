@@ -1,35 +1,19 @@
 package com.better.nothing.music.vizualizer.ui
 
-import com.better.nothing.music.vizualizer.R
-import com.better.nothing.music.vizualizer.model.*
-import com.better.nothing.music.vizualizer.service.AudioCaptureService
-import com.better.nothing.music.vizualizer.service.HapticsTileService
-import com.better.nothing.music.vizualizer.service.VisualizerTileService
-import com.better.nothing.music.vizualizer.service.GlyphNotificationListener
-
-import rikka.shizuku.Shizuku
-import kotlinx.coroutines.delay
-
 import android.Manifest
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import android.media.MediaMetadata
 import android.media.projection.MediaProjectionManager
-import android.net.Uri
-import android.provider.Settings
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import androidx.palette.graphics.Palette
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.animation.animateColorAsState
 import android.media.session.PlaybackState
 import android.media.MediaMetadata
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,64 +30,45 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.annotation.RequiresPermission
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.Dispatchers
+import com.better.nothing.music.vizualizer.R
+import com.better.nothing.music.vizualizer.model.HapticMode
+import com.better.nothing.music.vizualizer.model.TorchMode
+import com.better.nothing.music.vizualizer.service.AudioCaptureService
+import com.better.nothing.music.vizualizer.service.GlyphNotificationListener
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
+import rikka.shizuku.Shizuku
 import kotlin.math.absoluteValue
 
 class MainActivity : ComponentActivity() {
@@ -153,6 +118,12 @@ class MainActivity : ComponentActivity() {
             bound = true
             
             applyServiceSettings()
+
+            lifecycleScope.launch {
+                service?.isRunningFlow()?.collect { running ->
+                    viewModel.setRunning(running)
+                }
+            }
 
             if (hasPendingToken) {
                 deliverProjectionToken(pendingResultCode, pendingData!!)
@@ -355,8 +326,14 @@ class MainActivity : ComponentActivity() {
                         service?.getCurrentLightState()?.let {
                             viewModel.setVisualizerState(it)
                         }
+                        service?.getLatestMagnitudes()?.let {
+                            viewModel.setFftState(it)
+                        }
                         delay(33)
                     }
+                } else {
+                    viewModel.setFftState(floatArrayOf())
+                    viewModel.setVisualizerState(floatArrayOf())
                 }
             }
 
@@ -872,7 +849,11 @@ internal fun BetterVizApp(
         }
     }
 
+    val haptics = LocalHapticFeedback.current
     LaunchedEffect(pagerState.currentPage) {
+        if (pagerState.currentPage != selectedTab.ordinal) {
+            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+        }
         onTabSelected(Tab.entries[pagerState.currentPage])
     }
 
