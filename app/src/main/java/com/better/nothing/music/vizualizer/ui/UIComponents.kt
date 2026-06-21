@@ -2,7 +2,6 @@
 
 package com.better.nothing.music.vizualizer.ui
 
-import android.os.Build
 import android.os.SystemClock
 import android.view.MotionEvent
 import androidx.compose.animation.AnimatedContent
@@ -34,7 +33,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,25 +73,17 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.Shapes
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.Typography
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -106,16 +96,12 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.pointerInteropFilter
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -994,277 +980,3 @@ private fun ExpressiveThumb(factor: Float) {
     )
 }
 
-val NTypeFontFamily = FontFamily(
-    Font(R.font.ntype82)
-)
-
-val NDotFontFamily = FontFamily(
-    Font(resId = R.font.ndot57, weight = FontWeight.Normal)
-)
-
-val NDot55FontFamily = FontFamily(
-    Font(resId = R.font.ndot55, weight = FontWeight.Normal)
-)
-
-@Immutable class AppSpacing(
-    edge: Dp = 6.dp,
-    val between: Dp = 12.dp,
-    val inner: Dp = 20.dp,
-    val buttonGap: Dp = 4.dp
-) {
-    var edge by mutableStateOf(edge)
-        internal set
-}
-
-val LocalAppSpacing = staticCompositionLocalOf { AppSpacing() }
-val LocalM3EEnabled = compositionLocalOf { true }
-val LocalUIAmplitude = compositionLocalOf<() -> Float> { { 0f } }
-
-@Composable
-fun BetterVizTheme(
-    themeName: String = "Default",
-    fontName: String = "NDot",
-    m3eEnabled: Boolean = true,
-    uiAmplitudeProvider: () -> Float = { 0f },
-    musicPrimaryColor: Color? = null,
-    content: @Composable () -> Unit
-) {
-    val useNType = fontName == "NType"
-    val context = LocalContext.current
-    val isDark = isSystemInDarkTheme()
-
-    val targetColorScheme = remember(themeName, isDark, musicPrimaryColor) {
-        when (themeName) {
-            "Music" -> {
-                val primary = musicPrimaryColor ?: Color(0xFFD71921) // Fallback to Nothing Red
-                if (isDark) {
-                    androidx.compose.material3.darkColorScheme(
-                        background = Color.Black,
-                        surface = Color(0xFF0D0D0D),
-                        primary = primary,
-                        secondary = primary,
-                        error = primary,
-                        onBackground = Color.White,
-                        onSurface = Color.White,
-                        onPrimary = Color.White,
-                        onSecondary = Color.White,
-                        onError = Color.White,
-                        surfaceVariant = Color(0xFF1A1A1A),
-                        onSurfaceVariant = Color(0xFFB3B3B3),
-                        outline = Color(0x00333333)
-                    )
-                } else {
-                    androidx.compose.material3.lightColorScheme(
-                        background = Color.White,
-                        surface = Color(0xFFF5F5F5),
-                        primary = primary,
-                        secondary = primary,
-                        error = primary,
-                        onBackground = Color.Black,
-                        onSurface = Color.Black,
-                        onPrimary = Color.White,
-                        onSecondary = Color.White,
-                        onError = Color.White,
-                        surfaceVariant = Color(0xFFE0E0E0),
-                        onSurfaceVariant = Color(0xFF757575),
-                        outline = Color(0x00BDBDBD)
-                    )
-                }
-            }
-            "Material You" -> {
-                if (isDark) if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    dynamicDarkColorScheme(context)
-                } else {
-                    TODO("VERSION.SDK_INT < S")
-                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    dynamicLightColorScheme(context)
-                } else {
-                    TODO("VERSION.SDK_INT < S")
-                }
-            }
-            "Nothing" -> {
-                if (isDark) {
-                    // Nothing Red (Branded Dark)
-                    androidx.compose.material3.darkColorScheme(
-                        background = Color.Black,
-                        surface = Color(0xFF0D0D0D),
-                        primary = Color(0xFFD71921),    // Authentic Nothing Red
-                        secondary = Color(0xFFD71921),
-                        error = Color(0xFFD71921),
-                        onBackground = Color.White,
-                        onSurface = Color.White,
-                        onPrimary = Color.White,
-                        onSecondary = Color.White,
-                        onError = Color.White,
-                        surfaceVariant = Color(0xFF1A1A1A),
-                        onSurfaceVariant = Color(0xFFB3B3B3),
-                        outline = Color(0x00333333)
-                    )
-                } else {
-                    // Nothing Light (Branded Light)
-                    androidx.compose.material3.lightColorScheme(
-                        background = Color.White,
-                        surface = Color(0xFFF5F5F5),
-                        primary = Color(0xFF000000),
-                        secondary = Color(0xFF626262),
-                        error = Color(0xFFD71921),
-                        onBackground = Color.Black,
-                        onSurface = Color.Black,
-                        onPrimary = Color.White,
-                        onSecondary = Color.White,
-                        onError = Color.White,
-                        surfaceVariant = Color(0xFFE0E0E0),
-                        onSurfaceVariant = Color(0xFF757575),
-                        outline = Color(0x00DBDBD)
-                    )
-                }
-            }
-            "Nothing Red" -> {
-                // Fallback for old selection, same as Nothing Dark
-                androidx.compose.material3.darkColorScheme(
-                    background = Color.Black,
-                    surface = Color(0xFF0D0D0D),
-                    primary = Color(0xFFD71921),
-                    secondary = Color(0xFFD71921),
-                    error = Color(0xFFD71921),
-                    onBackground = Color.White,
-                    onSurface = Color.White,
-                    onPrimary = Color.White,
-                    onSecondary = Color.White,
-                    onError = Color.White,
-                    surfaceVariant = Color(0xFF1A1A1A),
-                    onSurfaceVariant = Color(0xFFB3B3B3),
-                    outline = Color(0x00333333)
-                )
-            }
-            "Liquorice Black" -> {
-                androidx.compose.material3.darkColorScheme(
-                    background = Color(0xFF0F0F0F),
-                    surface = Color(0xFF1A1A1A),
-                    primary = Color(0xFFD8D3DA),
-                    secondary = Color(0xFFA0FFA3),
-                    error = Color(0xFFC83B3B),
-                    onBackground = Color.White,
-                    onSurface = Color.White,
-                    onPrimary = Color(0xFF1C1A1D),
-                    onSecondary = Color(0xFF1C5A21),
-                    onError = Color.White,
-                    surfaceVariant = Color(0xFF242424),
-                    onSurfaceVariant = Color(0xFF676767),
-                    outline = Color(0x002C2C2C)
-                )
-            }
-            else -> { // Default / OLED Black
-                androidx.compose.material3.darkColorScheme(
-                    background = Color.Black,
-                    surface = Color(0xFF1A1A1A),
-                    primary = Color(0xFFD8D3DA),
-                    secondary = Color(0xFFA0FFA3),
-                    error = Color(0xFFC83B3B),
-                    onBackground = Color.White,
-                    onSurface = Color.White,
-                    onPrimary = Color(0xFF1C1A1D),
-                    onSecondary = Color(0xFF1C5A21),
-                    onError = Color.White,
-                    surfaceVariant = Color(0xFF242424),
-                    onSurfaceVariant = Color(0xFF676767),
-                    outline = Color(0x002C2C2C)
-                )
-            }
-        }
-    }
-
-    val colorScheme = targetColorScheme.copy(
-        primary = animateColorAsState(targetColorScheme.primary, tween(500), label = "primary").value,
-        onPrimary = animateColorAsState(targetColorScheme.onPrimary, tween(500), label = "onPrimary").value,
-        secondary = animateColorAsState(targetColorScheme.secondary, tween(500), label = "secondary").value,
-        onSecondary = animateColorAsState(targetColorScheme.onSecondary, tween(500), label = "onSecondary").value,
-        error = animateColorAsState(targetColorScheme.error, tween(500), label = "error").value,
-        onError = animateColorAsState(targetColorScheme.onError, tween(500), label = "onError").value,
-        background = animateColorAsState(targetColorScheme.background, tween(500), label = "background").value,
-        onBackground = animateColorAsState(targetColorScheme.onBackground, tween(500), label = "onBackground").value,
-        surface = animateColorAsState(targetColorScheme.surface, tween(500), label = "surface").value,
-        onSurface = animateColorAsState(targetColorScheme.onSurface, tween(500), label = "onSurface").value,
-        surfaceVariant = animateColorAsState(targetColorScheme.surfaceVariant, tween(500), label = "surfaceVariant").value,
-        onSurfaceVariant = animateColorAsState(targetColorScheme.onSurfaceVariant, tween(500), label = "onSurfaceVariant").value,
-        outline = animateColorAsState(targetColorScheme.outline, tween(500), label = "outline").value,
-    )
-
-    val typography = remember(useNType) {
-        Typography(
-            // HEADERS
-            displayLarge = TextStyle(
-                fontFamily = if (useNType) NTypeFontFamily else NDot55FontFamily,
-                fontSize = 45.sp,
-                lineHeight = 55.sp,
-                fontWeight = FontWeight.Normal
-            ),
-            headlineMedium = TextStyle(
-                fontFamily = if (useNType) NTypeFontFamily else NDotFontFamily,
-                fontSize = 30.sp,
-                lineHeight = 40.sp,
-                fontWeight = FontWeight.Normal
-            ),
-
-            // SUB-HEADERS
-            titleLarge = TextStyle(
-                fontSize = 21.sp,
-                lineHeight = 28.sp,
-                fontWeight = FontWeight.Normal
-            ),
-            titleMedium = TextStyle(
-                fontSize = 17.sp,
-                lineHeight = 24.sp,
-                fontWeight = FontWeight.Normal
-            ),
-
-            // BODY & LABELS (Keep system font for high legibility at small sizes)
-            bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.Normal),
-            labelLarge = TextStyle(
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            labelMedium = TextStyle(
-                fontSize = 12.sp,
-                lineHeight = 16.sp,
-                fontWeight = FontWeight.Medium
-            ),
-        )
-    }
-
-    val shapes = remember {
-        Shapes(
-            extraLarge = RoundedCornerShape(32.dp),
-            large = RoundedCornerShape(28.dp),
-            medium = RoundedCornerShape(20.dp),
-            small = RoundedCornerShape(14.dp),
-        )
-    }
-
-    val animatedEdge by animateDpAsState(
-        targetValue = if (themeName == "Default" || themeName == "OLED Black") 6.dp else 16.dp,
-        animationSpec = tween(500),
-        label = "edgeSpacing"
-    )
-
-    val appSpacing = remember { AppSpacing() }
-    
-    LaunchedEffect(animatedEdge) {
-        appSpacing.edge = animatedEdge
-    }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        shapes = shapes,
-        typography = typography
-    ) {
-        CompositionLocalProvider(
-            LocalAppSpacing provides appSpacing,
-            LocalM3EEnabled provides m3eEnabled,
-            LocalUIAmplitude provides uiAmplitudeProvider
-        ) {
-            content()
-        }
-    }
-}

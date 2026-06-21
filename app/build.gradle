@@ -64,6 +64,9 @@ android {
 }
 
 dependencies {
+    implementation 'androidx.compose.runtime:runtime:1.11.3'
+    implementation 'androidx.compose.ui:ui-text:1.11.3'
+
     // 1. Keep your local SDK
     implementation fileTree(dir: 'libs', include: ['*.aar', '*.jar'])
 
