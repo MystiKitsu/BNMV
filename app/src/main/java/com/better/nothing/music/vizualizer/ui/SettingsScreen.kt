@@ -3,7 +3,6 @@ package com.better.nothing.music.vizualizer.ui
 import com.better.nothing.music.vizualizer.R
 import com.better.nothing.music.vizualizer.BuildConfig
 import com.better.nothing.music.vizualizer.model.DeviceProfile
-import com.better.nothing.music.vizualizer.model.UserProfile
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke

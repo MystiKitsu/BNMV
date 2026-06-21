@@ -30,10 +30,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.FolderOpen
@@ -53,7 +51,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -451,14 +448,14 @@ fun BrightnessCard(
     ExpressiveCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
-        CardHeader(title = "Brightness:") {
+        CardHeader(title = "Brightness:", trailingContent = {
             Text(
                 text = "${if (maxBrightness > 0) maxBrightness else lastNonZero}/${MAX_BRIGHTNESS}" + (if (maxBrightness == 4095) " (default)" else ""),
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
                 style = MaterialTheme.typography.bodyMedium,
             )
-        }
-        
+        })
+
         ExpressiveSlider(
             value = posValue,
             onValueChange = { newPos ->
@@ -481,14 +478,14 @@ fun GammaCard(
     ExpressiveCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
-        CardHeader(title = stringResource(R.string.light_gamma)) {
+        CardHeader(title = stringResource(R.string.light_gamma), trailingContent = {
             Text(
                 text = String.format("%.1f", gammaValue),
                 color = MaterialTheme.colorScheme.primary,
                 style = MaterialTheme.typography.titleMedium
             )
-        }
-        
+        })
+
         ExpressiveSlider(
             value = gammaValue,
             onValueChange = onGammaChanged,

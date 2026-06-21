@@ -341,13 +341,13 @@ fun LatencyCard(
     }
 
     ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-        CardHeader(title = stringResource(R.string.latency_compensation)) {
+        CardHeader(title = stringResource(R.string.latency_compensation), trailingContent = {
             Text(
                 text = "${latencyMs}ms",
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
             )
-        }
+        })
 
         BoxWithConstraints(
             modifier = Modifier
