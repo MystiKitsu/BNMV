@@ -68,6 +68,7 @@ import com.better.nothing.music.vizualizer.ui.PrimaryScreens.FlashlightScreen
 import com.better.nothing.music.vizualizer.ui.PrimaryScreens.GlyphsScreen
 import com.better.nothing.music.vizualizer.ui.PrimaryScreens.HapticsScreen
 import com.better.nothing.music.vizualizer.ui.PrimaryScreens.SettingsScreen
+import androidx.compose.runtime.collectAsState
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -299,19 +300,8 @@ class MainActivity : ComponentActivity() {
                     }
                 )
 
-                if (showProjectionInfoDialog) {
-                    MediaProjectionInfoDialog(
-                        onConfirm = {
-                            showProjectionInfoDialog = false
-                            markProjectionInfoShown()
-                            launchProjection()
-                        },
-                        onDismiss = { showProjectionInfoDialog = false }
-                    )
-                }
-
                 // Overlays
-                MainOverlays(viewModel = viewModel, selectedDevice = viewModel.selectedDevice.value)
+                MainOverlays(viewModel = viewModel, selectedDevice = viewModel.selectedDevice.collectAsState().value)
                 CommunityOverlays(viewModel = viewModel)
             }
         }
@@ -726,9 +716,7 @@ internal fun BetterVizApp(
                                     fftData = fftData,
                                     captureSource = captureSource,
                                     onCaptureSourceChanged = { viewModel.setCaptureSource(it) },
-                                    shizukuUnlocked = shizukuUnlocked,
-                                    dynamicGainEnabled = dynamicGainEnabled,
-                                    onDynamicGainToggle = { viewModel.setDynamicGainEnabled(it) }
+                                    shizukuUnlocked = shizukuUnlocked
                                 )
                             }
                             Tab.Glyphs -> {
@@ -894,7 +882,7 @@ internal fun BetterVizApp(
             }
 
             // Overlays
-            MainOverlays(viewModel = viewModel, selectedDevice = viewModel.selectedDevice.value)
+            MainOverlays(viewModel = viewModel, selectedDevice = viewModel.selectedDevice.collectAsState().value)
             CommunityOverlays(viewModel = viewModel)
         }
     }

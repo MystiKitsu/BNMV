@@ -4,8 +4,38 @@ package com.better.nothing.music.vizualizer.ui
 
 import android.os.SystemClock
 import android.view.MotionEvent
-import androidx.compose.animation.AnimatedContent
+import android.annotation.SuppressLint
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
+import kotlin.math.roundToInt
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseInOutCubic
@@ -14,17 +44,14 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -42,17 +69,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CornerBasedShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.FlashlightOn
@@ -60,13 +82,10 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
@@ -75,17 +94,12 @@ import androidx.compose.material3.RangeSlider
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -99,11 +113,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.graphics.shapes.CornerRounding
 import androidx.graphics.shapes.Morph
@@ -1076,3 +1088,190 @@ private fun ExpressiveThumb(factor: Float) {
     )
 }
 
+@SuppressLint("ConfigurationScreenWidthHeight")
+@Composable
+internal fun AnimatedToggleCard(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    titleStyle: TextStyle? = null,
+    titleColor: Color? = null,
+    shape: Shape = RoundedCornerShape(24.dp),
+    colors: CardColors? = null,
+    contentPadding: Dp = 12.dp,
+    disabledTopSpacerFraction: Float = 0.3f,
+    disabledTitleScaleFactor: Float = 1.15f,
+    disabledSwitchScaleFactor: Float = 1.4f,
+    disabledTitleSpacing: Dp = 28.dp,
+    animationDurationMs: Int = 500,
+) {
+    // Tweak these defaults here when tuning the shared motion/scale behavior.
+    val motionDurationMs = animationDurationMs
+    val offTopSpacerFraction = disabledTopSpacerFraction
+    val offTitleScale = disabledTitleScaleFactor
+    val offSwitchScale = disabledSwitchScaleFactor
+    val offTitleSpacing = disabledTitleSpacing
+    val defaultTitleStyle = MaterialTheme.typography.headlineMedium.let { style ->
+        style.copy(
+            fontSize = style.fontSize * 0.9f,
+            lineHeight = style.lineHeight * 0.9f
+        )
+    }
+    val resolvedTitleStyle = titleStyle ?: defaultTitleStyle
+
+    val containerColor by animateColorAsState(
+        targetValue = if (checked) {
+            Color.White
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
+        animationSpec = tween(durationMillis = animationDurationMs),
+        label = "card_container_color"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (checked) {
+            Color.White
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = animationDurationMs),
+        label = "card_border_color"
+    )
+
+    val resolvedTitleColor = titleColor ?: if (checked) Color.Black else MaterialTheme.colorScheme.onBackground
+    val resolvedColors = colors ?: CardDefaults.cardColors(containerColor = containerColor)
+
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val progress by animateFloatAsState(
+        targetValue = if (checked) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = motionDurationMs,
+            easing = FastOutSlowInEasing
+        ),
+        label = "toggle_card_progress"
+    )
+    val titleScale = offTitleScale - ((offTitleScale - 1f) * progress)
+    val switchScale = offSwitchScale - ((offSwitchScale - 1f) * progress)
+    val titleSpacing = lerp(offTitleSpacing, 0.dp, progress)
+    val topSpacer = lerp(screenHeight * offTopSpacerFraction, 0.dp, progress)
+
+    Spacer(modifier = Modifier.height(topSpacer))
+
+    Card(
+        shape = shape,
+        colors = resolvedColors,
+        border = BorderStroke(1.dp, borderColor),
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        AnimatedToggleCardLayout(
+            title = title,
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            titleStyle = resolvedTitleStyle,
+            titleColor = resolvedTitleColor,
+            progress = progress,
+            titleScale = titleScale,
+            switchScale = switchScale,
+            titleToSwitchSpacing = titleSpacing,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(contentPadding)
+        )
+    }
+}
+
+@Composable
+private fun AnimatedToggleCardLayout(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    titleStyle: TextStyle,
+    titleColor: Color,
+    progress: Float,
+    titleScale: Float,
+    switchScale: Float,
+    titleToSwitchSpacing: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val spacingPx = with(androidx.compose.ui.platform.LocalDensity.current) {
+        titleToSwitchSpacing.roundToPx()
+    }
+
+    Layout(
+        modifier = modifier,
+        content = {
+            Text(
+                text = title,
+                style = titleStyle,
+                color = titleColor,
+            )
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color.Black,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
+        }
+    ) { measurables, constraints ->
+        val textPlaceable = measurables[0].measure(
+            constraints.copy(minWidth = 0, minHeight = 0)
+        )
+        val switchPlaceable = measurables[1].measure(
+            constraints.copy(minWidth = 0, minHeight = 0)
+        )
+
+        val width = constraints.maxWidth
+        val scaledTextWidth = (textPlaceable.width * titleScale).roundToInt()
+        val scaledTextHeight = (textPlaceable.height * titleScale).roundToInt()
+        val scaledSwitchWidth = (switchPlaceable.width * switchScale).roundToInt()
+        val scaledSwitchHeight = (switchPlaceable.height * switchScale).roundToInt()
+        val enabledHeight = maxOf(scaledTextHeight, scaledSwitchHeight)
+
+        val disabledTextX = ((width - scaledTextWidth) / 2f).roundToInt()
+        val disabledTextY = 0
+        val enabledTextX = 0
+        val enabledTextY = ((enabledHeight - scaledTextHeight) / 2f).roundToInt()
+
+        val disabledSwitchX = ((width - scaledSwitchWidth) / 2f).roundToInt()
+        val disabledSwitchY = scaledTextHeight + spacingPx
+        val enabledSwitchX = width - scaledSwitchWidth
+        val enabledSwitchY = ((enabledHeight - scaledSwitchHeight) / 2f).roundToInt()
+
+        val textVisualX = lerpInt(disabledTextX, enabledTextX, progress)
+        val textVisualY = lerpInt(disabledTextY, enabledTextY, progress)
+        val switchX = lerpInt(disabledSwitchX, enabledSwitchX, progress)
+        val switchY = lerpInt(disabledSwitchY, enabledSwitchY, progress)
+
+        val textPlacementX = textVisualX + ((scaledTextWidth - textPlaceable.width) / 2f).roundToInt()
+        val textPlacementY = textVisualY + ((scaledTextHeight - textPlaceable.height) / 2f).roundToInt()
+        val switchPlacementX = switchX + ((scaledSwitchWidth - switchPlaceable.width) / 2f).roundToInt()
+        val switchPlacementY = switchY + ((scaledSwitchHeight - switchPlaceable.height) / 2f).roundToInt()
+        val layoutHeight = maxOf(
+            textVisualY + scaledTextHeight,
+            switchY + scaledSwitchHeight
+        ).coerceAtLeast(enabledHeight)
+
+        layout(width, layoutHeight) {
+            textPlaceable.placeWithLayer(textPlacementX, textPlacementY) {
+                scaleX = titleScale *.95f
+                scaleY = titleScale *.95f
+                transformOrigin = TransformOrigin.Center
+            }
+            switchPlaceable.placeWithLayer(switchPlacementX, switchPlacementY) {
+                scaleX = switchScale
+                scaleY = switchScale
+                transformOrigin = TransformOrigin.Center
+            }
+        }
+    }
+}
+
+private fun lerpInt(start: Int, end: Int, progress: Float): Int {
+    return (start + (end - start) * progress).roundToInt()
+}

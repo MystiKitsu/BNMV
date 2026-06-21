@@ -194,7 +194,7 @@ internal class MainViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    fun checkRemoteConfigVersion() { /* Mock */ }
+    fun checkRemoteConfigVersion() { TODO() }
     fun importZonesConfig(uri: android.net.Uri) { /* Mock */ }
     fun updateZonesConfig(url: String = "") { /* Mock */ }
     fun updateProfilePicture(uri: android.net.Uri) {
