@@ -15,16 +15,6 @@ import android.media.projection.MediaProjectionManager
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
-import android.media.MediaMetadata
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.Button
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.CompositionLocalProvider
-import com.google.firebase.database.FirebaseDatabase
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.firebase.auth.GoogleAuthProvider
-import androidx.compose.runtime.remember
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -66,10 +56,14 @@ import com.better.nothing.music.vizualizer.model.HapticMode
 import com.better.nothing.music.vizualizer.model.TorchMode
 import com.better.nothing.music.vizualizer.service.AudioCaptureService
 import com.better.nothing.music.vizualizer.service.GlyphNotificationListener
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 import kotlin.math.absoluteValue
+import androidx.core.content.edit
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -630,7 +624,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun launchProjection() {
-        val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        val projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
         projectionLauncher.launch(projectionManager.createScreenCaptureIntent())
     }
 
@@ -646,7 +640,7 @@ class MainActivity : ComponentActivity() {
             FirebaseFuckery.init()
 
         val intent = Intent(this, AudioCaptureService::class.java)
-            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+            bindService(intent, serviceConnection, BIND_AUTO_CREATE)
         }
     }
 
@@ -673,7 +667,7 @@ class MainActivity : ComponentActivity() {
     private fun refreshConnectedAudioRoute() {
         val route = resolvePreferredAudioRoute()
         if (route != null) {
-            MainActivity.serviceStatic?.setAudioRoute(route)
+            serviceStatic?.setAudioRoute(route)
             if (viewModel.autoDeviceMemorize.value) {
                 viewModel.reloadLatencyForCurrentRoute()
             }
@@ -691,13 +685,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun shouldShowProjectionInfo(): Boolean {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         return !prefs.getBoolean(PREF_PROJECTION_INFO_SHOWN, false)
     }
 
     private fun markProjectionInfoShown() {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(PREF_PROJECTION_INFO_SHOWN, true).apply()
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        prefs.edit {putBoolean(PREF_PROJECTION_INFO_SHOWN, true) }
     }
 
     private fun resolvePreferredAudioRoute(): AudioRoute? {
@@ -739,12 +733,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-fun isUsefulOutputRoute(device: AudioDeviceInfo): Boolean {
-    return device.isBluetoothOutput() || device.isWiredOutput() || device.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
-}
-
 fun AudioDeviceInfo.isBluetoothOutput(): Boolean {
-    return type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || type == AudioDeviceInfo.TYPE_BLE_HEADSET || type == AudioDeviceInfo.TYPE_BLE_SPEAKER || type == AudioDeviceInfo.TYPE_BLE_BROADCAST
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || type == AudioDeviceInfo.TYPE_BLE_HEADSET || type == AudioDeviceInfo.TYPE_BLE_SPEAKER || type == AudioDeviceInfo.TYPE_BLE_BROADCAST
+    } else {
+        TODO("VERSION.SDK_INT < S")
+    }
 }
 
 fun AudioDeviceInfo.isWiredOutput(): Boolean {
