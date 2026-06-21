@@ -51,18 +51,12 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.better.nothing.music.vizualizer.R
-import com.better.nothing.music.vizualizer.model.HapticMode
-import com.better.nothing.music.vizualizer.model.TorchMode
 import com.better.nothing.music.vizualizer.service.AudioCaptureService
 import com.better.nothing.music.vizualizer.service.GlyphNotificationListener
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 import kotlin.math.absoluteValue
-import androidx.core.content.edit
 import com.better.nothing.music.vizualizer.ui.PrimaryScreens.AudioScreen
 import com.better.nothing.music.vizualizer.ui.PrimaryScreens.FlashlightScreen
 import com.better.nothing.music.vizualizer.ui.PrimaryScreens.GlyphsScreen
@@ -162,27 +156,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private val googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(Exception::class.java)
-                val credential = GoogleAuthProvider.getCredential(account.idToken, null)
-                viewModel.linkWithCredential(credential)
-            } catch (e: Exception) {
-                Toast.makeText(this, "Google sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
 
-    private fun launchGoogleSignIn() {
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id))
-            .requestEmail()
-            .build()
-        val googleSignInClient = GoogleSignIn.getClient(this, gso)
-        googleSignInLauncher.launch(googleSignInClient.signInIntent)
-    }
 
     private val mediaSessionManager by lazy {
         getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
@@ -307,115 +281,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun onLatencyChanged(value: Int) {
-        viewModel.setLatencyMs(value)
-    }
-
-    fun onAutoDeviceToggle(enabled: Boolean) {
-        if (enabled && checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-            // request BT permission...
-        }
-        viewModel.setAutoDeviceMemorize(enabled)
-    }
-
-    fun onGammaChanged(value: Float) {
-        viewModel.setGammaValue(value)
-        viewModel.persistGamma(value)
-    }
-
-    fun onSpectrumGainChanged(value: Float) {
-        viewModel.setSpectrumGain(value)
-    }
-
-    fun onMaxBrightnessChanged(value: Int) {
-        viewModel.setMaxBrightness(value)
-    }
-
-    fun onHapticMotorEnabledChanged(enabled: Boolean) {
-        viewModel.setHapticMotorEnabled(enabled)
-    }
-
-    fun onHapticModeChanged(mode: HapticMode) {
-        viewModel.setHapticMode(mode)
-    }
-
-    fun onHapticFreqRangeChanged(min: Float, max: Float) {
-        viewModel.setHapticFreqRange(min, max)
-    }
-
-    fun onHapticMultiplierChanged(value: Float) {
-        viewModel.setHapticMultiplier(value)
-    }
-
-    fun onHapticAudioGainChanged(value: Float) {
-        viewModel.setHapticAudioGain(value)
-    }
-
-    fun onHapticGammaChanged(value: Float) {
-        viewModel.setHapticGamma(value)
-    }
-
-    fun onHapticBeatSensitivityChanged(value: Float) {
-        viewModel.setHapticBeatSensitivity(value)
-    }
-
-    fun onHapticBeatGammaChanged(value: Float) {
-        viewModel.setHapticBeatGamma(value)
-    }
-
-    fun onFlashlightEnabledChanged(enabled: Boolean) {
-        viewModel.setFlashlightEnabled(enabled)
-    }
-
-    fun onFlashlightModeChanged(mode: TorchMode) {
-        viewModel.setFlashlightMode(mode)
-    }
-
-    fun onFlashlightFreqRangeChanged(min: Float, max: Float) {
-        viewModel.setFlashlightFreqRange(min, max)
-    }
-
-    fun onFlashlightThresholdChanged(value: Float) {
-        viewModel.setFlashlightThreshold(value)
-    }
-
-    fun onFlashlightSpeedMsChanged(value: Float) {
-        viewModel.setFlashlightSpeedMs(value)
-    }
-
-    fun onFlashlightBeatSensitivityChanged(value: Float) {
-        viewModel.setFlashlightBeatSensitivity(value)
-    }
-
-    fun onIdleBreathingEnabledChanged(enabled: Boolean) {
-        viewModel.setIdleBreathingEnabled(enabled)
-    }
-
-    fun onIdlePatternChanged(pattern: String) {
-        viewModel.setIdlePattern(pattern)
-    }
-
-    fun onNotificationFlashEnabledChanged(enabled: Boolean) {
-        viewModel.setNotificationFlashEnabled(enabled)
-    }
-
-    fun onStrobeEnabledChanged(enabled: Boolean) {
-        viewModel.setStrobeEnabled(enabled)
-    }
-
-    fun onDisableGlyphsWhenSilentChanged(enabled: Boolean) {
-        viewModel.setDisableGlyphsWhenSilent(enabled)
-    }
-
-    fun onOverlayEnabledChanged(enabled: Boolean) {
-        if (enabled && !Settings.canDrawOverlays(this)) {
-            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
-            overlayPermissionLauncher.launch(intent)
-        } else {
-            viewModel.setOverlayEnabled(enabled)
-        }
-    }
-
     private fun isNotificationServiceEnabled(): Boolean {
         val pkgName = packageName
         val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
@@ -440,13 +305,8 @@ class MainActivity : ComponentActivity() {
         } else {
             val source = viewModel.captureSource.value
             when (source) {
-                AudioCaptureService.CaptureSource.INTERNAL -> {
-                    if (shouldShowProjectionInfo()) {
-                        showProjectionInfoDialog = true
-                    } else {
-                        launchProjection()
-                    }
-                }
+                AudioCaptureService.CaptureSource.INTERNAL -> launchProjection()
+
                 AudioCaptureService.CaptureSource.MIC -> {
                     if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                         s.startVisualizer()
@@ -557,11 +417,6 @@ class MainActivity : ComponentActivity() {
     private fun shouldShowProjectionInfo(): Boolean {
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         return !prefs.getBoolean(PREF_PROJECTION_INFO_SHOWN, false)
-    }
-
-    private fun markProjectionInfoShown() {
-        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        prefs.edit {putBoolean(PREF_PROJECTION_INFO_SHOWN, true) }
     }
 
     private fun resolvePreferredAudioRoute(): AudioRoute? {
