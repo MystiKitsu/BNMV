@@ -563,13 +563,12 @@ fun NativeFilterChip(
         animationSpec = tween(300),
         label = "chip_content"
     )
-    val uiAmp = LocalUIAmplitude.current()
+    val uiAmpProvider = LocalUIAmplitude.current
     val selectionScale by animateFloatAsState(
         targetValue = if (selected) 1.05f else 1f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
         label = "chip_selection_scale"
     )
-    val scale = selectionScale + (if (selected) uiAmp * 0.05f else 0f)
 
     Surface(
         shape = MaterialTheme.shapes.medium,
@@ -578,6 +577,7 @@ fun NativeFilterChip(
         border = if (selected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
         modifier = modifier
             .graphicsLayer {
+                val scale = selectionScale + (if (selected) uiAmpProvider() * 0.05f else 0f)
                 scaleX = scale
                 scaleY = scale
             }
@@ -705,15 +705,14 @@ fun NativeBottomBar(
         tonalElevation = 8.dp,
         windowInsets = NavigationBarDefaults.windowInsets
     ) {
+        val uiAmpProvider = LocalUIAmplitude.current
         visibleTabs.forEach { tab ->
             val isSelected = tab == selectedTab
-            val uiAmp = LocalUIAmplitude.current()
             val selectionScale by animateFloatAsState(
                 targetValue = if (isSelected) 1.25f else 1.0f,
                 animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
                 label = "nav_selection_scale"
             )
-            val iconScale = selectionScale + (if (isSelected) uiAmp * 0.5f else 0f)
 
             NavigationBarItem(
                 selected = isSelected,
@@ -736,6 +735,7 @@ fun NativeBottomBar(
                         val iconModifier = Modifier
                             .size(24.dp)
                             .graphicsLayer {
+                                val iconScale = selectionScale + (if (isSelected) uiAmpProvider() * 0.5f else 0f)
                                 scaleX = iconScale
                                 scaleY = iconScale
                             }

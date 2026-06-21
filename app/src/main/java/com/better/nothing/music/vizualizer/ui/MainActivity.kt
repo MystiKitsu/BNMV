@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -258,62 +259,10 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            val isRunning by viewModel.runningState.collectAsStateWithLifecycle()
-            val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
-            val selectedDevice by viewModel.selectedDevice.collectAsStateWithLifecycle()
-            val latencyMs by viewModel.latencyMs.collectAsStateWithLifecycle()
-            val latencyPresets by viewModel.latencyPresets.collectAsStateWithLifecycle()
-            val autoDeviceMemorize by viewModel.autoDeviceMemorize.collectAsStateWithLifecycle()
-            val gammaValue by viewModel.gammaValue.collectAsStateWithLifecycle()
-            val spectrumGain by viewModel.spectrumGain.collectAsStateWithLifecycle()
-            val maxBrightness by viewModel.maxBrightness.collectAsStateWithLifecycle()
-            val captureSource by viewModel.captureSource.collectAsStateWithLifecycle()
-            val presetInfos by viewModel.presetInfos.collectAsStateWithLifecycle()
-            val selectedPreset by viewModel.selectedPreset.collectAsStateWithLifecycle()
             val selectedTheme by viewModel.selectedTheme.collectAsStateWithLifecycle()
             val selectedFont by viewModel.selectedFont.collectAsStateWithLifecycle()
-
-            val hapticMotorEnabled by viewModel.hapticMotorEnabled.collectAsStateWithLifecycle()
-            val hapticMode by viewModel.hapticMode.collectAsStateWithLifecycle()
-            val hapticFreqMin by viewModel.hapticFreqMin.collectAsStateWithLifecycle()
-            val hapticFreqMax by viewModel.hapticFreqMax.collectAsStateWithLifecycle()
-            val hapticMultiplier by viewModel.hapticMultiplier.collectAsStateWithLifecycle()
-            val hapticAudioGain by viewModel.hapticAudioGain.collectAsStateWithLifecycle()
-            val hapticGamma by viewModel.hapticGamma.collectAsStateWithLifecycle()
-            val hapticBeatSensitivity by viewModel.hapticBeatSensitivity.collectAsStateWithLifecycle()
-            val hapticBeatGamma by viewModel.hapticBeatGamma.collectAsStateWithLifecycle()
-            val hapticAmplitude by viewModel.hapticAmplitude.collectAsStateWithLifecycle()
-
-            val flashlightEnabled by viewModel.flashlightEnabled.collectAsStateWithLifecycle()
-            val flashlightMode by viewModel.flashlightMode.collectAsStateWithLifecycle()
-            val flashlightFreqMin by viewModel.flashlightFreqMin.collectAsStateWithLifecycle()
-            val flashlightFreqMax by viewModel.flashlightFreqMax.collectAsStateWithLifecycle()
-            val flashlightThreshold by viewModel.flashlightThreshold.collectAsStateWithLifecycle()
-            val flashlightSpeedMs by viewModel.flashlightSpeedMs.collectAsStateWithLifecycle()
-            val flashlightBeatSensitivity by viewModel.flashlightBeatSensitivity.collectAsStateWithLifecycle()
-            val flashlightIntensityLevels by viewModel.flashlightIntensityLevels.collectAsStateWithLifecycle()
-            val flashlightAmplitude by viewModel.flashlightAmplitude.collectAsStateWithLifecycle()
-
-            val idleBreathingEnabled by viewModel.idleBreathingEnabled.collectAsStateWithLifecycle()
-            val idlePattern by viewModel.idlePattern.collectAsStateWithLifecycle()
-            val notificationFlashEnabled by viewModel.notificationFlashEnabled.collectAsStateWithLifecycle()
-            val strobeEnabled by viewModel.strobeEnabled.collectAsStateWithLifecycle()
-            val disableGlyphsWhenSilent by viewModel.disableGlyphsWhenSilent.collectAsStateWithLifecycle()
-            val overlayEnabled by viewModel.overlayEnabled.collectAsStateWithLifecycle()
-
-            val isBeatDetected by viewModel.isBeatDetected.collectAsStateWithLifecycle()
-            val isFlashlightBeatDetected by viewModel.isFlashlightBeatDetected.collectAsStateWithLifecycle()
-
-            val uiAmplitude by viewModel.uiAmplitude.collectAsStateWithLifecycle()
             val musicThemeColor by viewModel.musicThemeColor.collectAsStateWithLifecycle()
-            val totalVisualizedTime by viewModel.totalVisualizedTime.collectAsStateWithLifecycle()
-            val shizukuUnlocked by viewModel.shizukuSourceUnlocked.collectAsStateWithLifecycle()
-            val dynamicGainEnabled by viewModel.dynamicGainEnabled.collectAsStateWithLifecycle()
-            val fftData by viewModel.fftState.collectAsStateWithLifecycle()
-
-            LaunchedEffect(viewModel.userId) {
-                viewModel.syncStats()
-            }
+            val isRunning by viewModel.runningState.collectAsStateWithLifecycle()
 
             LaunchedEffect(isRunning) {
                 if (isRunning) {
@@ -336,88 +285,16 @@ class MainActivity : ComponentActivity() {
                 themeName = selectedTheme,
                 fontName = selectedFont,
                 musicPrimaryColor = musicThemeColor,
-                uiAmplitudeProvider = { uiAmplitude }
+                uiAmplitudeProvider = { viewModel.uiAmplitude.value }
             ) {
                 BetterVizApp(
                     viewModel = viewModel,
-                    selectedTab = selectedTab,
-                    onTabSelected = { viewModel.selectTab(it) },
-                    isRunning = isRunning,
-                    selectedDevice = selectedDevice,
-                    onDeviceChanged = { viewModel.setSpoofedDevice(it) },
-                    latencyPresets = latencyPresets,
-                    onLatencyChanged = { onLatencyChanged(it) },
-                    spectrumGain = spectrumGain,
-                    onSpectrumGainChanged = { onSpectrumGainChanged(it) },
-                    maxBrightness = maxBrightness,
-                    onMaxBrightnessChanged = { onMaxBrightnessChanged(it) },
-                    presets = presetInfos,
-                    selectedPreset = selectedPreset,
-                    onPresetSelected = { onPresetSelected(it) },
                     onToggleVisualizer = { toggleVisualizer() },
-                    onAutoDeviceToggle = { onAutoDeviceToggle(it) },
-                    hapticMotorEnabled = hapticMotorEnabled,
-                    onHapticMotorEnabledChanged = { onHapticMotorEnabledChanged(it) },
-                    hapticMode = hapticMode,
-                    onHapticModeChanged = { onHapticModeChanged(it) },
-                    hapticFreqMin = hapticFreqMin,
-                    hapticFreqMax = hapticFreqMax,
-                    onHapticFreqRangeChanged = { min, max -> onHapticFreqRangeChanged(min, max) },
-                    hapticMultiplier = hapticMultiplier,
-                    onHapticMultiplierChanged = { onHapticMultiplierChanged(it) },
-                    hapticAudioGain = hapticAudioGain,
-                    onHapticAudioGainChanged = { onHapticAudioGainChanged(it) },
-                    hapticGamma = hapticGamma,
-                    onHapticGammaChanged = { onHapticGammaChanged(it) },
-                    hapticBeatSensitivity = hapticBeatSensitivity,
-                    onHapticBeatSensitivityChanged = { onHapticBeatSensitivityChanged(it) },
-                    hapticBeatGamma = hapticBeatGamma,
-                    onHapticBeatGammaChanged = { onHapticBeatGammaChanged(it) },
-                    hapticAmplitudeProvider = { hapticAmplitude },
-                    isBeatDetectedProvider = { isBeatDetected },
-                    flashlightEnabled = flashlightEnabled,
-                    onFlashlightEnabledChanged = { onFlashlightEnabledChanged(it) },
-                    flashlightMode = flashlightMode,
-                    onFlashlightModeChanged = { onFlashlightModeChanged(it) },
-                    flashlightFreqMin = flashlightFreqMin,
-                    flashlightFreqMax = flashlightFreqMax,
-                    onFlashlightFreqRangeChanged = { min, max -> onFlashlightFreqRangeChanged(min, max) },
-                    flashlightThreshold = flashlightThreshold,
-                    onFlashlightThresholdChanged = { onFlashlightThresholdChanged(it) },
-                    flashlightSpeedMs = flashlightSpeedMs,
-                    onFlashlightSpeedMsChanged = { onFlashlightSpeedMsChanged(it) },
-                    flashlightBeatSensitivity = flashlightBeatSensitivity,
-                    onFlashlightBeatSensitivityChanged = { onFlashlightBeatSensitivityChanged(it) },
-                    flashlightIntensityLevels = flashlightIntensityLevels,
-                    flashlightAmplitudeProvider = { flashlightAmplitude },
-                    isFlashlightBeatDetectedProvider = { isFlashlightBeatDetected },
-                    idleBreathingEnabled = idleBreathingEnabled,
-                    onIdleBreathingEnabledChanged = { onIdleBreathingEnabledChanged(it) },
-                    idlePattern = idlePattern,
-                    onIdlePatternChanged = { onIdlePatternChanged(it) },
-                    notificationFlashEnabled = notificationFlashEnabled,
-                    onNotificationFlashEnabledChanged = { onNotificationFlashEnabledChanged(it) },
-                    strobeEnabled = strobeEnabled,
-                    onStrobeEnabledChanged = { onStrobeEnabledChanged(it) },
-                    disableGlyphsWhenSilent = disableGlyphsWhenSilent,
-                    onDisableGlyphsWhenSilentChanged = { onDisableGlyphsWhenSilentChanged(it) },
-                    overlayEnabled = overlayEnabled,
-                    onOverlayEnabledChanged = { onOverlayEnabledChanged(it) },
                     onGoogleSignIn = { launchGoogleSignIn() },
-                    uiAmplitudeProvider = { uiAmplitude },
-                    musicThemeColor = musicThemeColor,
-                    totalVisualizedTime = totalVisualizedTime,
-                    shizukuUnlocked = shizukuUnlocked,
-                    dynamicGainEnabled = dynamicGainEnabled,
-                    connectedDeviceName = musicThemeHandler.activeMediaController?.metadata?.getString(
-                        MediaMetadata.METADATA_KEY_TITLE
-                    ) ?: "Unknown",
-                    latencyMs = latencyMs,
-                    autoDeviceEnabled = autoDeviceMemorize,
-                    captureSource = captureSource,
-                    fftData = fftData,
-                    gammaValue = gammaValue,
-                    onGammaChanged = { onGammaChanged(it) }
+                    onOverlayPermissionRequest = { 
+                        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+                        overlayPermissionLauncher.launch(intent)
+                    }
                 )
 
                 if (showProjectionInfoDialog) {
@@ -432,7 +309,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Overlays
-                MainOverlays(viewModel = viewModel, selectedDevice = selectedDevice)
+                MainOverlays(viewModel = viewModel, selectedDevice = viewModel.selectedDevice.value)
                 CommunityOverlays(viewModel = viewModel)
             }
         }
@@ -758,85 +635,16 @@ val HeavyEasingSpec = tween<Float>(durationMillis = 600)
 @Composable
 internal fun BetterVizApp(
     viewModel: MainViewModel,
-    selectedTab: Tab,
-    onTabSelected: (Tab) -> Unit,
-    isRunning: Boolean,
-    selectedDevice: Int,
-    onDeviceChanged: (Int) -> Unit,
-    latencyPresets: List<Int>,
-    onLatencyChanged: (Int) -> Unit,
-    spectrumGain: Float,
-    onSpectrumGainChanged: (Float) -> Unit,
-    maxBrightness: Int,
-    onMaxBrightnessChanged: (Int) -> Unit,
-    presets: List<AudioCaptureService.PresetInfo>,
-    selectedPreset: String,
-    onPresetSelected: (String) -> Unit,
     onToggleVisualizer: () -> Unit,
-    onAutoDeviceToggle: (Boolean) -> Unit,
-    hapticMotorEnabled: Boolean,
-    onHapticMotorEnabledChanged: (Boolean) -> Unit,
-    hapticMode: HapticMode,
-    onHapticModeChanged: (HapticMode) -> Unit,
-    hapticFreqMin: Float,
-    hapticFreqMax: Float,
-    onHapticFreqRangeChanged: (Float, Float) -> Unit,
-    hapticMultiplier: Float,
-    onHapticMultiplierChanged: (Float) -> Unit,
-    hapticAudioGain: Float,
-    onHapticAudioGainChanged: (Float) -> Unit,
-    hapticGamma: Float,
-    onHapticGammaChanged: (Float) -> Unit,
-    hapticBeatSensitivity: Float,
-    onHapticBeatSensitivityChanged: (Float) -> Unit,
-    hapticBeatGamma: Float,
-    onHapticBeatGammaChanged: (Float) -> Unit,
-    hapticAmplitudeProvider: () -> Float,
-    isBeatDetectedProvider: () -> Boolean,
-    flashlightEnabled: Boolean,
-    onFlashlightEnabledChanged: (Boolean) -> Unit,
-    flashlightMode: TorchMode,
-    onFlashlightModeChanged: (TorchMode) -> Unit,
-    flashlightFreqMin: Float,
-    flashlightFreqMax: Float,
-    onFlashlightFreqRangeChanged: (Float, Float) -> Unit,
-    flashlightThreshold: Float,
-    onFlashlightThresholdChanged: (Float) -> Unit,
-    flashlightSpeedMs: Float,
-    onFlashlightSpeedMsChanged: (Float) -> Unit,
-    flashlightBeatSensitivity: Float,
-    onFlashlightBeatSensitivityChanged: (Float) -> Unit,
-    flashlightIntensityLevels: Int,
-    flashlightAmplitudeProvider: () -> Float,
-    isFlashlightBeatDetectedProvider: () -> Boolean,
-    idleBreathingEnabled: Boolean,
-    onIdleBreathingEnabledChanged: (Boolean) -> Unit,
-    idlePattern: String,
-    onIdlePatternChanged: (String) -> Unit,
-    notificationFlashEnabled: Boolean,
-    onNotificationFlashEnabledChanged: (Boolean) -> Unit,
-    strobeEnabled: Boolean,
-    onStrobeEnabledChanged: (Boolean) -> Unit,
-    disableGlyphsWhenSilent: Boolean,
-    onDisableGlyphsWhenSilentChanged: (Boolean) -> Unit,
-    overlayEnabled: Boolean,
-    onOverlayEnabledChanged: (Boolean) -> Unit,
     onGoogleSignIn: () -> Unit,
-    uiAmplitudeProvider: () -> Float,
-    musicThemeColor: Color,
-    totalVisualizedTime: Long,
-    shizukuUnlocked: Boolean,
-    dynamicGainEnabled: Boolean,
-    connectedDeviceName: String,
-    latencyMs: Int,
-    autoDeviceEnabled: Boolean,
-    captureSource: AudioCaptureService.CaptureSource,
-    fftData: FloatArray,
-    gammaValue: Float,
-    onGammaChanged: (Float) -> Unit
+    onOverlayPermissionRequest: () -> Unit
 ) {
+    val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
+    val isRunning by viewModel.runningState.collectAsStateWithLifecycle()
+    val totalVisualizedTime by viewModel.totalVisualizedTime.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
     val pagerState = rememberPagerState(initialPage = selectedTab.ordinal) { Tab.entries.size }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(selectedTab) {
         if (pagerState.currentPage != selectedTab.ordinal) {
@@ -849,24 +657,24 @@ internal fun BetterVizApp(
         if (pagerState.currentPage != selectedTab.ordinal) {
             haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
         }
-        onTabSelected(Tab.entries[pagerState.currentPage])
+        viewModel.selectTab(Tab.entries[pagerState.currentPage])
     }
 
-    CompositionLocalProvider(LocalUIAmplitude provides uiAmplitudeProvider) {
-        Scaffold(
-            bottomBar = {
-                NativeBottomBar(
-                    selectedTab = selectedTab,
-                    visibleTabs = Tab.entries.toList(),
-                    onTabSelected = onTabSelected
-                )
-            },
-            floatingActionButton = {
-                StartStopButton(running = isRunning, onClick = onToggleVisualizer)
-            },
-            containerColor = MaterialTheme.colorScheme.background,
-            modifier = Modifier.fillMaxSize()
-        ) { padding ->
+    Scaffold(
+        bottomBar = {
+            NativeBottomBar(
+                selectedTab = selectedTab,
+                visibleTabs = Tab.entries.toList(),
+                onTabSelected = { viewModel.selectTab(it) }
+            )
+        },
+        floatingActionButton = {
+            StartStopButton(running = isRunning, onClick = onToggleVisualizer)
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+        modifier = Modifier.fillMaxSize()
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier
                 .padding(padding)
                 .padding(horizontal = LocalAppSpacing.current.edge)
@@ -893,109 +701,156 @@ internal fun BetterVizApp(
                             }
                     ) {
                         when (tab) {
-                        Tab.Audio -> {
-                            AudioScreen(
-                                isRunning = isRunning,
-                                sessionDuration = totalVisualizedTime,
-                                latencyMs = latencyMs,
-                                onLatencyChanged = { onLatencyChanged(it) },
-                                latencyPresets = latencyPresets,
-                                onLatencyPresetsChanged = { viewModel.updateLatencyPresets(it) },
-                                autoDeviceEnabled = autoDeviceEnabled,
-                                onAutoDeviceToggle = { onAutoDeviceToggle(it) },
-                                connectedDeviceName = connectedDeviceName,
-                                fftData = fftData,
-                                captureSource = captureSource,
-                                onCaptureSourceChanged = { viewModel.setCaptureSource(it) },
-                                shizukuUnlocked = shizukuUnlocked,
-                                dynamicGainEnabled = dynamicGainEnabled,
-                                onDynamicGainToggle = { viewModel.setDynamicGainEnabled(it) }
-                            )
-                        }
-                        Tab.Glyphs -> {
-                            GlyphsScreen(
-                                gammaValue = gammaValue,
-                                onGammaChanged = onGammaChanged,
-                                maxBrightness = maxBrightness,
-                                onMaxBrightnessChanged = { onMaxBrightnessChanged(it) },
-                                presets = presets,
-                                selectedPreset = selectedPreset,
-                                onPresetSelected = { onPresetSelected(it) },
-                                isRunning = isRunning,
-                                selectedDevice = selectedDevice,
-                                viewModel = viewModel
-                            )
-                        }
-                        Tab.Haptics -> {
-                            HapticsScreen(
-                                hapticMotorEnabled = hapticMotorEnabled,
-                                onHapticMotorEnabledChanged = onHapticMotorEnabledChanged,
-                                hapticMode = hapticMode,
-                                onHapticModeChanged = onHapticModeChanged,
-                                hapticFreqMin = hapticFreqMin,
-                                hapticFreqMax = hapticFreqMax,
-                                onHapticFreqRangeChanged = onHapticFreqRangeChanged,
-                                hapticMultiplier = hapticMultiplier,
-                                onHapticMultiplierChanged = onHapticMultiplierChanged,
-                                hapticAudioGain = hapticAudioGain,
-                                onHapticAudioGainChanged = onHapticAudioGainChanged,
-                                hapticGamma = hapticGamma,
-                                onHapticGammaChanged = onHapticGammaChanged,
-                                hapticBeatSensitivity = hapticBeatSensitivity,
-                                onHapticBeatSensitivityChanged = onHapticBeatSensitivityChanged,
-                                hapticBeatGamma = hapticBeatGamma,
-                                onHapticBeatGammaChanged = onHapticBeatGammaChanged,
-                                hapticAmplitudeProvider = hapticAmplitudeProvider,
-                                isBeatDetectedProvider = isBeatDetectedProvider
-                            )
-                        }
-                        Tab.Flashlight -> {
-                            FlashlightScreen(
-                                flashlightEnabled = flashlightEnabled,
-                                onFlashlightEnabledChanged = onFlashlightEnabledChanged,
-                                flashlightMode = flashlightMode,
-                                onFlashlightModeChanged = onFlashlightModeChanged,
-                                flashlightFreqMin = flashlightFreqMin,
-                                flashlightFreqMax = flashlightFreqMax,
-                                onFlashlightFreqRangeChanged = onFlashlightFreqRangeChanged,
-                                flashlightThreshold = flashlightThreshold,
-                                onFlashlightThresholdChanged = onFlashlightThresholdChanged,
-                                flashlightSpeedMs = flashlightSpeedMs,
-                                onFlashlightSpeedMsChanged = onFlashlightSpeedMsChanged,
-                                flashlightBeatSensitivity = flashlightBeatSensitivity,
-                                onFlashlightBeatSensitivityChanged = onFlashlightBeatSensitivityChanged,
-                                flashlightIntensityLevels = flashlightIntensityLevels,
-                                flashlightAmplitudeProvider = flashlightAmplitudeProvider,
-                                isBeatDetectedProvider = isFlashlightBeatDetectedProvider
-                            )
-                        }
-                        Tab.Settings -> {
-                            SettingsScreen(
-                                viewModel = viewModel,
-                                idleBreathingEnabled = idleBreathingEnabled,
-                                onIdleBreathingEnabledChanged = onIdleBreathingEnabledChanged,
-                                idlePattern = idlePattern,
-                                onIdlePatternChanged = onIdlePatternChanged,
-                                notificationFlashEnabled = notificationFlashEnabled,
-                                onNotificationFlashEnabledChanged = onNotificationFlashEnabledChanged,
-                                strobeEnabled = strobeEnabled,
-                                onStrobeEnabledChanged = onStrobeEnabledChanged,
-                                disableGlyphsWhenSilent = disableGlyphsWhenSilent,
-                                onDisableGlyphsWhenSilentChanged = onDisableGlyphsWhenSilentChanged,
-                                overlayEnabled = overlayEnabled,
-                                onOverlayEnabledChanged = onOverlayEnabledChanged,
-                                onGoogleSignIn = onGoogleSignIn
-                            )
+                            Tab.Audio -> {
+                                val latencyMs by viewModel.latencyMs.collectAsStateWithLifecycle()
+                                val latencyPresets by viewModel.latencyPresets.collectAsStateWithLifecycle()
+                                val autoDeviceEnabled by viewModel.autoDeviceMemorize.collectAsStateWithLifecycle()
+                                val fftData by viewModel.fftState.collectAsStateWithLifecycle()
+                                val captureSource by viewModel.captureSource.collectAsStateWithLifecycle()
+                                val shizukuUnlocked by viewModel.shizukuSourceUnlocked.collectAsStateWithLifecycle()
+                                val dynamicGainEnabled by viewModel.dynamicGainEnabled.collectAsStateWithLifecycle()
+
+                                AudioScreen(
+                                    isRunning = isRunning,
+                                    sessionDuration = totalVisualizedTime,
+                                    latencyMs = latencyMs,
+                                    onLatencyChanged = { viewModel.setLatencyMs(it) },
+                                    latencyPresets = latencyPresets,
+                                    onLatencyPresetsChanged = { viewModel.updateLatencyPresets(it) },
+                                    autoDeviceEnabled = autoDeviceEnabled,
+                                    onAutoDeviceToggle = { viewModel.setAutoDeviceMemorize(it) },
+                                    connectedDeviceName = MainActivity.serviceStatic?.getActiveAudioRouteKey() ?: "Unknown",
+                                    fftData = fftData,
+                                    captureSource = captureSource,
+                                    onCaptureSourceChanged = { viewModel.setCaptureSource(it) },
+                                    shizukuUnlocked = shizukuUnlocked,
+                                    dynamicGainEnabled = dynamicGainEnabled,
+                                    onDynamicGainToggle = { viewModel.setDynamicGainEnabled(it) }
+                                )
+                            }
+                            Tab.Glyphs -> {
+                                val gammaValue by viewModel.gammaValue.collectAsStateWithLifecycle()
+                                val maxBrightness by viewModel.maxBrightness.collectAsStateWithLifecycle()
+                                val presets by viewModel.presetInfos.collectAsStateWithLifecycle()
+                                val selectedPreset by viewModel.selectedPreset.collectAsStateWithLifecycle()
+                                val selectedDevice by viewModel.selectedDevice.collectAsStateWithLifecycle()
+
+                                GlyphsScreen(
+                                    gammaValue = gammaValue,
+                                    onGammaChanged = { viewModel.setGammaValue(it); viewModel.persistGamma(it) },
+                                    maxBrightness = maxBrightness,
+                                    onMaxBrightnessChanged = { viewModel.setMaxBrightness(it) },
+                                    presets = presets,
+                                    selectedPreset = selectedPreset,
+                                    onPresetSelected = { viewModel.setSelectedPreset(it) },
+                                    isRunning = isRunning,
+                                    selectedDevice = selectedDevice,
+                                    viewModel = viewModel
+                                )
+                            }
+                            Tab.Haptics -> {
+                                val hapticMotorEnabled by viewModel.hapticMotorEnabled.collectAsStateWithLifecycle()
+                                val hapticMode by viewModel.hapticMode.collectAsStateWithLifecycle()
+                                val hapticFreqMin by viewModel.hapticFreqMin.collectAsStateWithLifecycle()
+                                val hapticFreqMax by viewModel.hapticFreqMax.collectAsStateWithLifecycle()
+                                val hapticMultiplier by viewModel.hapticMultiplier.collectAsStateWithLifecycle()
+                                val hapticAudioGain by viewModel.hapticAudioGain.collectAsStateWithLifecycle()
+                                val hapticGamma by viewModel.hapticGamma.collectAsStateWithLifecycle()
+                                val hapticBeatSensitivity by viewModel.hapticBeatSensitivity.collectAsStateWithLifecycle()
+                                val hapticBeatGamma by viewModel.hapticBeatGamma.collectAsStateWithLifecycle()
+                                val isBeatDetected by viewModel.isBeatDetected.collectAsStateWithLifecycle()
+
+                                HapticsScreen(
+                                    hapticMotorEnabled = hapticMotorEnabled,
+                                    onHapticMotorEnabledChanged = { viewModel.setHapticMotorEnabled(it) },
+                                    hapticMode = hapticMode,
+                                    onHapticModeChanged = { viewModel.setHapticMode(it) },
+                                    hapticFreqMin = hapticFreqMin,
+                                    hapticFreqMax = hapticFreqMax,
+                                    onHapticFreqRangeChanged = { min, max -> viewModel.setHapticFreqRange(min, max) },
+                                    hapticMultiplier = hapticMultiplier,
+                                    onHapticMultiplierChanged = { viewModel.setHapticMultiplier(it) },
+                                    hapticAudioGain = hapticAudioGain,
+                                    onHapticAudioGainChanged = { viewModel.setHapticAudioGain(it) },
+                                    hapticGamma = hapticGamma,
+                                    onHapticGammaChanged = { viewModel.setHapticGamma(it) },
+                                    hapticBeatSensitivity = hapticBeatSensitivity,
+                                    onHapticBeatSensitivityChanged = { viewModel.setHapticBeatSensitivity(it) },
+                                    hapticBeatGamma = hapticBeatGamma,
+                                    onHapticBeatGammaChanged = { viewModel.setHapticBeatGamma(it) },
+                                    hapticAmplitudeProvider = { viewModel.hapticAmplitude.value },
+                                    isBeatDetectedProvider = { isBeatDetected }
+                                )
+                            }
+                            Tab.Flashlight -> {
+                                val flashlightEnabled by viewModel.flashlightEnabled.collectAsStateWithLifecycle()
+                                val flashlightMode by viewModel.flashlightMode.collectAsStateWithLifecycle()
+                                val flashlightFreqMin by viewModel.flashlightFreqMin.collectAsStateWithLifecycle()
+                                val flashlightFreqMax by viewModel.flashlightFreqMax.collectAsStateWithLifecycle()
+                                val flashlightThreshold by viewModel.flashlightThreshold.collectAsStateWithLifecycle()
+                                val flashlightSpeedMs by viewModel.flashlightSpeedMs.collectAsStateWithLifecycle()
+                                val flashlightBeatSensitivity by viewModel.flashlightBeatSensitivity.collectAsStateWithLifecycle()
+                                val flashlightIntensityLevels by viewModel.flashlightIntensityLevels.collectAsStateWithLifecycle()
+                                val isFlashlightBeatDetected by viewModel.isFlashlightBeatDetected.collectAsStateWithLifecycle()
+
+                                FlashlightScreen(
+                                    flashlightEnabled = flashlightEnabled,
+                                    onFlashlightEnabledChanged = { viewModel.setFlashlightEnabled(it) },
+                                    flashlightMode = flashlightMode,
+                                    onFlashlightModeChanged = { viewModel.setFlashlightMode(it) },
+                                    flashlightFreqMin = flashlightFreqMin,
+                                    flashlightFreqMax = flashlightFreqMax,
+                                    onFlashlightFreqRangeChanged = { min, max -> viewModel.setFlashlightFreqRange(min, max) },
+                                    flashlightThreshold = flashlightThreshold,
+                                    onFlashlightThresholdChanged = { viewModel.setFlashlightThreshold(it) },
+                                    flashlightSpeedMs = flashlightSpeedMs,
+                                    onFlashlightSpeedMsChanged = { viewModel.setFlashlightSpeedMs(it) },
+                                    flashlightBeatSensitivity = flashlightBeatSensitivity,
+                                    onFlashlightBeatSensitivityChanged = { viewModel.setFlashlightBeatSensitivity(it) },
+                                    flashlightIntensityLevels = flashlightIntensityLevels,
+                                    flashlightAmplitudeProvider = { viewModel.flashlightAmplitude.value },
+                                    isBeatDetectedProvider = { isFlashlightBeatDetected }
+                                )
+                            }
+                            Tab.Settings -> {
+                                val idleBreathingEnabled by viewModel.idleBreathingEnabled.collectAsStateWithLifecycle()
+                                val idlePattern by viewModel.idlePattern.collectAsStateWithLifecycle()
+                                val notificationFlashEnabled by viewModel.notificationFlashEnabled.collectAsStateWithLifecycle()
+                                val strobeEnabled by viewModel.strobeEnabled.collectAsStateWithLifecycle()
+                                val disableGlyphsWhenSilent by viewModel.disableGlyphsWhenSilent.collectAsStateWithLifecycle()
+                                val overlayEnabled by viewModel.overlayEnabled.collectAsStateWithLifecycle()
+
+                                SettingsScreen(
+                                    viewModel = viewModel,
+                                    idleBreathingEnabled = idleBreathingEnabled,
+                                    onIdleBreathingEnabledChanged = { viewModel.setIdleBreathingEnabled(it) },
+                                    idlePattern = idlePattern,
+                                    onIdlePatternChanged = { viewModel.setIdlePattern(it) },
+                                    notificationFlashEnabled = notificationFlashEnabled,
+                                    onNotificationFlashEnabledChanged = { viewModel.setNotificationFlashEnabled(it) },
+                                    strobeEnabled = strobeEnabled,
+                                    onStrobeEnabledChanged = { viewModel.setStrobeEnabled(it) },
+                                    disableGlyphsWhenSilent = disableGlyphsWhenSilent,
+                                    onDisableGlyphsWhenSilentChanged = { viewModel.setDisableGlyphsWhenSilent(it) },
+                                    overlayEnabled = overlayEnabled,
+                                    onOverlayEnabledChanged = { enabled ->
+                                        if (enabled && !Settings.canDrawOverlays(context)) {
+                                            onOverlayPermissionRequest()
+                                        } else {
+                                            viewModel.setOverlayEnabled(enabled)
+                                        }
+                                    },
+                                    onGoogleSignIn = onGoogleSignIn
+                                )
+                            }
                         }
                     }
                 }
             }
 
-                // Overlays
-                MainOverlays(viewModel = viewModel, selectedDevice = selectedDevice)
-                CommunityOverlays(viewModel = viewModel)
-            }
+            // Overlays
+            MainOverlays(viewModel = viewModel, selectedDevice = viewModel.selectedDevice.value)
+            CommunityOverlays(viewModel = viewModel)
         }
     }
 }
-
