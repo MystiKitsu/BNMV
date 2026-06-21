@@ -89,7 +89,6 @@ internal fun SettingsScreen(
             onDismiss = { showAuthDialog = false },
             onSignIn = { e, p -> viewModel.signInWithEmail(e, p) },
             onSignUp = { e, p -> viewModel.signUpWithEmail(e, p) },
-            onGoogleSignIn = onGoogleSignIn
         )
     }
 

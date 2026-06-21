@@ -2,8 +2,10 @@ package com.better.nothing.music.vizualizer.ui
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.util.Base64
 import android.util.Log
 import android.widget.Toast
@@ -21,6 +23,7 @@ import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.AuthCredential
 import androidx.compose.ui.graphics.Color
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -29,6 +32,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
 import rikka.shizuku.Shizuku
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -148,8 +155,67 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _appUpdateStatus.value = AppUpdateStatus.UpToDate
     }
 
-    fun downloadAndInstallUpdate(apkUrl: String, version: String) {
-        // Mock
+    fun downloadAndInstallUpdate(apkUrl: String, versionName: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val url = URL(apkUrl)
+                val connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 10000
+                connection.readTimeout = 30000
+
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val fileLength = connection.contentLength
+                    val destinationFile = File(ctx.externalCacheDir, "update_$versionName.apk")
+
+                    connection.inputStream.use { input ->
+                        FileOutputStream(destinationFile).use { output ->
+                            val buffer = ByteArray(8192)
+                            var bytesRead: Int
+                            var totalBytesRead = 0L
+
+                            while (input.read(buffer).also { bytesRead = it } != -1) {
+                                output.write(buffer, 0, bytesRead)
+                                totalBytesRead += bytesRead
+                                if (fileLength > 0) {
+                                    val progress = totalBytesRead.toFloat() / fileLength.toFloat()
+                                    _appUpdateStatus.value = AppUpdateStatus.Downloading(progress)
+                                }
+                            }
+                        }
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        installApk(destinationFile)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(ctx, "Download failed: ${connection.responseCode}", Toast.LENGTH_SHORT).show()
+                        _appUpdateStatus.value = AppUpdateStatus.Error("Download failed")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Download failed", e)
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(ctx, "Download error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    _appUpdateStatus.value = AppUpdateStatus.Error(e.message ?: "Unknown error")
+                }
+            }
+        }
+    }
+
+    private fun installApk(file: File) {
+        try {
+            val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", file)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            ctx.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("MainViewModel", "Installation failed", e)
+            Toast.makeText(ctx, "Installation failed: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private val _isShowingLeaderboard = MutableStateFlow(false)
@@ -194,9 +260,154 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun checkRemoteConfigVersion() { TODO() }
-    fun importZonesConfig(uri: android.net.Uri) { /* Mock */ }
-    fun updateZonesConfig(url: String = "") { /* Mock */ }
+    fun checkRemoteConfigVersion() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val url =
+                    URL("https://raw.githubusercontent.com/Aleks-Levet/better-nothing-music-visualizer/main/zones.config?t=${System.currentTimeMillis()}")
+                val connection = url.openConnection() as HttpURLConnection
+                connection.useCaches = false
+                connection.connectTimeout = 5000
+                connection.readTimeout = 5000
+
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    val content = connection.inputStream.bufferedReader().use { it.readText() }
+                    val json = JSONObject(content)
+                    val remoteVersion = json.optString("version", "Unknown")
+                    _remoteConfigVersion.value = remoteVersion
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to check remote version", e)
+            }
+        }
+    }
+    fun importZonesConfig(uri: Uri) {
+        _configUpdateStatus.value = ConfigUpdateStatus.Updating
+        viewModelScope.launch {
+            announcementRepository.getLatestAnnouncement().collect { announcement ->
+                _latestAnnouncement.value = announcement
+                if (announcement != null) {
+                    val sharedPrefs = ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                    val lastSeenId = sharedPrefs.getString("last_seen_announcement_id", "")
+                    if (announcement.id.toString() != lastSeenId) {
+                        _showAnnouncementModal.value = true
+                    }
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            try {
+                val success = withContext(Dispatchers.IO) {
+                    val content = ctx.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    if (content == null) return@withContext false
+
+                    // Basic validation
+                    JSONObject(content)
+
+                    val file = File(ctx.filesDir, "zones.config")
+                    file.writeText(content)
+
+                    // Refresh presets (file IO)
+                    refreshPresetsInternal()
+
+                    val newVersion = AudioCaptureService.loadZonesConfigVersion(ctx)
+                    _configVersion.value = newVersion
+                    _remoteConfigVersion.value = null // Clear remote version since we are on local
+
+                    // Force running service to reload its config from disk
+                    MainActivity.serviceStatic?.reloadConfig()
+                    true
+                }
+
+                if (success) {
+                    _configUpdateStatus.value = ConfigUpdateStatus.Success(ctx.getString(R.string.config_import_success))
+                } else {
+                    _configUpdateStatus.value = ConfigUpdateStatus.Error(ctx.getString(R.string.config_import_error))
+                }
+            } catch (e: Exception) {
+                _configUpdateStatus.value = ConfigUpdateStatus.Error(ctx.getString(R.string.config_error_importing, e.message))
+            }
+        }
+    }
+    fun updateZonesConfig() {
+        // 1. Set loading state immediately on Main Thread
+        _configUpdateStatus.value = ConfigUpdateStatus.Updating
+
+        viewModelScope.launch {
+            announcementRepository.getLatestAnnouncement().collect { announcement ->
+                _latestAnnouncement.value = announcement
+                if (announcement != null) {
+                    val sharedPrefs = ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                    val lastSeenId = sharedPrefs.getString("last_seen_announcement_id", "")
+                    if (announcement.id.toString() != lastSeenId) {
+                        _showAnnouncementModal.value = true
+                    }
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            try {
+                // 2. Perform network/download on IO Thread
+                val success = withContext(Dispatchers.IO) {
+                    performUpdateAction()
+                }
+
+                // 3. Back on Main Thread automatically after withContext
+                if (success) {
+                    _configUpdateStatus.value = ConfigUpdateStatus.Success(ctx.getString(R.string.config_update_success))
+                }
+                // Errors are handled inside performUpdateAction setting the status directly now,
+                // or we could return Result object. To keep it simple with existing code:
+            } catch (e: Exception) {
+                // Catch unexpected errors
+                _configUpdateStatus.value = ConfigUpdateStatus.Error(ctx.getString(R.string.config_error_updating, e.message))
+            }
+        }
+    }
+    private suspend fun performUpdateAction(): Boolean {
+        // This runs on Dispatchers.IO (called from withContext(IO) above)
+        return try {
+            val url = URL("https://raw.githubusercontent.com/Aleks-Levet/better-nothing-music-visualizer/main/zones.config?t=${System.currentTimeMillis()}")
+            val connection = withContext(Dispatchers.IO) {
+                url.openConnection()
+            } as HttpURLConnection
+            connection.useCaches = false
+            connection.connectTimeout = 10000
+            connection.readTimeout = 10000
+
+            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                val content = connection.inputStream.bufferedReader().use { it.readText() }
+                // Basic validation
+                JSONObject(content)
+
+                val file = File(ctx.filesDir, "zones.config")
+                file.writeText(content)
+
+                // Refresh presets (file IO)
+                refreshPresetsInternal()
+
+                val newVersion = AudioCaptureService.loadZonesConfigVersion(ctx)
+                _configVersion.value = newVersion
+                _remoteConfigVersion.value = newVersion
+
+                // Force running service to reload its config from disk
+                MainActivity.serviceStatic?.reloadConfig()
+                true
+            } else {
+                withContext(Dispatchers.Main) {
+                    _configUpdateStatus.value = ConfigUpdateStatus.Error(ctx.getString(R.string.config_download_error, connection.responseCode))
+                }
+                false
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                _configUpdateStatus.value = ConfigUpdateStatus.Error(ctx.getString(R.string.config_error_updating, e.message))
+            }
+            false
+        }
+    }
     fun updateProfilePicture(uri: android.net.Uri) {
         val uid = _userId.value ?: return
         viewModelScope.launch {
@@ -353,7 +564,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     val _thanksMessage = MutableStateFlow<String?>(null)
-    val thanksMessage = _thanksMessage.asStateFlow()
     val thanksQueue = mutableListOf<String>()
 
     fun dismissThanksMessage() {

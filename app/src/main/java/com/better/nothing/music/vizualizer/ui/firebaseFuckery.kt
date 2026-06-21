@@ -40,7 +40,7 @@ fun launchGoogleSignIn(
             try {
                 val account = task.getResult(Exception::class.java)
                 val credential = GoogleAuthProvider.getCredential(account?.idToken, null)
-                viewModel.linkWithCredential(credential)
+                //viewModel.linkWithCredential(credential)
             } catch (e: Exception) {
                 Toast.makeText(context, "Google sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -69,3 +69,4 @@ fun launchGoogleSignIn(
         Text(text = "Sign in with Google")
     }
 }
+

@@ -25,8 +25,7 @@ import com.better.nothing.music.vizualizer.R
 fun AuthDialog(
     onDismiss: () -> Unit,
     onSignIn: (String, String) -> Unit,
-    onSignUp: (String, String) -> Unit,
-    onGoogleSignIn: () -> Unit
+    onSignUp: (String, String) -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -127,7 +126,6 @@ fun AuthDialog(
 
                 OutlinedButton(
                     onClick = {
-                        onGoogleSignIn()
                         onDismiss()
                     },
                     modifier = Modifier.fillMaxWidth(),

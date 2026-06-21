@@ -31,7 +31,6 @@
 * make the collapsed sections a bit bigger
 
 ## Aleks' fucking todo
-* move code away from mainactivity. now mainactivity is a mess.
 * Modify the BNMV liscence so only the owner can release, and everything that other developers do should be reported to the owner. And state that debug builds should never be released to the public because they are not meant to be used by the users, but only by the developers for developing purposes.
 * when the frequency range is large; they are less reactive for some reason. You don't need to divide the sum of the bins by the frequency range, the size of the frequency range. One of the causes is that the wide frequency ranges are less reactive than the narrow ones, which are usually the bass ones, so we can't really see the trebles.
 * enhance the built-in switches by adding an X (cross) or a done (✅) in them, like the battery guru's settings switches, and also with bouncy animations and nice haptics
@@ -57,6 +56,7 @@
 ---
 
 ## Done
+* move code away from mainactivity. now mainactivity is a mess.
 * use the system navbar padding (fix it again)
 * **Make the haptic amplitude mode resubmit a oneshot haptic all the time, even if it doesn't change!!!** currently it doesn't resubmit when the vibration amplitude doesn't change!
 * make the oneshot duration slightly longer
