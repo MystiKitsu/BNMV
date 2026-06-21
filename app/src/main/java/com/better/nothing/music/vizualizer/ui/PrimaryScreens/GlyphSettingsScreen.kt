@@ -199,12 +199,10 @@ internal fun GlyphsScreen(
                 ExpressiveCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp) // Adjust padding as needed for your screen layout
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -213,6 +211,7 @@ internal fun GlyphsScreen(
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(bottom = 20.dp)
                         )
                     }
 
