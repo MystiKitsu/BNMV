@@ -30,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -57,19 +59,34 @@ fun BetterVizTheme(
     val targetColorScheme = remember(themeName, isDark, musicPrimaryColor) {
         when (themeName) {
             "Music" -> {
-                val primary = musicPrimaryColor ?: Color(0xFFD71921) // Fallback to Nothing Red
+                val baseColor = musicPrimaryColor ?: Color(0xFFD71921)
+                
+                // Adjust color for visibility
+                val hsl = FloatArray(3)
+                ColorUtils.colorToHSL(baseColor.toArgb(), hsl)
+                
+                if (isDark) {
+                    // In dark mode, ensure lightness is at least 0.6 for visibility on black
+                    if (hsl[2] < 0.6f) hsl[2] = 0.6f
+                } else {
+                    // In light mode, ensure lightness is at most 0.4 for visibility on white
+                    if (hsl[2] > 0.4f) hsl[2] = 0.4f
+                }
+                
+                val adjustedPrimary = Color(ColorUtils.HSLToColor(hsl))
+
                 if (isDark) {
                     androidx.compose.material3.darkColorScheme(
                         background = Color.Black,
                         surface = Color(0xFF0D0D0D),
-                        primary = primary,
-                        secondary = primary,
-                        error = primary,
+                        primary = adjustedPrimary,
+                        secondary = adjustedPrimary,
+                        error = adjustedPrimary,
                         onBackground = Color.White,
                         onSurface = Color.White,
-                        onPrimary = Color.White,
-                        onSecondary = Color.White,
-                        onError = Color.White,
+                        onPrimary = Color.Black,
+                        onSecondary = Color.Black,
+                        onError = Color.Black,
                         surfaceVariant = Color(0xFF1A1A1A),
                         onSurfaceVariant = Color(0xFFB3B3B3),
                         outline = Color(0xFF333333)
@@ -78,9 +95,9 @@ fun BetterVizTheme(
                     androidx.compose.material3.lightColorScheme(
                         background = Color.White,
                         surface = Color(0xFFF5F5F5),
-                        primary = primary,
-                        secondary = primary,
-                        error = primary,
+                        primary = adjustedPrimary,
+                        secondary = adjustedPrimary,
+                        error = adjustedPrimary,
                         onBackground = Color.Black,
                         onSurface = Color.Black,
                         onPrimary = Color.White,

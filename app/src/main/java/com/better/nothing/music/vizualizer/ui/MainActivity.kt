@@ -28,6 +28,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -102,7 +103,7 @@ class MainActivity : ComponentActivity() {
             service = localBinder.service
             serviceStatic = service
             bound = true
-            
+
             applyServiceSettings()
 
             lifecycleScope.launch {
@@ -165,12 +166,12 @@ class MainActivity : ComponentActivity() {
                 ComponentName(this, GlyphNotificationListener::class.java)
             )
             val newController = controllers.firstOrNull()
-            
+
             if (activeMediaController?.packageName != newController?.packageName) {
                 activeMediaController?.unregisterCallback(mediaCallback)
                 activeMediaController = newController
                 activeMediaController?.registerCallback(mediaCallback)
-                
+
                 val artwork = getArtworkBitmap(activeMediaController?.metadata)
                 viewModel.setMusicArtwork(artwork)
             }
@@ -251,7 +252,7 @@ class MainActivity : ComponentActivity() {
                     viewModel = viewModel,
                     onToggleVisualizer = { toggleVisualizer() },
                     onGoogleSignIn = {  },
-                    onOverlayPermissionRequest = { 
+                    onOverlayPermissionRequest = {
                         val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:$packageName".toUri())
                         overlayPermissionLauncher.launch(intent)
                     }
@@ -332,7 +333,7 @@ class MainActivity : ComponentActivity() {
             pendingVisualizerStart = true
             FirebaseFuckery.init()
 
-        val intent = Intent(this, AudioCaptureService::class.java)
+            val intent = Intent(this, AudioCaptureService::class.java)
             bindService(intent, serviceConnection, BIND_AUTO_CREATE)
         }
     }
@@ -447,17 +448,27 @@ internal fun BetterVizApp(
     val pagerState = rememberPagerState(initialPage = selectedTab.ordinal) { Tab.entries.size }
 
     LaunchedEffect(selectedTab) {
-        if (pagerState.currentPage != selectedTab.ordinal) {
-            pagerState.animateScrollToPage(selectedTab.ordinal)
+        val target = selectedTab.ordinal
+        if (pagerState.targetPage != target) {
+            val distance = (pagerState.currentPage - target).absoluteValue
+            val duration = (250 + distance * 80).toInt().coerceIn(250, 600)
+
+            pagerState.animateScrollToPage(
+                page = target,
+                animationSpec = tween(
+                    durationMillis = duration,
+                    easing = FastOutSlowInEasing
+                )
+            )
         }
     }
 
     val haptics = LocalHapticFeedback.current
-    LaunchedEffect(pagerState.currentPage) {
-        if (pagerState.currentPage != selectedTab.ordinal) {
+    LaunchedEffect(pagerState.targetPage) {
+        if (pagerState.targetPage != selectedTab.ordinal) {
             haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            viewModel.selectTab(Tab.entries[pagerState.targetPage])
         }
-        viewModel.selectTab(Tab.entries[pagerState.currentPage])
     }
 
     Scaffold(
@@ -482,7 +493,7 @@ internal fun BetterVizApp(
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),
-                    beyondViewportPageCount = 1,
+                    beyondViewportPageCount = Tab.entries.size,
                     userScrollEnabled = true
                 ) { page ->
                     val tab = Tab.entries[page]
@@ -491,19 +502,15 @@ internal fun BetterVizApp(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                // 1. Get the absolute offset so scrolling left or right yields the same fraction amount
                                 val absOffset = pageOffset.coerceIn(-1f, 1f).let { kotlin.math.abs(it) }
-
-                                // 2. Calculate the fraction using the absolute offset (0f to 1f)
                                 val fraction = 1f - absOffset
 
-                                val scale = 0.8f + (1f - 0.8f) * fraction
+                                val scale = 0.85f + (1f - 0.85f) * fraction
                                 scaleX = scale
                                 scaleY = scale
-                                alpha = fraction * fraction
+                                alpha = fraction
 
-                                // 3. Calculate rotation: 0 deg when fully visible, 20 deg when hidden
-                                val maxRotation = 10f
+                                val maxRotation = 8f
                                 val rotationAmount = maxRotation * (1f - fraction)
 
                                 // 4. Use the original pageOffset sign to choose +20 or -20
@@ -528,7 +535,7 @@ internal fun BetterVizApp(
                                     onLatencyPresetsChanged = { viewModel.updateLatencyPresets(it) },
                                     autoDeviceEnabled = autoDeviceEnabled,
                                     onAutoDeviceToggle = { viewModel.setAutoDeviceMemorize(it) },
-                                    connectedDeviceName = MainActivity.serviceStatic?.getActiveAudioRouteKey()
+                                    connectedDeviceName = MainActivity.serviceStatic?.getActiveAudioRouteName()
                                         ?: "Unknown",
                                     fftData = fftData,
                                     captureSource = captureSource,

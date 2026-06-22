@@ -23,6 +23,8 @@ import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.AuthCredential
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.palette.graphics.Palette
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -507,7 +509,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val musicThemeColor = _musicThemeColor.asStateFlow()
 
     fun setMusicArtwork(bitmap: Bitmap?) {
-        // Implementation for artwork extraction and color update
+        if (bitmap == null) {
+            _musicThemeColor.value = Color.White
+            return
+        }
+        Palette.from(bitmap).generate { palette ->
+            val extracted = palette?.getVibrantColor(0xFFD71921.toInt())
+                ?: palette?.getDominantColor(0xFFD71921.toInt())
+                ?: 0xFFD71921.toInt()
+            _musicThemeColor.value = Color(extracted)
+        }
     }
 
     val _isAdmin = MutableStateFlow(false)

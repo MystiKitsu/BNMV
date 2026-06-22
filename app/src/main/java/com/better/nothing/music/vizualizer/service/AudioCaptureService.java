@@ -1155,6 +1155,11 @@ public class AudioCaptureService extends Service {
         return info != null ? info.storageKey : null;
     }
 
+    public String getActiveAudioRouteName() {
+        AudioRouteInfo info = resolveCurrentAudioRoute();
+        return info != null ? info.displayName : null;
+    }
+
     public void setHapticFreqRange(float minHz, float maxHz) {
         mHapticMinHz = minHz;
         mHapticMaxHz = maxHz;
