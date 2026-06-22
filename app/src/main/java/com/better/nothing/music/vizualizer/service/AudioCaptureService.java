@@ -1622,7 +1622,7 @@ public class AudioCaptureService extends Service {
 
         try {
             if (DeviceProfile.getMatrixWidth(mSelectedDevice) > 0) {
-                if (mGMM != null) mGMM.setAppMatrixFrame(frameColors);
+                if (mGMM != null) mGMM.setAppMatrixFrame(frameColors); //Thank you Frank
             } else {
                 mGM.setFrameColors(frameColors);
             }
