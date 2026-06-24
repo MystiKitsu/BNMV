@@ -424,7 +424,13 @@ public class AudioCaptureService extends Service {
         mOverlayHeight = appPrefs.getInt("overlay_height", 12);
         mOverlayYOffset = appPrefs.getInt("overlay_y_offset", 2);
 
+        boolean dynamicGainEnabled = appPrefs.getBoolean("dynamic_gain_enabled", true);
+        if (mAudioProcessor != null) {
+            mAudioProcessor.setAutoGainEnabled(dynamicGainEnabled);
+        }
+
         mGlyphRenderer = new GlyphRenderer(mGamma, mIdleBreathingEnabled, mNotificationFlashEnabled, mSelectedDevice);
+        mGlyphRenderer.setStrobeEnabled(appPrefs.getBoolean("strobe_enabled", false));
         mGlyphRenderer.setMaxBrightness(mMaxBrightness);
         float spectrumGain = appPrefs.getFloat("spectrum_gain", 4.0f);
         mGlyphRenderer.setSpectrumGain(spectrumGain);

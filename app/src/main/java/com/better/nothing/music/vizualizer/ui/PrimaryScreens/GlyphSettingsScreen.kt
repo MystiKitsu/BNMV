@@ -53,6 +53,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.better.nothing.music.vizualizer.R
 import com.better.nothing.music.vizualizer.service.AudioCaptureService
+import com.better.nothing.music.vizualizer.ui.ScreenTitle
+import com.better.nothing.music.vizualizer.ui.AnimatedToggleCard
+import com.better.nothing.music.vizualizer.ui.GlyphPreview
+import com.better.nothing.music.vizualizer.ui.BodyText
+import com.better.nothing.music.vizualizer.ui.ExpressiveSlider
 import com.better.nothing.music.vizualizer.ui.CardHeader
 import com.better.nothing.music.vizualizer.ui.ExpressiveCard
 import com.better.nothing.music.vizualizer.ui.ExpressiveSegmentedButtonRow
@@ -109,7 +114,7 @@ internal fun GlyphsScreen(
             .verticalScroll(mainScrollState),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        _root_ide_package_.com.better.nothing.music.vizualizer.ui.ScreenTitle(
+        ScreenTitle(
             text = stringResource(
                 R.string.glyph_controls
             )
@@ -124,7 +129,7 @@ internal fun GlyphsScreen(
         }
 
         val glyphEnabled = maxBrightness > 0
-        _root_ide_package_.com.better.nothing.music.vizualizer.ui.AnimatedToggleCard(
+        AnimatedToggleCard(
             title = "Glyph visualisation",
             checked = glyphEnabled,
             onCheckedChange = { switchEnabled ->
@@ -263,7 +268,7 @@ internal fun GlyphsScreen(
                         com.better.nothing.music.vizualizer.model.DeviceProfile.DEVICE_NP4APRO -> 560.dp
                         else -> 400.dp
                     }
-                    _root_ide_package_.com.better.nothing.music.vizualizer.ui.GlyphPreview(
+                    GlyphPreview(
                         vizStateProvider = { vizStateState.value },
                         device = selectedDevice,
                         modifier = Modifier
@@ -288,7 +293,7 @@ internal fun GlyphsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         GammaPreviewCard(gammaValue = gammaValue)
-                        _root_ide_package_.com.better.nothing.music.vizualizer.ui.BodyText(
+                        BodyText(
                             text = stringResource(R.string.gamma_description),
                             modifier = Modifier.weight(1f),
                             size = 14.sp,
@@ -327,7 +332,7 @@ internal fun GlyphsScreen(
                 ExpressiveCard {
                     CardHeader(title = "Visualizer Configuration")
 
-                    _root_ide_package_.com.better.nothing.music.vizualizer.ui.BodyText(
+                    BodyText(
                         text = "The zones.config file defines how frequencies map to Glyph LEDs. Updating from GitHub ensures support for new devices and presets.",
                         size = 13.sp
                     )
@@ -452,7 +457,7 @@ fun BrightnessCard(
                 )
             })
 
-        _root_ide_package_.com.better.nothing.music.vizualizer.ui.ExpressiveSlider(
+        ExpressiveSlider(
             value = posValue,
             onValueChange = { newPos ->
                 val newLinearValue = posToLinear(newPos)
@@ -482,7 +487,7 @@ fun GammaSlider(
             )
         })
 
-        _root_ide_package_.com.better.nothing.music.vizualizer.ui.ExpressiveSlider(
+        ExpressiveSlider(
             value = gammaValue,
             onValueChange = onGammaChanged,
             valueRange = 0.4f..3.5f,

@@ -78,6 +78,11 @@ import androidx.core.content.ContextCompat
 import com.better.nothing.music.vizualizer.R
 import com.better.nothing.music.vizualizer.service.AudioCaptureService
 import com.better.nothing.music.vizualizer.ui.OptionTile
+import com.better.nothing.music.vizualizer.ui.ScreenTitle
+import com.better.nothing.music.vizualizer.ui.ExpressiveCard
+import com.better.nothing.music.vizualizer.ui.BodyText
+import com.better.nothing.music.vizualizer.ui.CardHeader
+import com.better.nothing.music.vizualizer.ui.ExpressiveSlider
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import java.util.Locale
@@ -150,7 +155,7 @@ fun AudioScreen(
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        _root_ide_package_.com.better.nothing.music.vizualizer.ui.ScreenTitle(
+        ScreenTitle(
             text = stringResource(
                 R.string.audio_screen_title
             )
@@ -188,12 +193,12 @@ fun AudioScreen(
             stringResource(R.string.audio_description_idle)
         }
 
-        _root_ide_package_.com.better.nothing.music.vizualizer.ui.ExpressiveCard(
+        ExpressiveCard(
             containerColor = MaterialTheme.colorScheme.surface.copy(
                 alpha = 0.5f
             )
         ) {
-            _root_ide_package_.com.better.nothing.music.vizualizer.ui.BodyText(
+            BodyText(
                 text = descriptionText,
                 size = 14.sp
             )
@@ -202,8 +207,8 @@ fun AudioScreen(
         AnimatedVisibility(visible = isRunning) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
 
-                _root_ide_package_.com.better.nothing.music.vizualizer.ui.ExpressiveCard {
-                    _root_ide_package_.com.better.nothing.music.vizualizer.ui.CardHeader(title = "Auto-Memorize Device")
+                ExpressiveCard {
+                    CardHeader(title = "Auto-Memorize Device")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -244,10 +249,10 @@ fun AudioScreen(
 
                 FFTSpectrumCard(fftData = fftData)
 
-                _root_ide_package_.com.better.nothing.music.vizualizer.ui.ExpressiveCard(
+                ExpressiveCard(
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
                 ) {
-                    _root_ide_package_.com.better.nothing.music.vizualizer.ui.BodyText(
+                    BodyText(
                         text = stringResource(R.string.latency_compensation_description),
                         size = 12.sp
                     )
@@ -265,8 +270,8 @@ fun CaptureSourceCard(
     onSourceSelected: (AudioCaptureService.CaptureSource) -> Unit,
     shizukuUnlocked: Boolean
 ) {
-    _root_ide_package_.com.better.nothing.music.vizualizer.ui.ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-        _root_ide_package_.com.better.nothing.music.vizualizer.ui.CardHeader(title = "Capture Source")
+    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+        CardHeader(title = "Capture Source")
         val sources = listOf(
             Triple(
                 AudioCaptureService.CaptureSource.INTERNAL,
@@ -374,8 +379,8 @@ fun LatencyCard(
         }
     }
 
-    _root_ide_package_.com.better.nothing.music.vizualizer.ui.ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-        _root_ide_package_.com.better.nothing.music.vizualizer.ui.CardHeader(
+    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+        CardHeader(
             title = stringResource(
                 R.string.latency_compensation
             ), trailingContent = {
@@ -436,7 +441,7 @@ fun LatencyCard(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        _root_ide_package_.com.better.nothing.music.vizualizer.ui.ExpressiveSlider(
+        ExpressiveSlider(
             value = latencyMs.toFloat(),
             onValueChange = { updateLatency(it.toInt()) },
             valueRange = 0f..500f,
@@ -467,8 +472,8 @@ fun LatencyCard(
 fun FFTSpectrumCard(fftData: FloatArray) {
     var touchX by remember { mutableStateOf<Float?>(null) }
 
-    _root_ide_package_.com.better.nothing.music.vizualizer.ui.ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
-        _root_ide_package_.com.better.nothing.music.vizualizer.ui.CardHeader(
+    ExpressiveCard(modifier = Modifier.fillMaxWidth()) {
+        CardHeader(
             title = stringResource(
                 R.string.live_spectrum
             )

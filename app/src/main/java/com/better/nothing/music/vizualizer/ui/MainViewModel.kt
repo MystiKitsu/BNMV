@@ -122,6 +122,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setDynamicGainEnabled(enabled: Boolean) {
         _dynamicGainEnabled.value = enabled
         MainActivity.serviceStatic?.setDynamicGainEnabled(enabled)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putBoolean("dynamic_gain_enabled", enabled) }
+        }
     }
 
     private val _overlayWidth = MutableStateFlow(120)
@@ -129,6 +133,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setOverlayWidth(width: Int) {
         _overlayWidth.value = width
         MainActivity.serviceStatic?.setOverlayWidth(width)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putInt("overlay_width", width) }
+        }
     }
 
     private val _overlayHeight = MutableStateFlow(12)
@@ -136,6 +144,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setOverlayHeight(height: Int) {
         _overlayHeight.value = height
         MainActivity.serviceStatic?.setOverlayHeight(height)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putInt("overlay_height", height) }
+        }
     }
 
     private val _overlayYOffset = MutableStateFlow(2)
@@ -143,15 +155,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setOverlayYOffset(offset: Int) {
         _overlayYOffset.value = offset
         MainActivity.serviceStatic?.setOverlayYOffset(offset)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putInt("overlay_y_offset", offset) }
+        }
     }
 
     private val _selectedTheme = MutableStateFlow("Default")
     val selectedTheme = _selectedTheme.asStateFlow()
-    fun setSelectedTheme(theme: String) { _selectedTheme.value = theme }
+    fun setSelectedTheme(theme: String) {
+        _selectedTheme.value = theme
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putString("selected_theme", theme) }
+        }
+    }
 
     private val _selectedFont = MutableStateFlow("Default")
     val selectedFont = _selectedFont.asStateFlow()
-    fun setSelectedFont(font: String) { _selectedFont.value = font }
+    fun setSelectedFont(font: String) {
+        _selectedFont.value = font
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putString("selected_font", font) }
+        }
+    }
 
     fun checkAppUpdate() {
         _appUpdateStatus.value = AppUpdateStatus.UpToDate
@@ -463,6 +491,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setOverlayEnabled(enabled: Boolean) {
         _overlayEnabled.value = enabled
         MainActivity.serviceStatic?.setOverlayEnabled(enabled)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putBoolean("overlay_enabled", enabled) }
+        }
     }
 
     val _idleBreathingEnabled = MutableStateFlow(false)
@@ -471,6 +503,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setIdleBreathingEnabled(enabled: Boolean) {
         _idleBreathingEnabled.value = enabled
         MainActivity.serviceStatic?.setIdleBreathingEnabled(enabled)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putBoolean("idle_breathing_enabled", enabled) }
+        }
     }
 
     val _idlePattern = MutableStateFlow("pulse")
@@ -479,6 +515,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setIdlePattern(pattern: String) {
         _idlePattern.value = pattern
         MainActivity.serviceStatic?.setIdlePattern(pattern)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putString("idle_pattern", pattern) }
+        }
     }
 
     val _notificationFlashEnabled = MutableStateFlow(false)
@@ -487,6 +527,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setNotificationFlashEnabled(enabled: Boolean) {
         _notificationFlashEnabled.value = enabled
         MainActivity.serviceStatic?.setNotificationFlashEnabled(enabled)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putBoolean("notification_flash_enabled", enabled) }
+        }
     }
 
     val _strobeEnabled = MutableStateFlow(false)
@@ -495,6 +539,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setStrobeEnabled(enabled: Boolean) {
         _strobeEnabled.value = enabled
         MainActivity.serviceStatic?.setStrobeEnabled(enabled)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putBoolean("strobe_enabled", enabled) }
+        }
     }
 
     val _disableGlyphsWhenSilent = MutableStateFlow(false)
@@ -503,6 +551,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setDisableGlyphsWhenSilent(enabled: Boolean) {
         _disableGlyphsWhenSilent.value = enabled
         MainActivity.serviceStatic?.setDisableGlyphsWhenSilent(enabled)
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putBoolean("disable_glyphs_when_silent", enabled) }
+        }
     }
 
     val _musicThemeColor = MutableStateFlow(Color.White)
@@ -1345,6 +1397,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _spectrumGain.value = prefs.getFloat("spectrum_gain", 1.0f)
         _maxBrightness.value = prefs.getInt("max_brightness", 4095)
         _selectedPreset.value = prefs.getString("selected_preset", "Default") ?: "Default"
+        _selectedTheme.value = prefs.getString("selected_theme", "Default") ?: "Default"
+        _selectedFont.value = prefs.getString("selected_font", "Default") ?: "Default"
+        _dynamicGainEnabled.value = prefs.getBoolean("dynamic_gain_enabled", true)
 
         _hapticMotorEnabled.value = prefs.getBoolean("haptic_motor_enabled", false)
         _hapticMode.value = HapticMode.valueOf(prefs.getString("haptic_mode", HapticMode.BASS_TO_AMPLITUDE.name)!!)
@@ -1362,6 +1417,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _flashlightFreqMax.value = prefs.getInt("flashlight_freq_max", 250).toFloat()
         _flashlightThreshold.value = prefs.getFloat("flashlight_threshold", 0.15f)
         _flashlightBeatSensitivity.value = prefs.getFloat("flashlight_beat_sensitivity", 1.5f)
+
+        _idleBreathingEnabled.value = prefs.getBoolean("idle_breathing_enabled", false)
+        _idlePattern.value = prefs.getString("idle_pattern", "pulse") ?: "pulse"
+        _notificationFlashEnabled.value = prefs.getBoolean("notification_flash_enabled", false)
+        _strobeEnabled.value = prefs.getBoolean("strobe_enabled", false)
+        _disableGlyphsWhenSilent.value = prefs.getBoolean("disable_glyphs_when_silent", false)
+        _overlayEnabled.value = prefs.getBoolean("overlay_enabled", false)
+        _overlayWidth.value = prefs.getInt("overlay_width", 120)
+        _overlayHeight.value = prefs.getInt("overlay_height", 12)
+        _overlayYOffset.value = prefs.getInt("overlay_y_offset", 2)
+
         reloadFlashlightSpeedForLevels()
 
         updateSelectedDevice()

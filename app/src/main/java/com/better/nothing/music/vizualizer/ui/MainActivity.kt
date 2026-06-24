@@ -28,7 +28,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,6 +46,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -412,10 +421,10 @@ fun AudioDeviceInfo.isBluetoothOutput(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || type == AudioDeviceInfo.TYPE_BLE_HEADSET || type == AudioDeviceInfo.TYPE_BLE_SPEAKER || type == AudioDeviceInfo.TYPE_BLE_BROADCAST
         } else {
-            TODO("VERSION.SDK_INT < TIRAMISU")
+            type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
         }
     } else {
-        TODO("VERSION.SDK_INT < S")
+        type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP
     }
 }
 
@@ -446,28 +455,62 @@ internal fun BetterVizApp(
 
     val context = LocalContext.current
     val pagerState = rememberPagerState(initialPage = selectedTab.ordinal) { Tab.entries.size }
+    var isProgrammaticScroll by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedTab) {
         val target = selectedTab.ordinal
-        if (pagerState.targetPage != target) {
-            val distance = (pagerState.currentPage - target).absoluteValue
-            val duration = (250 + distance * 80).toInt().coerceIn(250, 600)
+        val current = pagerState.currentPage
+        if (current != target) {
+            val direction = if (target > current) 1 else -1
+            val steps = (target - current).absoluteValue
 
-            pagerState.animateScrollToPage(
-                page = target,
-                animationSpec = tween(
-                    durationMillis = duration,
-                    easing = FastOutSlowInEasing
+            if (steps > 2) {
+                isProgrammaticScroll = true
+                try {
+                    for (i in 1 until steps) {
+                        val isFirstStep = i == 1
+                        val duration = if (isFirstStep) 200 else 100
+                        val easing = if (isFirstStep) FastOutLinearInEasing else LinearEasing
+                        
+                        pagerState.animateScrollToPage(
+                            page = current + (i * direction),
+                            animationSpec = tween(durationMillis = duration, easing = easing)
+                        )
+                    }
+                    pagerState.animateScrollToPage(
+                        page = target,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioLowBouncy,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
+                } finally {
+                    isProgrammaticScroll = false
+                }
+            } else {
+                pagerState.animateScrollToPage(
+                    page = target,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    )
                 )
-            )
+            }
         }
     }
 
     val haptics = LocalHapticFeedback.current
-    LaunchedEffect(pagerState.targetPage) {
-        if (pagerState.targetPage != selectedTab.ordinal) {
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }.collect {
             haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
-            viewModel.selectTab(Tab.entries[pagerState.targetPage])
+        }
+    }
+
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }.collect { page ->
+            if (!isProgrammaticScroll && viewModel.selectedTab.value.ordinal != page) {
+                viewModel.selectTab(Tab.entries[page])
+            }
         }
     }
 
@@ -497,11 +540,11 @@ internal fun BetterVizApp(
                     userScrollEnabled = true
                 ) { page ->
                     val tab = Tab.entries[page]
-                    val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
+                                val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
                                 val absOffset = pageOffset.coerceIn(-1f, 1f).let { kotlin.math.abs(it) }
                                 val fraction = 1f - absOffset
 
@@ -513,7 +556,6 @@ internal fun BetterVizApp(
                                 val maxRotation = 8f
                                 val rotationAmount = maxRotation * (1f - fraction)
 
-                                // 4. Use the original pageOffset sign to choose +20 or -20
                                 rotationZ = if (pageOffset > 0) -rotationAmount else rotationAmount
                             }
                     ) {
