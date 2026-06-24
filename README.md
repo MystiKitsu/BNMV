@@ -1,6 +1,5 @@
 🌐 Read this in other languages (not updated):  🇮🇳 [हिन्दी](Docs/README_HI.md), 🇮🇳 [Marathi](Docs/README_MR.md), 🇹🇷 [Türkçe](Docs/README_TR.md)
-# <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Fire.png" alt="Fire" width="35" height="35" />Better Nothing Music Visualizer
-<img src="/Docs/Banner.png" alt="Banner"/>
+<img src="/Docs/Banners/Banner4.png" alt="Better Nothing Music Visualizer"/>
 
 ### An android app that not only brings better music visualization on the Glyph interface of Nothing Phones, but also lets you feel your music through the haptic motor, and also lets you use the flashlight of your phone as a music visualizer!
 
