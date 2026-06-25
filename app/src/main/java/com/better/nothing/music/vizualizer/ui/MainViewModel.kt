@@ -1472,7 +1472,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshPresets() {
         viewModelScope.launch(Dispatchers.IO) {
-            refreshPresetsInternal()
+            try {
+                refreshPresetsInternal()
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Presets refresh failed, pulling from remote", e)
+                // If we are already updating, don't trigger another one
+                if (_configUpdateStatus.value !is ConfigUpdateStatus.Updating) {
+                    withContext(Dispatchers.Main) {
+                        updateZonesConfig()
+                    }
+                }
+            }
         }
     }
 
