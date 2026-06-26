@@ -16,6 +16,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -80,6 +81,10 @@ internal fun GlyphsScreen(
     viewModel: com.better.nothing.music.vizualizer.ui.MainViewModel,
 ) {
     val mainScrollState = rememberScrollState()
+    val context = LocalContext.current
+    val configStatus by viewModel.configUpdateStatus.collectAsStateWithLifecycle()
+    val configVersion by viewModel.configVersion.collectAsStateWithLifecycle()
+    val remoteVersion by viewModel.remoteConfigVersion.collectAsStateWithLifecycle()
 
     val selectedInfo = remember(selectedPreset, presets) {
         presets.firstOrNull { it.key == selectedPreset } ?: presets.firstOrNull()
@@ -200,23 +205,23 @@ internal fun GlyphsScreen(
                     ) {
                         // 1. Grouped Expressive Row for your presets
                         // Wrapping it allows it to sit neatly alongside the "+ Create New" button inside the FlowRow
-                        ExpressiveSegmentedButtonRow(
-                            items = sortedPresets,
-                            // If no preset matches, safely fall back to the first item in the list
-                            selectedItem = sortedPresets.firstOrNull { it.key == selectedPreset }
-                                ?: sortedPresets.first(),
-                            onItemSelection = { preset -> onPresetSelected(preset.key) },
-                            labelProvider = { preset -> preset.key },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        if (sortedPresets.isNotEmpty()) {
+                            ExpressiveSegmentedButtonRow(
+                                items = sortedPresets,
+                                // If no preset matches, safely fall back to the first item in the list
+                                selectedItem = sortedPresets.firstOrNull { it.key == selectedPreset }
+                                    ?: sortedPresets.first(),
+                                onItemSelection = { preset -> onPresetSelected(preset.key) },
+                                labelProvider = { preset -> preset.key },
+                                modifier = Modifier.fillMaxWidth(),
+                            )
 
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ){
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Crossfade(
                                     targetState = selectedInfo?.description,
                                     label = "desc_fade",
@@ -244,6 +249,37 @@ internal fun GlyphsScreen(
                                     }
                                 }
                             }
+                        } else {
+                            // Show loading or Update message if presets are empty
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (configVersion.contains(".simple")) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            "Update Required",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                        Text(
+                                            "Download full config to see presets",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                } else {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+
                         ExpressiveSplitButton(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -306,11 +342,6 @@ internal fun GlyphsScreen(
                     GammaSlider(gammaValue = gammaValue, onGammaChanged = onGammaChanged)
                 }
                 // ── Zones Config download ──────────────────────────────────────────────
-                val context = LocalContext.current
-                val configStatus by viewModel.configUpdateStatus.collectAsStateWithLifecycle()
-                val configVersion by viewModel.configVersion.collectAsStateWithLifecycle()
-                val remoteVersion by viewModel.remoteConfigVersion.collectAsStateWithLifecycle()
-
                 LaunchedEffect(Unit) {
                     viewModel.checkRemoteConfigVersion()
                 }

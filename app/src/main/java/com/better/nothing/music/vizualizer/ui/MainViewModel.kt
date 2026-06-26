@@ -1492,8 +1492,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val root = JSONObject(json)
             val version = root.optString("version", "Unknown")
             _configVersion.value = version
-            val list = AudioCaptureService.loadPresetInfos(ctx, selectedDevice.value)
-            _presetInfos.value = list
+            
+            // If it's a "simple" fallback config, don't show any presets in the UI
+            // to encourage the user to update to the full version.
+            if (version.contains(".simple")) {
+                _presetInfos.value = emptyList()
+            } else {
+                val list = AudioCaptureService.loadPresetInfos(ctx, selectedDevice.value)
+                _presetInfos.value = list
+            }
         }
     }
 
