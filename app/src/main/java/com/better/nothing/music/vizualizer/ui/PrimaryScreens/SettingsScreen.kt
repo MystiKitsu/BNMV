@@ -53,6 +53,7 @@ import com.better.nothing.music.vizualizer.ui.CardHeader
 import com.better.nothing.music.vizualizer.ui.ExpressiveCard
 import com.better.nothing.music.vizualizer.ui.ExpressiveSegmentedButtonRow
 import com.better.nothing.music.vizualizer.ui.ExpressiveSlider
+import com.better.nothing.music.vizualizer.ui.LocalAppSpacing
 import com.better.nothing.music.vizualizer.ui.MainViewModel
 import com.better.nothing.music.vizualizer.ui.OptionTile
 import com.better.nothing.music.vizualizer.ui.ScreenTitle
@@ -73,6 +74,7 @@ internal fun SettingsScreen(
     onDisableGlyphsWhenSilentChanged: (Boolean) -> Unit,
     overlayEnabled: Boolean,
     onOverlayEnabledChanged: (Boolean) -> Unit,
+    padding: PaddingValues = PaddingValues(),
 ) {
     val m3eEnabled by viewModel.m3eEnabled.collectAsStateWithLifecycle()
     val dynamicGainEnabled by viewModel.dynamicGainEnabled.collectAsStateWithLifecycle()
@@ -102,6 +104,8 @@ internal fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(padding)
+            .padding(horizontal = LocalAppSpacing.current.edge)
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

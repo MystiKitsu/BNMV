@@ -63,6 +63,7 @@ import com.better.nothing.music.vizualizer.ui.CardHeader
 import com.better.nothing.music.vizualizer.ui.ExpressiveCard
 import com.better.nothing.music.vizualizer.ui.ExpressiveSegmentedButtonRow
 import com.better.nothing.music.vizualizer.ui.ExpressiveSplitButton
+import com.better.nothing.music.vizualizer.ui.LocalAppSpacing
 import kotlin.math.pow
 
 
@@ -79,6 +80,7 @@ internal fun GlyphsScreen(
     isRunning: Boolean,
     selectedDevice: Int,
     viewModel: com.better.nothing.music.vizualizer.ui.MainViewModel,
+    padding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(),
 ) {
     val mainScrollState = rememberScrollState()
     val context = LocalContext.current
@@ -116,6 +118,8 @@ internal fun GlyphsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(padding)
+            .padding(horizontal = LocalAppSpacing.current.edge)
             .verticalScroll(mainScrollState),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
@@ -521,7 +525,7 @@ fun GammaSlider(
         ExpressiveSlider(
             value = gammaValue,
             onValueChange = onGammaChanged,
-            valueRange = 0.4f..3.5f,
+            valueRange = 0.4f..4.5f,
             modifier = Modifier.fillMaxWidth(),
         )
 }

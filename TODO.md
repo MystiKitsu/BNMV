@@ -50,33 +50,55 @@
 ---
 
 ## Aleks' fucking todo
-* track viz mode playing time (flashlight time, haptics time, glyphs time, these will be added up in the firebase charts ifpossible)
+* track viz mode playing time (flashlight time, haptics time, glyphs time, these will be added up in the firebase charts if possible)
+
 * ***Improve notification (ALEKS DOES IT)***
+
 * Tapping back on the Viz preset editor should go to the prev screen., and tapping back should predictively go to the prev viewed screen tab before exiting the app.
+
 * Collapse the live audio spectrum, and when it's collapsed, don't process it.
+
 * Make the auto latency toggle be in the latency card
+
 * tweak tab switching speed arc
+
 * BNMV redisigned settings expandable cards, with M3E BOUNCY ARROW
+
 * Auto update mechanism without scary permissions
+
 * Check if background is 0x000000 not if theme = default for the margin thing
-* **RE ENABLE EDGE TO EDGE and FIX THE CLIPPING IN THE SIDE PADDINGS!**
-  * THEY SHOULD BE APPLIED ON THE TAB LEVEL, NOT ON THE HORIZONTALPAGER LAVEL!
+
 * In the Material 3 expressive split button selector, when there are multiple rows, make the corner rounding of the edges only at the corner of the actual box of buttons. Multiple rows still look like it's something unified. And multiply the weight of the selected button by the UI shift variable.
+
 * Modify the BNMV liscence so only the owner can release, and everything that other developers do should be reported to the owner. And state that debug builds should never be released to the public because they are not meant to be used by the users, but only by the developers for developing purposes.
+
 * when the frequency range is large; they are less reactive for some reason. You don't need to divide the sum of the bins by the frequency range, the size of the frequency range. One of the causes is that the wide frequency ranges are less reactive than the narrow ones, which are usually the bass ones, so we can't really see the trebles.
+
 * enhance the built-in switches by adding an X (cross) or a done (✅) in them, like the battery guru's settings switches, and also with bouncy animations and nice haptics
+
 * M3E split and round config update buttons
+
 * Redesign about page for a proper hierarchical easy M3E design
+
 * Merge Git repo link card with app version card
+
 * Change audio page big texts (such as made by aleks rkysen and oliver thing)
+
 * Add rotary haptic motor mode
+
 * parametric spectrum range preset for all phones
+
 * Adapt ui depending on the audio source (Aleks)
+
 * Say that BNMV is DETERMINISTIC (add to readme)
+
 * Add multiples intensities to flashlight 
+
 * update flashlight monitor with shape = audio, and other thing next to it = flashlight intensity.
   * make the shape flash to the flashlight brightness
+
 * update haptic monitor with shape = audio, and line next to it = motor amplitude
+
 * Do tablet UI
 
 ---
@@ -95,6 +117,8 @@
 ---
 
 ## Done
+* **RE ENABLE EDGE TO EDGE and FIX THE CLIPPING IN THE SIDE PADDINGS!**
+  * THEY SHOULD BE APPLIED ON THE TAB LEVEL, NOT ON THE HORIZONTALPAGER LAVEL!
 * Add m3e split row selectors
   * Typography menu
   * Idle breathing

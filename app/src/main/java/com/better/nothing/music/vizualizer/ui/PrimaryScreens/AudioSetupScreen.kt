@@ -84,6 +84,7 @@ import com.better.nothing.music.vizualizer.ui.ExpressiveCard
 import com.better.nothing.music.vizualizer.ui.BodyText
 import com.better.nothing.music.vizualizer.ui.CardHeader
 import com.better.nothing.music.vizualizer.ui.ExpressiveSlider
+import com.better.nothing.music.vizualizer.ui.LocalAppSpacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import java.util.Locale
@@ -109,6 +110,7 @@ fun AudioScreen(
     latencyWizardState: LatencyWizard.State = LatencyWizard.State.Idle,
     onRunLatencyWizard: () -> Unit = {},
     onResetLatencyWizard: () -> Unit = {},
+    padding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(),
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -164,6 +166,8 @@ fun AudioScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(padding)
+            .padding(horizontal = LocalAppSpacing.current.edge)
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

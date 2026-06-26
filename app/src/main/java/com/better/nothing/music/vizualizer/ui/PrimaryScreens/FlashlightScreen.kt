@@ -44,6 +44,7 @@ import com.better.nothing.music.vizualizer.ui.ExpressiveCard
 import com.better.nothing.music.vizualizer.ui.ExpressiveRangeSlider
 import com.better.nothing.music.vizualizer.ui.ExpressiveSegmentedButtonRow
 import com.better.nothing.music.vizualizer.ui.ExpressiveSlider
+import com.better.nothing.music.vizualizer.ui.LocalAppSpacing
 import com.better.nothing.music.vizualizer.ui.MorphingPolygon
 import com.better.nothing.music.vizualizer.ui.ScreenTitle
 import com.better.nothing.music.vizualizer.ui.invLerpLog
@@ -68,6 +69,7 @@ fun FlashlightScreen(
     flashlightIntensityLevels: Int,
     flashlightAmplitudeProvider: () -> Float,
     isBeatDetectedProvider: () -> Boolean,
+    padding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(),
 ) {
     val scrollState = rememberScrollState()
     val haptics = LocalHapticFeedback.current
@@ -76,6 +78,8 @@ fun FlashlightScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(padding)
+            .padding(horizontal = LocalAppSpacing.current.edge)
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
