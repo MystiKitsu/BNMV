@@ -764,9 +764,3 @@ internal fun BetterVizApp(
         }
     }
 }
-lays
-            MainOverlays(viewModel = viewModel, selectedDevice = viewModel.selectedDevice.collectAsState().value)
-            CommunityOverlays(viewModel = viewModel)
-        }
-    }
-}
