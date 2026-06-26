@@ -76,6 +76,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.better.nothing.music.vizualizer.R
+import com.better.nothing.music.vizualizer.logic.LatencyWizard
 import com.better.nothing.music.vizualizer.service.AudioCaptureService
 import com.better.nothing.music.vizualizer.ui.OptionTile
 import com.better.nothing.music.vizualizer.ui.ScreenTitle
@@ -105,6 +106,9 @@ fun AudioScreen(
     captureSource: AudioCaptureService.CaptureSource = AudioCaptureService.CaptureSource.INTERNAL,
     onCaptureSourceChanged: (AudioCaptureService.CaptureSource) -> Unit = {},
     shizukuUnlocked: Boolean = false,
+    latencyWizardState: LatencyWizard.State = LatencyWizard.State.Idle,
+    onRunLatencyWizard: () -> Unit = {},
+    onResetLatencyWizard: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -129,6 +133,14 @@ fun AudioScreen(
         }
     }
 
+    val wizardPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            onRunLatencyWizard()
+        }
+    }
+
     val handleAutoToggle: (Boolean) -> Unit = { setEnabled ->
         if (setEnabled) {
             val status = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -137,7 +149,7 @@ fun AudioScreen(
                     Manifest.permission.BLUETOOTH_CONNECT
                 )
             } else {
-                TODO("VERSION.SDK_INT < S")
+                PackageManager.PERMISSION_GRANTED
             }
             if (status == PackageManager.PERMISSION_GRANTED) {
                 onAutoDeviceToggle(true)
@@ -244,6 +256,16 @@ fun AudioScreen(
                         onLatencyChanged = onLatencyChanged,
                         latencyPresets = latencyPresets,
                         onLatencyPresetsChanged = onLatencyPresetsChanged,
+                        wizardState = latencyWizardState,
+                        onRunWizard = {
+                            val status = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+                            if (status == PackageManager.PERMISSION_GRANTED) {
+                                onRunLatencyWizard()
+                            } else {
+                                wizardPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                        },
+                        onResetWizard = onResetLatencyWizard
                     )
                 }
 
@@ -340,6 +362,9 @@ fun LatencyCard(
     onLatencyChanged: (Int) -> Unit,
     latencyPresets: List<Int>,
     onLatencyPresetsChanged: (List<Int>) -> Unit,
+    wizardState: LatencyWizard.State,
+    onRunWizard: () -> Unit,
+    onResetWizard: () -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
     var draggingIndex by remember { mutableIntStateOf(-1) }
@@ -463,6 +488,75 @@ fun LatencyCard(
                         updateLatency(latencyMs + amount)
                     }
                 )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Latency Wizard Section
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.medium)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Latency Wizard",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = when (wizardState) {
+                            is LatencyWizard.State.Idle -> "Sync lights using your microphone"
+                            is LatencyWizard.State.Preparing -> "Preparing..."
+                            is LatencyWizard.State.Recording -> "Recording pulse... Please stay quiet."
+                            is LatencyWizard.State.Analyzing -> "Analyzing..."
+                            is LatencyWizard.State.Success -> "Success! Detected ${wizardState.latencyMs}ms delay."
+                            is LatencyWizard.State.Error -> "Error: ${wizardState.message}"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Surface(
+                    onClick = {
+                        if (wizardState is LatencyWizard.State.Success || wizardState is LatencyWizard.State.Error) {
+                            onResetWizard()
+                        } else if (wizardState is LatencyWizard.State.Idle) {
+                            onRunWizard()
+                        }
+                    },
+                    shape = MaterialTheme.shapes.medium,
+                    color = if (wizardState is LatencyWizard.State.Idle)
+                        MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.surfaceVariant,
+                    enabled = wizardState !is LatencyWizard.State.Preparing && 
+                              wizardState !is LatencyWizard.State.Recording &&
+                              wizardState !is LatencyWizard.State.Analyzing
+                ) {
+                    Text(
+                        text = when (wizardState) {
+                            is LatencyWizard.State.Idle -> "Start"
+                            is LatencyWizard.State.Success, is LatencyWizard.State.Error -> "Reset"
+                            else -> "Wait"
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = if (wizardState is LatencyWizard.State.Idle)
+                            MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

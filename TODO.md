@@ -12,7 +12,7 @@
 
 * Remove brightness value text on the glyph brightness slider
 
-* Make a workflow that copies the zones.condig to the app assets
+* Make a workflow that copies the zones.config to the app assets
   * And don't force download anything on startup!!!!
   * And don't care about zones.config if the phone doesn't have a glyph interface
 
@@ -20,7 +20,7 @@
 
 * Make the audio spectrum have the dynamic gain applied to it
 
-* Currently viewed screen should be kept in memory
+* Last viewed screen should be kept in memory
 
 * make the default theme have the nothing light theme when the device theme is light
 
@@ -44,7 +44,6 @@
 * track audio source playing time, not audio_source_change
 * track viz mode playing time (flashlight time, haptics time, glyphs time, these will be added up in the firebase charts ifpossible)
 * Adaptive Smoothing: Real-time decay adjustment based on music tempo
-* Latency Auto-Calibration: Sync Wizard using microphone to measure delay
 * collapse app theme setting section just like the experimental features
 * put the typography selector under that app them section
 * make the collapsed sections a bit bigger
@@ -167,4 +166,5 @@ ALL CODE RELATED TO IT, ALSO DEPS
 * Fetch `zones.config` from GitHub repo
 * Fix Phone (2) screen off issues (battery optimization fix)
 * Resolve Quick Settings tile functional issues
+* Added audio latency wizard utilizing the microphone to measure delay.
 * *And many things we did before moving the todo list here!*

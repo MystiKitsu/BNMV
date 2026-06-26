@@ -452,13 +452,23 @@ internal fun BetterVizApp(
     val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
     val isRunning by viewModel.runningState.collectAsStateWithLifecycle()
     val totalVisualizedTime by viewModel.totalVisualizedTime.collectAsStateWithLifecycle()
+    val selectedDevice by viewModel.selectedDevice.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
-    val pagerState = rememberPagerState(initialPage = selectedTab.ordinal) { Tab.entries.size }
+
+    val visibleTabs = remember(selectedDevice) {
+        if (selectedDevice == com.better.nothing.music.vizualizer.model.DeviceProfile.DEVICE_UNKNOWN) {
+            Tab.entries.filter { it != Tab.Glyphs }
+        } else {
+            Tab.entries.toList()
+        }
+    }
+
+    val pagerState = rememberPagerState(initialPage = visibleTabs.indexOf(selectedTab).coerceAtLeast(0)) { visibleTabs.size }
     var isProgrammaticScroll by remember { mutableStateOf(false) }
 
     LaunchedEffect(selectedTab) {
-        val target = selectedTab.ordinal
+        val target = visibleTabs.indexOf(selectedTab).coerceAtLeast(0)
         val current = pagerState.currentPage
         if (current != target) {
             val direction = if (target > current) 1 else -1
@@ -508,8 +518,11 @@ internal fun BetterVizApp(
 
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.settledPage }.collect { page ->
-            if (!isProgrammaticScroll && viewModel.selectedTab.value.ordinal != page) {
-                viewModel.selectTab(Tab.entries[page])
+            if (page < visibleTabs.size) {
+                val tab = visibleTabs[page]
+                if (!isProgrammaticScroll && viewModel.selectedTab.value != tab) {
+                    viewModel.selectTab(tab)
+                }
             }
         }
     }
@@ -518,7 +531,7 @@ internal fun BetterVizApp(
         bottomBar = {
             NativeBottomBar(
                 selectedTab = selectedTab,
-                visibleTabs = Tab.entries.toList(),
+                visibleTabs = visibleTabs,
                 onTabSelected = { viewModel.selectTab(it) }
             )
         },
@@ -536,10 +549,11 @@ internal fun BetterVizApp(
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize(),
-                    beyondViewportPageCount = Tab.entries.size,
+                    beyondViewportPageCount = visibleTabs.size,
                     userScrollEnabled = true
                 ) { page ->
-                    val tab = Tab.entries[page]
+                    if (page >= visibleTabs.size) return@HorizontalPager
+                    val tab = visibleTabs[page]
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -567,6 +581,7 @@ internal fun BetterVizApp(
                                 val fftData by viewModel.fftState.collectAsStateWithLifecycle()
                                 val captureSource by viewModel.captureSource.collectAsStateWithLifecycle()
                                 val shizukuUnlocked by viewModel.shizukuSourceUnlocked.collectAsStateWithLifecycle()
+                                val latencyWizardState by viewModel.latencyWizardState.collectAsStateWithLifecycle()
 
                                 AudioScreen(
                                     isRunning = isRunning,
@@ -582,7 +597,10 @@ internal fun BetterVizApp(
                                     fftData = fftData,
                                     captureSource = captureSource,
                                     onCaptureSourceChanged = { viewModel.setCaptureSource(it) },
-                                    shizukuUnlocked = shizukuUnlocked
+                                    shizukuUnlocked = shizukuUnlocked,
+                                    latencyWizardState = latencyWizardState,
+                                    onRunLatencyWizard = { viewModel.runLatencyWizard() },
+                                    onResetLatencyWizard = { viewModel.resetLatencyWizard() }
                                 )
                             }
                             Tab.Glyphs -> {

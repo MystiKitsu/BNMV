@@ -956,36 +956,42 @@ internal fun SettingsScreen(
                             isSelected = m3eEnabled,
                             onClick = { viewModel.setM3EEnabled(!m3eEnabled) }
                         )
-                        OptionTile(
-                            label = stringResource(R.string.notification_flash_title),
-                            icon = Icons.Default.FlashOn,
-                            isSelected = notificationFlashEnabled,
-                            onClick = { onNotificationFlashEnabledChanged(!notificationFlashEnabled) }
-                        )
+                        if (selectedDevice != DeviceProfile.DEVICE_UNKNOWN) {
+                            OptionTile(
+                                label = stringResource(R.string.notification_flash_title),
+                                icon = Icons.Default.FlashOn,
+                                isSelected = notificationFlashEnabled,
+                                onClick = { onNotificationFlashEnabledChanged(!notificationFlashEnabled) }
+                            )
+                        }
                         OptionTile(
                             label = stringResource(R.string.nav_overlay),
                             icon = Icons.Default.Layers,
                             isSelected = overlayEnabled,
                             onClick = { onOverlayEnabledChanged(!overlayEnabled) }
                         )
-                        OptionTile(
-                            label = stringResource(R.string.disable_glyphs_when_silent_title),
-                            icon = Icons.AutoMirrored.Filled.VolumeOff,
-                            isSelected = disableGlyphsWhenSilent,
-                            onClick = { onDisableGlyphsWhenSilentChanged(!disableGlyphsWhenSilent) }
-                        )
+                        if (selectedDevice != DeviceProfile.DEVICE_UNKNOWN) {
+                            OptionTile(
+                                label = stringResource(R.string.disable_glyphs_when_silent_title),
+                                icon = Icons.AutoMirrored.Filled.VolumeOff,
+                                isSelected = disableGlyphsWhenSilent,
+                                onClick = { onDisableGlyphsWhenSilentChanged(!disableGlyphsWhenSilent) }
+                            )
+                        }
                         OptionTile(
                             label = stringResource(R.string.dynamic_gain),
                             icon = Icons.AutoMirrored.Filled.TrendingUp,
                             isSelected = dynamicGainEnabled,
                             onClick = { viewModel.setDynamicGainEnabled(!dynamicGainEnabled) }
                         )
-                        OptionTile(
-                            label = stringResource(R.string.strobe_mode),
-                            icon = Icons.Default.Vibration,
-                            isSelected = strobeEnabled,
-                            onClick = { onStrobeEnabledChanged(!strobeEnabled) }
-                        )
+                        if (selectedDevice != DeviceProfile.DEVICE_UNKNOWN) {
+                            OptionTile(
+                                label = stringResource(R.string.strobe_mode),
+                                icon = Icons.Default.Vibration,
+                                isSelected = strobeEnabled,
+                                onClick = { onStrobeEnabledChanged(!strobeEnabled) }
+                            )
+                        }
                     }
 
                     AnimatedVisibility(visible = overlayEnabled) {

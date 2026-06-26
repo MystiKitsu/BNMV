@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
@@ -838,7 +839,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ── Tab ───────────────────────────────────────────────────────────────────
     val _selectedTab = MutableStateFlow(Tab.Audio)
     val selectedTab = _selectedTab.asStateFlow()
-    fun selectTab(tab: Tab) { 
+    fun selectTab(tab: Tab) {
+        if (selectedDevice.value == DeviceProfile.DEVICE_UNKNOWN && tab == Tab.Glyphs) return
         _selectedTab.value = tab
         analytics.logTabSelected(tab.name)
     }
@@ -930,19 +932,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val actualDevice = DeviceProfile.detectDevice()
         val targetDevice = if (_developerModeEnabled.value) _spoofedDevice.value else actualDevice
 
-        if (selectedDevice.value != targetDevice) {
-            selectedDevice.value = targetDevice
-            if (targetDevice == DeviceProfile.DEVICE_UNKNOWN && _selectedTab.value == Tab.Glyphs) {
-                _selectedTab.value = Tab.Audio
-            }
-            refreshPresets()
-            reloadLatencyForCurrentRoute()
-            // Forward to service if bound
-            MainActivity.serviceStatic?.setDevice(targetDevice)
+        selectedDevice.value = targetDevice
+        if (targetDevice == DeviceProfile.DEVICE_UNKNOWN && _selectedTab.value == Tab.Glyphs) {
+            _selectedTab.value = Tab.Audio
         }
+        refreshPresets()
+        reloadLatencyForCurrentRoute()
+        // Forward to service if bound
+        MainActivity.serviceStatic?.setDevice(targetDevice)
     }
 
     // ── Latency ───────────────────────────────────────────────────────────────
+    private val latencyWizard = LatencyWizard()
+    private val _latencyWizardState = MutableStateFlow<LatencyWizard.State>(LatencyWizard.State.Idle)
+    val latencyWizardState = _latencyWizardState.asStateFlow()
+
+    fun runLatencyWizard() {
+        val audioManager = ctx.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        
+        viewModelScope.launch {
+            val result = latencyWizard.measureLatency(audioManager) { state ->
+                _latencyWizardState.value = state
+            }
+            _latencyWizardState.value = result
+            if (result is LatencyWizard.State.Success) {
+                setLatencyMs(result.latencyMs)
+            }
+        }
+    }
+
+    fun resetLatencyWizard() {
+        _latencyWizardState.value = LatencyWizard.State.Idle
+    }
+
     val _latencyMs = MutableStateFlow(0)
     val latencyMs = _latencyMs.asStateFlow()
 

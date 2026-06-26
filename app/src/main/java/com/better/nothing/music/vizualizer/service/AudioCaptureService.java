@@ -198,7 +198,7 @@ public class AudioCaptureService extends Service {
     };
 
     private void registerGlyphManager() {
-        if (mGM == null) return;
+        if (mGM == null || mSelectedDevice == DeviceProfile.DEVICE_UNKNOWN) return;
         String deviceStr = switch (mSelectedDevice) {
             case DeviceProfile.DEVICE_NP1 -> Glyph.DEVICE_20111;
             case DeviceProfile.DEVICE_NP2 -> Glyph.DEVICE_22111;
@@ -213,7 +213,7 @@ public class AudioCaptureService extends Service {
     }
 
     private void registerGlyphMatrixManager() {
-        if (mGMM == null) return;
+        if (mGMM == null || mSelectedDevice == DeviceProfile.DEVICE_UNKNOWN) return;
         if (mSelectedDevice == DeviceProfile.DEVICE_NP3) {
             mGMM.register(Glyph.DEVICE_23112);
         } else if (mSelectedDevice == DeviceProfile.DEVICE_NP4APRO) {
@@ -1132,7 +1132,7 @@ public class AudioCaptureService extends Service {
     }
 
     public void triggerNotificationFlash() {
-        if (mNotificationFlashEnabled) {
+        if (mSelectedDevice != DeviceProfile.DEVICE_UNKNOWN && mNotificationFlashEnabled) {
             mLastNotificationFlashMs = SystemClock.elapsedRealtime();
         }
     }
@@ -1880,6 +1880,7 @@ public class AudioCaptureService extends Service {
     }
 
     private boolean canPushGlyphFrames() {
+        if (mSelectedDevice == DeviceProfile.DEVICE_UNKNOWN) return false;
         if (DeviceProfile.getMatrixWidth(mSelectedDevice) > 0) return mGMM != null;
         return mGM != null && mSessionOpen;
     }
