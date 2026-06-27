@@ -56,7 +56,6 @@
 
 * Tapping back on the Viz preset editor should go to the prev screen., and tapping back should predictively go to the prev viewed screen tab before exiting the app.
 
-* Collapse the live audio spectrum, and when it's collapsed, don't process it.
 
 * Make the auto latency toggle be in the latency card
 
@@ -115,6 +114,7 @@
 ---
 
 ## Done
+* Collapse the live audio spectrum, and when it's collapsed, don't process it.
 * Check if background is 0x000000 not if theme = default for the margin thing
 * **RE ENABLE EDGE TO EDGE and FIX THE CLIPPING IN THE SIDE PADDINGS!**
   * THEY SHOULD BE APPLIED ON THE TAB LEVEL, NOT ON THE HORIZONTALPAGER LAVEL!

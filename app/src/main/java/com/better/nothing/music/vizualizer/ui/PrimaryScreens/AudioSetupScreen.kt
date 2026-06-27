@@ -620,6 +620,30 @@ fun FFTSpectrumCard(fftData: FloatArray) {
         }
 
         AnimatedVisibility(visible = isExpanded) {
+            val decayedData = remember { mutableStateOf(floatArrayOf()) }
+            LaunchedEffect(fftData) {
+                if (fftData.isEmpty()) return@LaunchedEffect
+
+                val current = decayedData.value
+                if (current.size != fftData.size) {
+                    decayedData.value = fftData.copyOf()
+                    return@LaunchedEffect
+                }
+
+                val decay = 0.75f
+                val next = FloatArray(fftData.size)
+                for (i in fftData.indices) {
+                    val newVal = fftData[i]
+                    val prevVal = current[i]
+                    if (newVal > prevVal) {
+                        next[i] = newVal
+                    } else {
+                        next[i] = (decay * prevVal) + ((1f - decay) * newVal)
+                    }
+                }
+                decayedData.value = next
+            }
+
             Column(
                 modifier = Modifier.padding(top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -654,30 +678,6 @@ fun FFTSpectrumCard(fftData: FloatArray) {
                     val primaryColor = MaterialTheme.colorScheme.primary
                     val width = maxWidth
                     val density = LocalDensity.current
-
-                    val decayedData = remember { mutableStateOf(floatArrayOf()) }
-                    LaunchedEffect(fftData) {
-                        if (fftData.isEmpty()) return@LaunchedEffect
-
-                        val current = decayedData.value
-                        if (current.size != fftData.size) {
-                            decayedData.value = fftData.copyOf()
-                            return@LaunchedEffect
-                        }
-
-                        val decay = 0.75f
-                        val next = FloatArray(fftData.size)
-                        for (i in fftData.indices) {
-                            val newVal = fftData[i]
-                            val prevVal = current[i]
-                            if (newVal > prevVal) {
-                                next[i] = newVal
-                            } else {
-                                next[i] = (decay * prevVal) + ((1f - decay) * newVal)
-                            }
-                        }
-                        decayedData.value = next
-                    }
 
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val data = decayedData.value
