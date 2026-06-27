@@ -40,20 +40,14 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleGithubDebug assembleGooglePlayDebug
 
-    - name: Prepare beta builds folder
+    - name: Prepare Artifacts
       run: |
-        rm -rf beta-builds
-        mkdir -p beta-builds
+        mkdir -p artifacts
+        find app/build/outputs/apk/github/debug -name "*.apk" ! -name "*-androidTest.apk" -exec cp {} artifacts/app-github-debug.apk \;
+        find app/build/outputs/apk/googlePlay/debug -name "*.apk" ! -name "*-androidTest.apk" -exec cp {} artifacts/app-googleplay-debug.apk \;
 
-    - name: Find and Copy APK
-      run: |
-        find app/build/outputs/apk/github/debug -name "*.apk" ! -name "*-androidTest.apk" -exec cp {} beta-builds/app-github-debug.apk \;
-        find app/build/outputs/apk/googlePlay/debug -name "*.apk" ! -name "*-androidTest.apk" -exec cp {} beta-builds/app-googleplay-debug.apk \;
-
-    - name: Commit APK
-      run: |
-        git config user.name "github-actions"
-        git config user.email "github-actions@github.com"
-        git add beta-builds/
-        git commit -m "update beta builds" || echo "No changes to commit"
-        git push
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-apks
+        path: artifacts/
