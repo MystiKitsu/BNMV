@@ -1,6 +1,27 @@
 package com.better.nothing.music.vizualizer.ui.SecondaryScreens
 
-import com.better.nothing.music.vizualizer.R
+import com.better.nothing.music.vizualizer.R as AppR
+import android.graphics.Path as AndroidPath
+import android.graphics.RectF
+import android.graphics.Region
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Redo
+import androidx.compose.material.icons.filled.Undo
+import androidx.compose.material.icons.filled.CompareArrows
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.VerticalAlignBottom
+import androidx.compose.material.icons.filled.VerticalAlignTop
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.interaction.*
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Flip
+import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import com.better.nothing.music.vizualizer.logic.AudioProcessor
 import com.better.nothing.music.vizualizer.model.DeviceProfile
 import androidx.compose.ui.res.stringResource
@@ -51,6 +72,7 @@ fun CustomPresetEditorScreen(
     onSave: (String, List<AudioProcessor.ZoneSpec>, String?) -> Unit,
     onShare: (String, String, List<AudioProcessor.ZoneSpec>) -> Unit,
     selectedDevice: Int,
+    fftState: FloatArray = floatArrayOf()
 ) {
     var presetName by remember { mutableStateOf("My Custom Preset") }
     var authorName by remember { mutableStateOf("Anonymous") }
@@ -70,12 +92,43 @@ fun CustomPresetEditorScreen(
         list
     }
 
+    // Undo/Redo State
+    val undoStack = remember { mutableStateListOf<List<AudioProcessor.ZoneSpec>>() }
+    val redoStack = remember { mutableStateListOf<List<AudioProcessor.ZoneSpec>>() }
+
+    fun pushUndo() {
+        undoStack.add(zones.toList())
+        if (undoStack.size > 50) undoStack.removeAt(0)
+        redoStack.clear()
+    }
+
+    fun undo() {
+        if (undoStack.isNotEmpty()) {
+            redoStack.add(zones.toList())
+            val previous = undoStack.removeAt(undoStack.size - 1)
+            zones.clear()
+            zones.addAll(previous)
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+
+    fun redo() {
+        if (redoStack.isNotEmpty()) {
+            undoStack.add(zones.toList())
+            val next = redoStack.removeAt(redoStack.size - 1)
+            zones.clear()
+            zones.addAll(next)
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
+
     var selectedIndex by remember { mutableIntStateOf(0) }
     val selectedIndices = remember { mutableStateListOf<Int>(0) }
     var isMultiSelect by remember { mutableStateOf(false) }
 
     fun distributeLogarithmically() {
         if (selectedIndices.isEmpty()) return
+        pushUndo()
         val sorted = selectedIndices.sorted()
         val minFreq = 60f
         val maxFreq = 16000f
@@ -89,30 +142,140 @@ fun CustomPresetEditorScreen(
         haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
     }
 
+    fun selectAll() {
+        selectedIndices.clear()
+        for (i in 0 until ledCount) selectedIndices.add(i)
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
+    fun invertSelection() {
+        val current = selectedIndices.toList()
+        selectedIndices.clear()
+        for (i in 0 until ledCount) {
+            if (!current.contains(i)) selectedIndices.add(i)
+        }
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+    }
+
+    fun applyFrequencyPreset(low: Float, high: Float) {
+        if (selectedIndices.isEmpty()) return
+        pushUndo()
+        selectedIndices.forEach { idx ->
+            zones[idx] = AudioProcessor.ZoneSpec(low, high, zones[idx].lowPercent, zones[idx].highPercent)
+        }
+        haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+    }
+
+    fun mirrorHorizontally() {
+        pushUndo()
+        val mapping = when (selectedDevice) {
+            DeviceProfile.DEVICE_NP1 -> mapOf(2 to 3, 5 to 4, 3 to 2, 4 to 5)
+            DeviceProfile.DEVICE_NP2 -> mapOf(20 to 23, 19 to 22, 23 to 20, 22 to 19)
+            DeviceProfile.DEVICE_NP2A -> mapOf(24 to 25, 25 to 24)
+            DeviceProfile.DEVICE_NP3A -> mapOf(31 to 35, 32 to 34, 35 to 31, 34 to 32)
+            DeviceProfile.DEVICE_NP4A -> emptyMap()
+            DeviceProfile.DEVICE_NP4APRO, DeviceProfile.DEVICE_NP3 -> {
+                val w = DeviceProfile.getMatrixWidth(selectedDevice)
+                val h = DeviceProfile.getMatrixHeight(selectedDevice)
+                val map = mutableMapOf<Int, Int>()
+                for (row in 0 until h) {
+                    for (col in 0 until w) {
+                        val srcIdx = row * w + col
+                        val targetCol = (w - 1) - col
+                        val targetIdx = row * w + targetCol
+                        if (srcIdx != targetIdx) map[srcIdx] = targetIdx
+                    }
+                }
+                map
+            }
+            else -> emptyMap()
+        }
+        
+        val sourceIndices = selectedIndices.toList()
+        sourceIndices.forEach { idx ->
+            mapping[idx]?.let { target ->
+                zones[target] = zones[idx]
+                if (!selectedIndices.contains(target)) selectedIndices.add(target)
+            }
+        }
+        haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+    }
+
+    fun invertFrequencies() {
+        pushUndo()
+        selectedIndices.forEach { idx ->
+            val z = zones[idx]
+            val min = 20f
+            val max = 20000f
+            val newLow = (max * min) / z.highHz
+            val newHigh = (max * min) / z.lowHz
+            zones[idx] = AudioProcessor.ZoneSpec(newLow, newHigh, z.lowPercent, z.highPercent)
+        }
+        haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+    }
+
+    fun shiftFrequencies(octaves: Float) {
+        pushUndo()
+        val factor = 2.0f.pow(octaves)
+        selectedIndices.forEach { idx ->
+            val z = zones[idx]
+            val newLow = (z.lowHz * factor).coerceIn(20f, 19000f)
+            val newHigh = (z.highHz * factor).coerceIn(newLow + 10f, 20000f)
+            zones[idx] = AudioProcessor.ZoneSpec(newLow, newHigh, z.lowPercent, z.highPercent)
+        }
+        haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+    }
+
+    fun distributeIntensityProgress() {
+        if (selectedIndices.size < 2) return
+        pushUndo()
+        val sorted = selectedIndices.sorted()
+        val total = sorted.size
+        val firstZone = zones[sorted.first()]
+        
+        sorted.forEachIndexed { i, idx ->
+            val lowPerc = (i.toFloat() / total) * 100f
+            val highPerc = ((i + 1).toFloat() / total) * 100f
+            zones[idx] = AudioProcessor.ZoneSpec(firstZone.lowHz, firstZone.highHz, lowPerc, highPerc)
+        }
+        haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.visual_preset_editor), style = MaterialTheme.typography.titleLarge) },
+                title = { 
+                    Column {
+                        Text(stringResource(AppR.string.visual_preset_editor), style = MaterialTheme.typography.titleMedium)
+                        Text(DeviceProfile.deviceName(selectedDevice), style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(AppR.string.back))
                     }
                 },
                 actions = {
+                    IconButton(onClick = ::undo, enabled = undoStack.isNotEmpty()) {
+                        Icon(Icons.Default.Undo, contentDescription = "Undo")
+                    }
+                    IconButton(onClick = ::redo, enabled = redoStack.isNotEmpty()) {
+                        Icon(Icons.Default.Redo, contentDescription = "Redo")
+                    }
+                    Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = { showShareDialog = true },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.tertiary,
                             contentColor = MaterialTheme.colorScheme.onTertiary
                         ),
-                        shape = MaterialTheme.shapes.medium,
-                        modifier = Modifier.padding(end = 8.dp)
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         Icon(Icons.Default.Public, contentDescription = "Share", modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.share))
+                        Text(stringResource(AppR.string.share))
                     }
-                    
+                    Spacer(Modifier.width(8.dp))
                     Button(
                         onClick = { 
                             haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
@@ -122,7 +285,7 @@ fun CustomPresetEditorScreen(
                     ) {
                         Icon(Icons.Default.Save, contentDescription = "Save", modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(stringResource(R.string.save))
+                        Text(stringResource(AppR.string.save))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -138,14 +301,14 @@ fun CustomPresetEditorScreen(
         if (showShareDialog) {
             AlertDialog(
                 onDismissRequest = { showShareDialog = false },
-                title = { Text(stringResource(R.string.share_to_community)) },
+                title = { Text(stringResource(AppR.string.share_to_community)) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(R.string.share_preset_desc))
+                        Text(stringResource(AppR.string.share_preset_desc))
                         OutlinedTextField(
                             value = authorName,
                             onValueChange = { authorName = it },
-                            label = { Text(stringResource(R.string.author_name)) },
+                            label = { Text(stringResource(AppR.string.author_name)) },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -155,12 +318,12 @@ fun CustomPresetEditorScreen(
                         onShare(presetName, authorName, zones.toList())
                         showShareDialog = false
                     }) {
-                        Text(stringResource(R.string.share))
+                        Text(stringResource(AppR.string.share))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showShareDialog = false }) {
-                        Text(stringResource(R.string.cancel))
+                        Text(stringResource(AppR.string.cancel))
                     }
                 }
             )
@@ -176,7 +339,7 @@ fun CustomPresetEditorScreen(
             OutlinedTextField(
                 value = presetName,
                 onValueChange = { presetName = it },
-                label = { Text(stringResource(R.string.preset_name)) },
+                label = { Text(stringResource(AppR.string.preset_name)) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
@@ -220,16 +383,18 @@ fun CustomPresetEditorScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(R.string.segments_selected, selectedIndices.size), color = Color.White, style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(AppR.string.segments_selected, selectedIndices.size), color = Color.White, style = MaterialTheme.typography.titleMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = ::selectAll) { Text("All", fontSize = 12.sp) }
+                    TextButton(onClick = ::invertSelection) { Text("Inv", fontSize = 12.sp) }
                     FilterChip(
                         selected = isMultiSelect,
                         onClick = { isMultiSelect = !isMultiSelect },
-                        label = { Text(stringResource(R.string.multi_select)) },
+                        label = { Text(stringResource(AppR.string.multi_select), fontSize = 10.sp) },
                         colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primary)
                     )
                     IconButton(onClick = { selectedIndices.clear() }) {
-                        Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.clear), tint = Color.Gray)
+                        Icon(Icons.Default.Clear, contentDescription = stringResource(AppR.string.clear), tint = Color.Gray)
                     }
                 }
             }
@@ -275,18 +440,53 @@ fun CustomPresetEditorScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(R.string.bulk_actions), style = MaterialTheme.typography.titleSmall)
-                            Text(stringResource(R.string.bulk_actions_desc), fontSize = 12.sp)
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Column(Modifier.weight(1f)) {
+                                Text(stringResource(AppR.string.bulk_actions), style = MaterialTheme.typography.titleSmall)
+                                Text(stringResource(AppR.string.bulk_actions_desc), fontSize = 12.sp, color = Color.Gray)
+                            }
                         }
-                        Button(onClick = { distributeLogarithmically() }) {
-                            Text(stringResource(R.string.auto_distribute))
+                        
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            SuggestionChip(
+                                onClick = { distributeLogarithmically() },
+                                label = { Text(stringResource(AppR.string.auto_distribute)) },
+                                icon = { Icon(Icons.Default.ViewModule, null, Modifier.size(18.dp)) }
+                            )
+                            SuggestionChip(
+                                onClick = { distributeIntensityProgress() },
+                                label = { Text("Progress") },
+                                icon = { Icon(Icons.Default.History, null, Modifier.size(18.dp)) }
+                            )
+                            SuggestionChip(
+                                onClick = { mirrorHorizontally() },
+                                label = { Text("Mirror") },
+                                icon = { Icon(Icons.Default.Flip, null, Modifier.size(18.dp)) }
+                            )
+                            SuggestionChip(
+                                onClick = { invertFrequencies() },
+                                label = { Text("Invert") },
+                                icon = { Icon(Icons.Default.SwapHoriz, null, Modifier.size(18.dp)) }
+                            )
+                            SuggestionChip(
+                                onClick = { shiftFrequencies(1f) },
+                                label = { Text("+1 Octave") },
+                                icon = { Icon(Icons.Default.VerticalAlignTop, null, Modifier.size(18.dp)) }
+                            )
+                            SuggestionChip(
+                                onClick = { shiftFrequencies(-1f) },
+                                label = { Text("-1 Octave") },
+                                icon = { Icon(Icons.Default.VerticalAlignBottom, null, Modifier.size(18.dp)) }
+                            )
                         }
                     }
                 }
@@ -302,13 +502,47 @@ fun CustomPresetEditorScreen(
                 ) {
                     Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text(
-                            text = if (selectedIndices.size == 1) stringResource(R.string.editing_segment, firstIdx + 1) else stringResource(R.string.editing_segments_count, selectedIndices.size),
+                            text = if (selectedIndices.size == 1) stringResource(AppR.string.editing_segment, firstIdx + 1) else stringResource(AppR.string.editing_segments_count, selectedIndices.size),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
                         
+                        Box(modifier = Modifier.fillMaxWidth().height(120.dp)) {
+                            SpectrumCanvas(
+                                fftState = fftState,
+                                lowHz = zone.lowHz,
+                                highHz = zone.highHz,
+                                lowPerc = if (zone.lowPercent.isNaN()) 0f else zone.lowPercent / 100f,
+                                highPerc = if (zone.highPercent.isNaN()) 1f else zone.highPercent / 100f,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+
+                        // Frequency Quick Presets
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            listOf(
+                                "Sub" to (20f..60f),
+                                "Bass" to (60f..250f),
+                                "Mids" to (250f..2000f),
+                                "Vocal" to (500f..3500f),
+                                "Highs" to (4000f..12000f),
+                                "Air" to (12000f..20000f)
+                            ).forEach { (label, range) ->
+                                InputChip(
+                                    selected = false,
+                                    onClick = { applyFrequencyPreset(range.start, range.endInclusive) },
+                                    label = { Text(label, fontSize = 11.sp) },
+                                    colors = InputChipDefaults.inputChipColors(labelColor = Color.LightGray)
+                                )
+                            }
+                        }
+
                         Text(
-                            text = stringResource(R.string.frequency_range_label, zone.lowHz.toInt(), zone.highHz.toInt()),
+                            text = stringResource(AppR.string.frequency_range_label, zone.lowHz.toInt(), zone.highHz.toInt()),
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color.White
                         )
@@ -322,14 +556,15 @@ fun CustomPresetEditorScreen(
                         ExpressiveRangeSlider(
                             value = currentRange,
                             onValueChange = { newRange ->
+                                pushUndo()
                                 val newLow = lerpLog(newRange.start, 20f, 20000f)
                                 val newHigh = lerpLog(newRange.endInclusive, 20f, 20000f)
                                 selectedIndices.forEach { idx ->
                                     zones[idx] = AudioProcessor.ZoneSpec(
                                         newLow,
                                         newHigh,
-                                        zone.lowPercent,
-                                        zone.highPercent
+                                        zones[idx].lowPercent,
+                                        zones[idx].highPercent
                                     )
                                 }
                             },
@@ -341,13 +576,115 @@ fun CustomPresetEditorScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("20Hz", 12.sp, Color.Gray)
-                            Text("20kHz", 12.sp, Color.Gray)
+                            Text("20Hz", fontSize = 12.sp, color = Color.Gray)
+                            Text("20kHz", fontSize = 12.sp, color = Color.Gray)
                         }
+
+                        HorizontalDivider(color = Color.DarkGray)
+
+                        // Percent Slice (Threshold) Sliders
+                        Text(
+                            text = "Intensity Thresholds",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.White
+                        )
+
+                        val lowPerc = if (zone.lowPercent.isNaN()) 0f else zone.lowPercent / 100f
+                        val highPerc = if (zone.highPercent.isNaN()) 1f else zone.highPercent / 100f
+
+                        ExpressiveRangeSlider(
+                            value = lowPerc..highPerc,
+                            onValueChange = { newRange ->
+                                pushUndo()
+                                selectedIndices.forEach { idx ->
+                                    zones[idx] = AudioProcessor.ZoneSpec(
+                                        zones[idx].lowHz,
+                                        zones[idx].highHz,
+                                        newRange.start * 100f,
+                                        newRange.endInclusive * 100f
+                                    )
+                                }
+                            },
+                            valueRange = 0f..1f,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Min Intensity (Gate)", fontSize = 12.sp, color = Color.Gray)
+                            Text("Max Intensity (Peak)", fontSize = 12.sp, color = Color.Gray)
+                        }
+                        
+                        Text(
+                            text = "LEDs only light up when audio volume is between ${ (lowPerc*100).toInt() }% and ${ (highPerc*100).toInt() }% of the peak.",
+                            fontSize = 11.sp,
+                            color = Color.LightGray
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun SpectrumCanvas(
+    fftState: FloatArray,
+    lowHz: Float,
+    highHz: Float,
+    lowPerc: Float,
+    highPerc: Float,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier) {
+        val width = size.width
+        val height = size.height
+        val binCount = fftState.size.coerceAtLeast(1)
+        
+        val minFreq = 20f
+        val maxFreq = 20000f
+        
+        // Freq markers
+        listOf(100f, 1000f, 10000f).forEach { marker ->
+            val x = invLerpLog(marker, minFreq, maxFreq) * width
+            drawLine(Color.DarkGray, Offset(x, 0f), Offset(x, height), pathEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f)))
+        }
+
+        // Intensity threshold lines
+        val yLow = height * (1f - lowPerc)
+        val yHigh = height * (1f - highPerc)
+        drawLine(Color.Red.copy(0.3f), Offset(0f, yLow), Offset(width, yLow))
+        drawLine(Color.Red.copy(0.3f), Offset(0f, yHigh), Offset(width, yHigh))
+
+        for (i in 0 until binCount) {
+            val hz = i * (44100f / 2048f)
+            if (hz < minFreq) continue
+            if (hz > maxFreq) break
+            
+            val mag = fftState[i]
+            val x = invLerpLog(hz, minFreq, maxFreq) * width
+            val barHeight = (mag * 20f).coerceIn(0f, 1f) * height
+            
+            val isInRange = hz in lowHz..highHz
+            
+            drawRect(
+                color = if (isInRange) Color.Red.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.1f),
+                topLeft = Offset(x, height - barHeight),
+                size = Size(2.dp.toPx(), barHeight)
+            )
+        }
+        
+        // Selection range overlay
+        val xStart = invLerpLog(lowHz, minFreq, maxFreq) * width
+        val xEnd = invLerpLog(highHz, minFreq, maxFreq) * width
+        
+        drawRect(
+            color = Color.Red.copy(alpha = 0.1f),
+            topLeft = Offset(xStart, 0f),
+            size = Size(xEnd - xStart, height)
+        )
     }
 }
 
@@ -360,11 +697,22 @@ fun EditableGlyphPreview(
 ) {
     val parser = remember { PathParser() }
     val paths = remember { getGlyphPaths(parser) }
-    val bounds = remember(paths) { paths.mapValues { it.value.getBounds() } }
+    
+    val androidPaths = remember(paths) {
+        paths.mapValues { it.value.asAndroidPath() }
+    }
+    val regions = remember(androidPaths) {
+        androidPaths.mapValues { entry ->
+            val region = Region()
+            val rectF = RectF()
+            entry.value.computeBounds(rectF, true)
+            region.setPath(entry.value, Region(rectF.left.toInt(), rectF.top.toInt(), rectF.right.toInt(), rectF.bottom.toInt()))
+            region
+        }
+    }
     
     Canvas(modifier = modifier.pointerInput(device) {
         detectTapGestures { offset ->
-            // Simple hit testing for matrix devices
             val viewBoxW = 182f
             val viewBoxH = if (device == DeviceProfile.DEVICE_NP1 || device == DeviceProfile.DEVICE_NP2) 382f else 182f
             val scale = min(size.width / viewBoxW, size.height / viewBoxH)
@@ -392,9 +740,90 @@ fun EditableGlyphPreview(
                     onIndexSelected(row * matrixW + col, false)
                 }
             } else {
-                // Approximate hit testing for paths
-                // In a production app, we'd use android.graphics.Path.contains() via a custom view or complex math
-                // For now, we use bounds or let users use the numbers below for non-matrix devices
+                val hit = paths.entries.firstOrNull { entry ->
+                    regions[entry.key]?.contains(localX.toInt(), localY.toInt()) == true
+                }
+
+                if (hit != null) {
+                    val idx = when(device) {
+                        DeviceProfile.DEVICE_NP1 -> when(hit.key) {
+                            "p1_cam" -> 0
+                            "p1_slash" -> 1
+                            "p1_ring_bl" -> 2
+                            "p1_ring_br" -> 3
+                            "p1_ring_tr" -> 4
+                            "p1_ring_tl" -> 5
+                            "p1_dot" -> 6
+                            "p1_battery" -> {
+                                val b = hit.value.getBounds()
+                                val row = ((localY - b.top) / (b.height / 8)).toInt().coerceIn(0, 7)
+                                7 + row
+                            }
+                            else -> -1
+                        }
+                        DeviceProfile.DEVICE_NP2 -> when(hit.key) {
+                            "p2_0" -> 0
+                            "p2_1" -> 1
+                            "p2_2" -> 2
+                            "p2_ring" -> {
+                                val b = hit.value.getBounds()
+                                val row = ((localY - b.top) / (b.height / 16)).toInt().coerceIn(0, 15)
+                                3 + row
+                            }
+                            "p2_19" -> 19
+                            "p2_20" -> 20
+                            "p2_21" -> 21
+                            "p2_22" -> 22
+                            "p2_23" -> 23
+                            "p2_24" -> 24
+                            "p2_battery" -> {
+                                val b = hit.value.getBounds()
+                                val row = ((localY - b.top) / (b.height / 8)).toInt().coerceIn(0, 7)
+                                25 + row
+                            }
+                            else -> -1
+                        }
+                        DeviceProfile.DEVICE_NP2A -> when(hit.key) {
+                            "p2a_large" -> {
+                                val b = hit.value.getBounds()
+                                val row = ((localY - b.top) / (b.height / 24)).toInt().coerceIn(0, 23)
+                                row
+                            }
+                            "p2a_medium" -> 24
+                            "p2a_small" -> 25
+                            else -> -1
+                        }
+                        DeviceProfile.DEVICE_NP3A -> when(hit.key) {
+                            "p3a_large" -> {
+                                val b = hit.value.getBounds()
+                                val row = ((localY - b.top) / (b.height / 20)).toInt().coerceIn(0, 19)
+                                row
+                            }
+                            "p3a_medium" -> {
+                                val b = hit.value.getBounds()
+                                val row = ((localY - b.top) / (b.height / 11)).toInt().coerceIn(0, 10)
+                                20 + row
+                            }
+                            "p3a_small" -> {
+                                val b = hit.value.getBounds()
+                                val col = ((localX - b.left) / (b.width / 5)).toInt().coerceIn(0, 4)
+                                31 + col
+                            }
+                            else -> -1
+                        }
+                        DeviceProfile.DEVICE_NP4A -> when(hit.key) {
+                            "p4a_bar" -> {
+                                val b = hit.value.getBounds()
+                                val col = ((localX - b.left) / (b.width / 6)).toInt().coerceIn(0, 5)
+                                col
+                            }
+                            "p4a_dot" -> 6
+                            else -> -1
+                        }
+                        else -> -1
+                    }
+                    if (idx != -1) onIndexSelected(idx, false)
+                }
             }
         }
     }) {
@@ -691,7 +1120,3 @@ private fun getGlyphPaths(parser: PathParser): Map<String, Path> {
     }
 }
 
-@Composable
-fun Text(text: String, size: TextUnit, color: Color) {
-    Text(text = text, fontSize = size, color = color)
-}

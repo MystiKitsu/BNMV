@@ -17,8 +17,10 @@ internal fun MainOverlays(
     val isShowingLicense by viewModel.isShowingLicense.collectAsStateWithLifecycle()
 
     if (isShowingEditor) {
+        val fftState by viewModel.fftState.collectAsStateWithLifecycle()
         CustomPresetEditorScreen(
             selectedDevice = selectedDevice,
+            fftState = fftState,
             onDismiss = { viewModel.hideEditor() },
             onSave = { name, zones, key -> viewModel.saveCustomPreset(name, zones, key) },
             onShare = { name, author, zones -> /* Handle share */ }
