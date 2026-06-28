@@ -129,6 +129,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private val _flashlightMultiIntensityForced = MutableStateFlow(false)
+    val flashlightMultiIntensityForced = _flashlightMultiIntensityForced.asStateFlow()
+    fun setFlashlightMultiIntensityForced(forced: Boolean) {
+        _flashlightMultiIntensityForced.value = forced
+        MainActivity.serviceStatic?.setFlashlightMultiIntensityForced(forced)
+        MainActivity.serviceStatic?.let {
+            setFlashlightIntensityLevels(it.flashlightIntensityLevels)
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            ctx.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+                .edit { putBoolean("flashlight_multi_intensity_forced", forced) }
+        }
+    }
+
     private val _m3eEnabled = MutableStateFlow(true)
     val m3eEnabled = _m3eEnabled.asStateFlow()
     fun setM3EEnabled(enabled: Boolean) {
@@ -791,6 +805,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().putInt("app_open_count", openCount).apply()
         analytics.logAppOpen(openCount)
 
+        viewModelScope.launch {
+            while (true) {
+                MainActivity.serviceStatic?.let { s ->
+                    _flashlightIntensityLevels.value = s.flashlightIntensityLevels
+                    _flashlightLevel.value = s.flashlightCurrentLevel
+                }
+                delay(100)
+            }
+        }
     }
 
     // ── Tab ───────────────────────────────────────────────────────────────────
@@ -1145,6 +1168,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val _flashlightIntensityLevels = MutableStateFlow(1)
     val flashlightIntensityLevels = _flashlightIntensityLevels.asStateFlow()
 
+    val _flashlightLevel = MutableStateFlow(0)
+    val flashlightLevel = _flashlightLevel.asStateFlow()
+
     fun setFlashlightEnabled(enabled: Boolean) {
         _flashlightEnabled.value = enabled
         analytics.logSettingChanged("flashlight_enabled", enabled)
@@ -1309,7 +1335,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 for (i in fBinLo..fBinHi) {
                     if (magnitude[i] > fMaxMag) fMaxMag = magnitude[i];
                 }
-                _flashlightAmplitude.value = (fMaxMag * 8f).coerceIn(0f, 1.2f)
+                val fTarget = (fMaxMag * 16.0f).coerceIn(0f, 1.2f)
+                val fCur = Math.pow(fTarget.toDouble(), 2.2).toFloat()
+                
+                // Add a bit of derivative boost to the UI monitor as well
+                val fDelta = (fCur - _flashlightAmplitude.value).coerceAtLeast(0f)
+                _flashlightAmplitude.value = (fCur + fDelta * 1.5f).coerceIn(0f, 1.2f)
 
                 // UI Amplitude (70-130 Hz) for global reactive UI elements
                 val uiBinLo = (70f / hzPerBin).toInt().coerceIn(0, magnitude.lastIndex)
@@ -1371,6 +1402,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _selectedTheme.value = prefs.getString("selected_theme", "Default") ?: "Default"
         _selectedFont.value = prefs.getString("selected_font", "Default") ?: "Default"
         _dynamicGainEnabled.value = prefs.getBoolean("dynamic_gain_enabled", true)
+        _flashlightMultiIntensityForced.value = prefs.getBoolean("flashlight_multi_intensity_forced", false)
 
         _hapticMotorEnabled.value = prefs.getBoolean("haptic_motor_enabled", false)
         _hapticMode.value = HapticMode.valueOf(prefs.getString("haptic_mode", HapticMode.BASS_TO_AMPLITUDE.name)!!)

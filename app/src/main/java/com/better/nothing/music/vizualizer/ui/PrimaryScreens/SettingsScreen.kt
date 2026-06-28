@@ -78,6 +78,7 @@ internal fun SettingsScreen(
 ) {
     val m3eEnabled by viewModel.m3eEnabled.collectAsStateWithLifecycle()
     val dynamicGainEnabled by viewModel.dynamicGainEnabled.collectAsStateWithLifecycle()
+    val flashlightMultiIntensityForced by viewModel.flashlightMultiIntensityForced.collectAsStateWithLifecycle()
     val overlayWidth by viewModel.overlayWidth.collectAsStateWithLifecycle()
     val overlayHeight by viewModel.overlayHeight.collectAsStateWithLifecycle()
     val overlayYOffset by viewModel.overlayYOffset.collectAsStateWithLifecycle()
@@ -989,6 +990,12 @@ internal fun SettingsScreen(
                             icon = Icons.AutoMirrored.Filled.TrendingUp,
                             isSelected = dynamicGainEnabled,
                             onClick = { viewModel.setDynamicGainEnabled(!dynamicGainEnabled) }
+                        )
+                        OptionTile(
+                            label = stringResource(R.string.flashlight_multi_intensity_forced_title),
+                            icon = Icons.Default.FlashlightOn,
+                            isSelected = flashlightMultiIntensityForced,
+                            onClick = { viewModel.setFlashlightMultiIntensityForced(!flashlightMultiIntensityForced) }
                         )
                         if (selectedDevice != DeviceProfile.DEVICE_UNKNOWN) {
                             OptionTile(

@@ -448,6 +448,12 @@ public class AudioCaptureService extends Service {
         mFlashlightEnabled = appPrefs.getBoolean("flashlight_enabled", false);
         mFlashlightMinHz = appPrefs.getInt("flashlight_freq_min", 60);
         mFlashlightMaxHz = appPrefs.getInt("flashlight_freq_max", 250);
+        
+        boolean forcedMulti = appPrefs.getBoolean("flashlight_multi_intensity_forced", false);
+        if (mFlashlightEngine != null) {
+            mFlashlightEngine.setForceMultiIntensity(forcedMulti);
+        }
+
         mFlashlightIntensityLevels = mFlashlightEngine.getTorchIntensityLevels();
         mFlashlightThreshold = appPrefs.getFloat(
                 "flashlight_threshold",
@@ -1248,11 +1254,30 @@ public class AudioCaptureService extends Service {
         }
     }
 
+    public void setFlashlightMultiIntensityForced(boolean forced) {
+        if (mFlashlightEngine != null) {
+            mFlashlightEngine.setForceMultiIntensity(forced);
+            mFlashlightIntensityLevels = mFlashlightEngine.getTorchIntensityLevels();
+            // We might need to reload speeds or notify UI
+            if (sInstance != null) {
+                // Ideally we'd have a way to notify the ViewModel
+                // For now, let's just make sure the local value is updated
+            }
+        }
+    }
+
     public int getFlashlightIntensityLevels() {
         if (mFlashlightEngine != null) {
             return mFlashlightEngine.getTorchIntensityLevels();
         }
         return mFlashlightIntensityLevels > 0 ? mFlashlightIntensityLevels : 1;
+    }
+
+    public int getFlashlightCurrentLevel() {
+        if (mFlashlightEngine != null) {
+            return mFlashlightEngine.getCurrentLevel();
+        }
+        return 0;
     }
 
     public void startCapture(int resultCode, Intent data) {

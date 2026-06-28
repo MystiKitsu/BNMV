@@ -70,6 +70,7 @@ fun FlashlightScreen(
     flashlightBeatSensitivity: Float,
     onFlashlightBeatSensitivityChanged: (Float) -> Unit,
     flashlightIntensityLevels: Int,
+    flashlightCurrentLevel: Int,
     flashlightAmplitudeProvider: () -> Float,
     isBeatDetectedProvider: () -> Boolean,
     padding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(),
@@ -126,7 +127,7 @@ fun FlashlightScreen(
                     )
                     BodyText(
                         text = if (supportsMultiIntensity) {
-                            "This torch can use multiple brightness levels."
+                            "This torch can use multiple brightness levels. Current: $flashlightCurrentLevel / $flashlightIntensityLevels"
                         } else {
                             "This torch is binary: it can only be on or off."
                         },

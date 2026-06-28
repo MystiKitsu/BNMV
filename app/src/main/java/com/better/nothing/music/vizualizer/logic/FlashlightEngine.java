@@ -21,15 +21,17 @@ import java.util.Objects;
 public final class FlashlightEngine {
 
     private static final String TAG = "FlashlightEngine";
-    private static final float SPECTRUM_GAIN = 4.0f;
+    private static final float SPECTRUM_GAIN = 12.0f;
     private static final float EPSILON = 0.001f;
-    private static final long MIN_RESUBMIT_INTERVAL_MS = 20L;
+    private static final long MIN_RESUBMIT_INTERVAL_MS = 8L;
     private static final int BEAT_PATTERN_STEPS = 24;
 
     private final CameraManager cameraManager;
     private String cameraId;
     private boolean hasTorchStrength;
     private int maxTorchStrength = 1;
+    private int detectedMaxTorchStrength = 1;
+    private boolean forceMultiIntensity = false;
 
     private TorchMode torchMode = TorchMode.AMPLITUDE;
 
@@ -49,6 +51,8 @@ public final class FlashlightEngine {
     private int lastLevel = -1;
     private long lastSubmitMs = 0L;
     private boolean torchActive = false;
+    private float smoothedIntensity = 0f;
+    private float prevTarget = 0f;
 
     public FlashlightEngine(Context context) {
         Context appContext = Objects.requireNonNull(context, "context").getApplicationContext();
@@ -81,11 +85,27 @@ public final class FlashlightEngine {
     }
 
     public synchronized int getTorchIntensityLevels() {
-        return hasTorchStrength ? Math.max(1, maxTorchStrength) : 1;
+        return (hasTorchStrength || forceMultiIntensity) ? Math.max(1, maxTorchStrength) : 1;
+    }
+
+    public synchronized int getCurrentLevel() {
+        return lastLevel;
     }
 
     public synchronized boolean hasVariableTorchStrength() {
-        return hasTorchStrength && maxTorchStrength > 1;
+        return (hasTorchStrength || forceMultiIntensity) && maxTorchStrength > 1;
+    }
+
+    public synchronized void setForceMultiIntensity(boolean force) {
+        this.forceMultiIntensity = force;
+        if (force) {
+            if (maxTorchStrength <= 1) {
+                maxTorchStrength = 255;
+            }
+        } else {
+            maxTorchStrength = detectedMaxTorchStrength;
+            hasTorchStrength = detectedMaxTorchStrength > 1;
+        }
     }
 
     private void initCamera() {
@@ -94,20 +114,34 @@ public final class FlashlightEngine {
         }
 
         try {
+            String bestCameraId = null;
+            int bestMaxStrength = 1;
+
             for (String id : cameraManager.getCameraIdList()) {
                 CameraCharacteristics chars = cameraManager.getCameraCharacteristics(id);
                 if (!supportsBackTorch(chars)) {
                     continue;
                 }
 
-                cameraId = id;
                 int max = readTorchStrengthLevel(chars);
-                if (max > 1) {
-                    hasTorchStrength = true;
-                    maxTorchStrength = max;
-                    Log.d(TAG, "Hardware supports torch strength up to: " + max);
+                Log.d(TAG, "Camera " + id + " supports torch strength: " + max);
+
+                if (bestCameraId == null || max > bestMaxStrength) {
+                    bestCameraId = id;
+                    bestMaxStrength = max;
                 }
-                return;
+            }
+
+            if (bestCameraId != null) {
+                cameraId = bestCameraId;
+                detectedMaxTorchStrength = bestMaxStrength;
+                if (bestMaxStrength > 1) {
+                    hasTorchStrength = true;
+                    maxTorchStrength = bestMaxStrength;
+                    Log.d(TAG, "Selected Camera " + cameraId + " with max torch strength: " + bestMaxStrength);
+                } else {
+                    Log.d(TAG, "Selected Camera " + cameraId + " (binary torch only)");
+                }
             }
         } catch (CameraAccessException e) {
             Log.e(TAG, "Failed to init camera for flashlight", e);
@@ -120,7 +154,8 @@ public final class FlashlightEngine {
         }
         Boolean hasFlash = chars.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
         Integer facing = chars.get(CameraCharacteristics.LENS_FACING);
-        return Boolean.TRUE.equals(hasFlash) && facing != null && facing == CameraCharacteristics.LENS_FACING_BACK;
+        return Boolean.TRUE.equals(hasFlash) && facing != null &&
+                (facing == CameraCharacteristics.LENS_FACING_BACK || facing == CameraCharacteristics.LENS_FACING_EXTERNAL);
     }
 
     @SuppressWarnings("unchecked")
@@ -129,6 +164,8 @@ public final class FlashlightEngine {
             return 1;
         }
 
+        // Use reflection to support FLASH_INFO_STRENGTH_MAX_LEVEL (API 33+)
+        // even when compiling against older SDKs.
         try {
             Object field = CameraCharacteristics.class.getField("FLASH_INFO_STRENGTH_MAX_LEVEL").get(null);
             if (field instanceof CameraCharacteristics.Key) {
@@ -188,10 +225,35 @@ public final class FlashlightEngine {
     }
 
     private void performAmplitudeFeedback(float rawPeak) {
-        float current = clamp(Math.max(0f, rawPeak) * SPECTRUM_GAIN, 0f, 1f);
+        // Balanced gain for better dynamic range
+        float rawTarget = clamp(Math.max(0f, rawPeak) * 16.0f, 0f, 1.2f);
+        
+        // Dynamic Gamma: steeper curve for lower intensities to make hits stand out
+        float target = (float) Math.pow(rawTarget, 2.2);
+
+        // Rhythmic boost: Add a derivative component to emphasize the "hits"
+        float delta = Math.max(0f, target - prevTarget);
+        float boostedTarget = target + delta * 2.5f; 
+        prevTarget = target;
+
+        // "Arc" Smoothing: Slow down the attack slightly to create a "build up" swell
+        // rather than an instant jump.
+        if (boostedTarget > smoothedIntensity) {
+            smoothedIntensity = smoothedIntensity * 0.45f + boostedTarget * 0.55f;
+        } else {
+            // Decay remains smooth
+            smoothedIntensity = smoothedIntensity * 0.75f + boostedTarget * 0.25f;
+        }
 
         if (hasVariableTorchStrength()) {
-            float normalized = clamp(current * amplitudeThresholdOrMultiplier, 0f, 1f);
+            // Slider acts as a threshold. Above it, we scale to full intensity range.
+            float threshold = amplitudeThresholdOrMultiplier * 0.5f; // Scale slider for better control
+            if (smoothedIntensity < threshold) {
+                stopFlashlightInternal();
+                return;
+            }
+            
+            float normalized = clamp((smoothedIntensity - threshold) / (1.0f - threshold), 0f, 1f);
             int level = Math.round(normalized * maxTorchStrength);
             if (level <= 0) {
                 stopFlashlightInternal();
@@ -201,7 +263,7 @@ public final class FlashlightEngine {
             return;
         }
 
-        if (current < amplitudeThresholdOrMultiplier) {
+        if (smoothedIntensity < amplitudeThresholdOrMultiplier) {
             stopFlashlightInternal();
             return;
         }
@@ -257,11 +319,25 @@ public final class FlashlightEngine {
 
     private static float[] buildBeatPattern() {
         float[] pattern = new float[BEAT_PATTERN_STEPS];
+        // Create an "Arc" envelope: Attack (20% of duration) -> Decay (80% of duration)
+        int attackSteps = Math.max(1, BEAT_PATTERN_STEPS / 5); 
+        
         for (int i = 0; i < BEAT_PATTERN_STEPS; i++) {
-            float progress = i / (float) (BEAT_PATTERN_STEPS - 1);
-            float inverted = 1f - progress;
-            pattern[i] = (float) Math.pow(inverted, 2.4f);
+            if (i < attackSteps) {
+                // Smooth quadratic attack for the "build up"
+                float progress = i / (float) attackSteps;
+                pattern[i] = (float) (1.0 - Math.pow(1.0 - progress, 2.0));
+            } else {
+                // Exponential decay for the "fade out"
+                float progress = (i - attackSteps) / (float) (BEAT_PATTERN_STEPS - 1 - attackSteps);
+                pattern[i] = (float) Math.pow(Math.E, -5.0 * progress);
+            }
         }
+        
+        // Ensure seamless start/end
+        pattern[0] = 0f;
+        pattern[BEAT_PATTERN_STEPS - 1] = 0f;
+
         return pattern;
     }
 
@@ -281,16 +357,33 @@ public final class FlashlightEngine {
 
         final long now = SystemClock.elapsedRealtime();
         boolean intervalPassed = (now - lastSubmitMs) >= MIN_RESUBMIT_INTERVAL_MS;
-        boolean significantChange = Math.abs(level - lastLevel) >= Math.max(1, maxTorchStrength / 15);
+        
+        // Zero deadzone for maximum smoothness in multi-intensity mode
+        int deadzone = (hasVariableTorchStrength()) ? 1 : 0;
+        boolean significantChange = Math.abs(level - lastLevel) >= deadzone;
 
         if (torchActive && !intervalPassed && !significantChange) {
             return;
         }
 
+        if (significantChange) {
+            Log.d(TAG, "Submitting torch level: " + level + " / " + maxTorchStrength + (forceMultiIntensity ? " (FORCED)" : ""));
+        }
+
         try {
             if (hasVariableTorchStrength()) {
                 if (Build.VERSION.SDK_INT >= 33) {
-                    cameraManager.turnOnTorchWithStrengthLevel(cameraId, Math.max(1, level));
+                    try {
+                        cameraManager.turnOnTorchWithStrengthLevel(cameraId, Math.max(1, level));
+                    } catch (IllegalArgumentException e) {
+                        Log.w(TAG, "Requested intensity " + level + " failed: " + e.getMessage());
+                        // If it fails because of range, try to automatically adjust maxTorchStrength down
+                        if (forceMultiIntensity && level > 1) {
+                            maxTorchStrength = Math.max(1, level - 1);
+                            Log.d(TAG, "Auto-adjusting max forced intensity to: " + maxTorchStrength);
+                        }
+                        cameraManager.setTorchMode(cameraId, true);
+                    }
                 } else {
                     cameraManager.setTorchMode(cameraId, true);
                 }
@@ -301,7 +394,7 @@ public final class FlashlightEngine {
             torchActive = true;
             lastLevel = level;
             lastSubmitMs = now;
-        } catch (CameraAccessException | IllegalArgumentException | SecurityException e) {
+        } catch (CameraAccessException | SecurityException e) {
             Log.w(TAG, "Failed to set torch level", e);
             torchActive = false;
         } catch (Throwable t) {
@@ -316,6 +409,8 @@ public final class FlashlightEngine {
     private void stopFlashlightInternal() {
         if (!torchActive) {
             lastLevel = 0;
+            smoothedIntensity = 0f;
+            prevTarget = 0f;
             return;
         }
 
@@ -329,6 +424,8 @@ public final class FlashlightEngine {
 
         torchActive = false;
         lastLevel = 0;
+        smoothedIntensity = 0f;
+        prevTarget = 0f;
         lastSubmitMs = SystemClock.elapsedRealtime();
     }
 

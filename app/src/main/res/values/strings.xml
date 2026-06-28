@@ -182,6 +182,8 @@
     <string name="overlay_height">Overlay Height</string>
     <string name="vertical_position">Vertical Position</string>
     <string name="dynamic_gain">Dynamic Gain</string>
+    <string name="flashlight_multi_intensity_forced_title">Flashlight Multi-Intensity</string>
+    <string name="flashlight_multi_intensity_forced_desc">Forces the flashlight to use multiple brightness levels even if not officially supported by the hardware. (Experimental)</string>
 
     <string name="profile">Profile</string>
     <string name="leaderboard_nickname">Leaderboard Nickname</string>

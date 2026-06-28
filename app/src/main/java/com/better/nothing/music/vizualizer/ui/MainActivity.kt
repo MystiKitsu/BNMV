@@ -366,6 +366,8 @@ class MainActivity : ComponentActivity() {
             it.setHapticMotorEnabled(viewModel.hapticMotorEnabled.value)
             it.setHapticMode(viewModel.hapticMode.value)
             it.setFlashlightEnabled(viewModel.flashlightEnabled.value)
+            it.setFlashlightMultiIntensityForced(viewModel.flashlightMultiIntensityForced.value)
+            viewModel.setFlashlightIntensityLevels(it.flashlightIntensityLevels)
             it.setIdleBreathingEnabled(viewModel.idleBreathingEnabled.value)
             it.setIdlePattern(viewModel.idlePattern.value)
             it.setNotificationFlashEnabled(viewModel.notificationFlashEnabled.value)
@@ -669,6 +671,7 @@ internal fun BetterVizApp(
                         val flashlightSpeedMs by viewModel.flashlightSpeedMs.collectAsStateWithLifecycle()
                         val flashlightBeatSensitivity by viewModel.flashlightBeatSensitivity.collectAsStateWithLifecycle()
                         val flashlightIntensityLevels by viewModel.flashlightIntensityLevels.collectAsStateWithLifecycle()
+                        val flashlightLevel by viewModel.flashlightLevel.collectAsStateWithLifecycle()
                         val isFlashlightBeatDetected by viewModel.isFlashlightBeatDetected.collectAsStateWithLifecycle()
 
                         FlashlightScreen(
@@ -699,6 +702,7 @@ internal fun BetterVizApp(
                                 )
                             },
                             flashlightIntensityLevels = flashlightIntensityLevels,
+                            flashlightCurrentLevel = flashlightLevel,
                             flashlightAmplitudeProvider = { viewModel.flashlightAmplitude.value },
                             isBeatDetectedProvider = { isFlashlightBeatDetected },
                             padding = padding
