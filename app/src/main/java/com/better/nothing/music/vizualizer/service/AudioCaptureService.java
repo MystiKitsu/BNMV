@@ -1551,148 +1551,204 @@ public class AudioCaptureService extends Service {
         int appliedHapticVersion = mHapticSettingsVersion.get();
 
         while (mCapturing && !Thread.currentThread().isInterrupted()) {
-            AudioProcessor.VisualizerConfig config = mVisualizerConfig;
-            int presetVersion = mPresetConfigVersion.get();
-            int latencyVersion = mLatencySettingsVersion.get();
-            int hapticVersion = mHapticSettingsVersion.get();
+            try {
+                AudioProcessor.VisualizerConfig config = mVisualizerConfig;
+                int presetVersion = mPresetConfigVersion.get();
+                int latencyVersion = mLatencySettingsVersion.get();
+                int hapticVersion = mHapticSettingsVersion.get();
 
-            if (config == null) {
-                return;
+                if (config == null) {
+                    SystemClock.sleep(100); // Wait for config to be loaded
+                    continue;
+                }
+
+                if (presetVersion != appliedPresetVersion || latencyVersion != appliedLatencyVersion || hapticVersion != appliedHapticVersion) {
+                    pendingFrames.clear();
+                    appliedPresetVersion = presetVersion;
+                    appliedLatencyVersion = latencyVersion;
+                    appliedHapticVersion = hapticVersion;
+
+                    mAudioProcessor.updateFFTSize(record.getSampleRate());
+                    float hzPerBin = mAudioProcessor.getHzPerBin();
+                    int currentFftSize = mAudioProcessor.getFFTSize();
+                    mHapticRange = new AudioProcessor.FrequencyRange(mHapticMinHz, mHapticMaxHz, hzPerBin, currentFftSize);
+                    mFlashlightRange = new AudioProcessor.FrequencyRange(mFlashlightMinHz, mFlashlightMaxHz, hzPerBin, currentFftSize);
+                    
+                    currentHopSize = Math.round(record.getSampleRate() / (float) FPS);
+                    hop = new short[currentHopSize];
+                }
+
+                int read = record.read(hop, 0, currentHopSize, AudioRecord.READ_BLOCKING);
+                if (read <= 0) {
+                    if (read == AudioRecord.ERROR_INVALID_OPERATION || read == AudioRecord.ERROR_BAD_VALUE) {
+                        Log.e(TAG, "AudioRecord read error: " + read);
+                        break;
+                    }
+                    continue;
+                }
+
+                AudioProcessor.AudioFrameResult result = mAudioProcessor.processAudioFrame(hop, config, mHapticRange, mCaptureSource != CaptureSource.MIC);
+                if (result == null) continue;
+
+                float flashlightPeak = 0f;
+                if (mFlashlightEnabled) {
+                    flashlightPeak = mAudioProcessor.computeRangeMagnitude(mFlashlightRange, result.magnitude);
+                }
+
+                if (presetVersion != mPresetConfigVersion.get() || config != mVisualizerConfig) continue;
+
+                int delay = mCaptureSource == CaptureSource.MIC ? 0 : mLatencyCompensationMs;
+                pendingFrames.addLast(new PendingFrame(
+                        result.uniqueMagnitudes,
+                        result.magnitude.clone(),
+                        result.hapticPeak,
+                        flashlightPeak,
+                        config,
+                        presetVersion,
+                        SystemClock.elapsedRealtime() + delay
+                ));
+                dispatchDueFrames(pendingFrames);
+            } catch (Exception e) {
+                Log.e(TAG, "Error in capture loop", e);
+                SystemClock.sleep(50); // Prevent tight error loop
             }
-
-            if (presetVersion != appliedPresetVersion || latencyVersion != appliedLatencyVersion || hapticVersion != appliedHapticVersion) {
-                pendingFrames.clear();
-                appliedPresetVersion = presetVersion;
-                appliedLatencyVersion = latencyVersion;
-                appliedHapticVersion = hapticVersion;
-
-                mAudioProcessor.updateFFTSize(record.getSampleRate());
-                float hzPerBin = mAudioProcessor.getHzPerBin();
-                int currentFftSize = mAudioProcessor.getFFTSize();
-                mHapticRange = new AudioProcessor.FrequencyRange(mHapticMinHz, mHapticMaxHz, hzPerBin, currentFftSize);
-                mFlashlightRange = new AudioProcessor.FrequencyRange(mFlashlightMinHz, mFlashlightMaxHz, hzPerBin, currentFftSize);
-                
-                currentHopSize = Math.round(record.getSampleRate() / (float) FPS);
-                hop = new short[currentHopSize];
-            }
-
-            int read = record.read(hop, 0, currentHopSize, AudioRecord.READ_BLOCKING);
-            if (read <= 0) continue;
-
-            AudioProcessor.AudioFrameResult result = mAudioProcessor.processAudioFrame(hop, config, mHapticRange, mCaptureSource != CaptureSource.MIC);
-            if (result == null) continue;
-
-            float flashlightPeak = 0f;
-            if (mFlashlightEnabled) {
-                flashlightPeak = mAudioProcessor.computeRangeMagnitude(mFlashlightRange, result.magnitude);
-            }
-
-            if (presetVersion != mPresetConfigVersion.get() || config != mVisualizerConfig) continue;
-
-            int delay = mCaptureSource == CaptureSource.MIC ? 0 : mLatencyCompensationMs;
-            pendingFrames.addLast(new PendingFrame(
-                    result.uniqueMagnitudes,
-                    result.magnitude.clone(),
-                    result.hapticPeak,
-                    flashlightPeak,
-                    config,
-                    presetVersion,
-                    SystemClock.elapsedRealtime() + delay
-            ));
-            dispatchDueFrames(pendingFrames);
         }
     }
 
     private void dispatchDueFrames(ArrayDeque<PendingFrame> pendingFrames) {
+        if (pendingFrames == null) return;
         long nowMs = SystemClock.elapsedRealtime();
         while (!pendingFrames.isEmpty()) {
-            PendingFrame pendingFrame = pendingFrames.peekFirst();
-            if (pendingFrame == null || pendingFrame.dueAtMs > nowMs) {
-                return;
-            }
-            pendingFrames.removeFirst();
-
-            synchronized (mFftLock) {
-                mLatestMagnitudes = pendingFrame.magnitude;
-            }
-
-            if (mOverlayView != null) {
-                mOverlayView.updateMagnitudes(pendingFrame.magnitude);
-            }
-
-            if (mHapticEnabled) {
-                if (mHapticMode == HapticMode.BASS_TO_AMPLITUDE) {
-                    mContinuousHapticEngine.performHapticFeedback(pendingFrame.hapticPeak, pendingFrame.config);
-                } else {
-                    mBeatDetectionEngine.performHapticFeedback(pendingFrame.magnitude, mHapticRange);
+            try {
+                PendingFrame pendingFrame = pendingFrames.peekFirst();
+                if (pendingFrame == null || pendingFrame.dueAtMs > nowMs) {
+                    return;
                 }
-            }
+                pendingFrames.removeFirst();
 
-            if (mFlashlightEnabled && mFlashlightEngine != null) {
-                mFlashlightEngine.performFlashlightFeedback(
-                        pendingFrame.flashlightPeak,
-                        pendingFrame.config,
-                        pendingFrame.magnitude,
-                        mFlashlightRange != null ? mFlashlightRange.binLo : 0,
-                        mFlashlightRange != null ? mFlashlightRange.binHi : 0
-                );
-            }
+                synchronized (mFftLock) {
+                    mLatestMagnitudes = pendingFrame.magnitude;
+                }
 
-            processFrame(pendingFrame.uniqueMagnitudes, pendingFrame.hapticPeak, pendingFrame.config, pendingFrame.configVersion);
+                if (mOverlayView != null) {
+                    try {
+                        mOverlayView.updateMagnitudes(pendingFrame.magnitude);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error updating overlay magnitudes", e);
+                    }
+                }
+
+                if (mHapticEnabled) {
+                    try {
+                        if (mHapticMode == HapticMode.BASS_TO_AMPLITUDE) {
+                            if (mContinuousHapticEngine != null) {
+                                mContinuousHapticEngine.performHapticFeedback(pendingFrame.hapticPeak, pendingFrame.config);
+                            }
+                        } else {
+                            if (mBeatDetectionEngine != null) {
+                                mBeatDetectionEngine.performHapticFeedback(pendingFrame.magnitude, mHapticRange);
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error performing haptic feedback", e);
+                    }
+                }
+
+                if (mFlashlightEnabled && mFlashlightEngine != null) {
+                    try {
+                        mFlashlightEngine.performFlashlightFeedback(
+                                pendingFrame.flashlightPeak,
+                                pendingFrame.config,
+                                pendingFrame.magnitude,
+                                mFlashlightRange != null ? mFlashlightRange.binLo : 0,
+                                mFlashlightRange != null ? mFlashlightRange.binHi : 0
+                        );
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error performing flashlight feedback", e);
+                    }
+                }
+
+                processFrame(pendingFrame.uniqueMagnitudes, pendingFrame.hapticPeak, pendingFrame.config, pendingFrame.configVersion);
+            } catch (Exception e) {
+                Log.e(TAG, "Error dispatching frame", e);
+                if (!pendingFrames.isEmpty()) pendingFrames.removeFirst();
+            }
         }
     }
 
     private void processFrame(float[] uniqueMagnitudes, float hapticPeak, AudioProcessor.VisualizerConfig config, int configVersion) {
         if (config == null || configVersion != mPresetConfigVersion.get()) return;
 
-        long now = SystemClock.elapsedRealtime();
-        
-        float gain = mGlyphRenderer.getSpectrumGain();
-
-        boolean hasActivity = false;
-        for (float mag : uniqueMagnitudes) {
-            if (mag * gain > 0.002f) {
-                hasActivity = true;
-                break;
-            }
-        }
-        if (!hasActivity && hapticPeak * gain > 0.002f) hasActivity = true;
-
-        if (hasActivity) {
-            mLastAudioActivityMs = now;
-            if (!mSessionOpen) ensureGlyphSession();
-        } else {
-            if (mDisableGlyphsWhenSilent && mSessionOpen && (now - mLastAudioActivityMs > 2000)) {
-                clearGlyphSession();
-            }
-        }
-
-        if (now - mLastSendMs < MIN_SEND_INTERVAL_MS) return;
-
-        // Apply local gain directly to uniqueMagnitudes before renderer
-        float[] boostedMagnitudes = new float[uniqueMagnitudes.length];
-        for (int i = 0; i < uniqueMagnitudes.length; i++) boostedMagnitudes[i] = uniqueMagnitudes[i] * gain;
-
-        // The renderer's own spectrumGain will be 1.0 because we've applied it here
-        // We temporarily swap it to ensure processFrame works as expected
-        float originalRendererGain = mGlyphRenderer.getSpectrumGain();
-        mGlyphRenderer.setSpectrumGain(1.0f);
-        int[] frameColors = mGlyphRenderer.processFrame(boostedMagnitudes, config, now);
-        mGlyphRenderer.setSpectrumGain(originalRendererGain);
-
-        if (frameColors == null) return;
-
-        if (!canPushGlyphFrames()) return;
-
         try {
-            if (DeviceProfile.getMatrixWidth(mSelectedDevice) > 0) {
-                if (mGMM != null) mGMM.setAppMatrixFrame(frameColors); //Thank you Frank
-            } else {
-                mGM.setFrameColors(frameColors);
+            long now = SystemClock.elapsedRealtime();
+            
+            float gain = mGlyphRenderer.getSpectrumGain();
+
+            boolean hasActivity = false;
+            for (float mag : uniqueMagnitudes) {
+                if (mag * gain > 0.002f) {
+                    hasActivity = true;
+                    break;
+                }
             }
-            mLastSendMs = now;
+            if (!hasActivity && hapticPeak * gain > 0.002f) hasActivity = true;
+
+            if (hasActivity) {
+                mLastAudioActivityMs = now;
+                if (!mSessionOpen) ensureGlyphSession();
+            } else {
+                if (mDisableGlyphsWhenSilent && mSessionOpen && (now - mLastAudioActivityMs > 2000)) {
+                    clearGlyphSession();
+                }
+            }
+
+            if (now - mLastSendMs < MIN_SEND_INTERVAL_MS) return;
+
+            // Apply local gain directly to uniqueMagnitudes before renderer
+            float[] boostedMagnitudes = new float[uniqueMagnitudes.length];
+            for (int i = 0; i < uniqueMagnitudes.length; i++) boostedMagnitudes[i] = uniqueMagnitudes[i] * gain;
+
+            // The renderer's own spectrumGain will be 1.0 because we've applied it here
+            // We temporarily swap it to ensure processFrame works as expected
+            float originalRendererGain = mGlyphRenderer.getSpectrumGain();
+            mGlyphRenderer.setSpectrumGain(1.0f);
+            int[] frameColors = null;
+            try {
+                frameColors = mGlyphRenderer.processFrame(boostedMagnitudes, config, now);
+            } catch (Exception e) {
+                Log.e(TAG, "GlyphRenderer.processFrame failed", e);
+            } finally {
+                mGlyphRenderer.setSpectrumGain(originalRendererGain);
+            }
+
+            if (frameColors == null) return;
+
+            if (!canPushGlyphFrames()) return;
+
+            try {
+                if (DeviceProfile.getMatrixWidth(mSelectedDevice) > 0) {
+                    if (mGMM != null) {
+                        try {
+                            mGMM.setAppMatrixFrame(frameColors); //Thank you Frank
+                        } catch (GlyphException e) {
+                            Log.w(TAG, "Failed to push matrix frame colors", e);
+                        }
+                    }
+                } else {
+                    if (mGM != null) {
+                        try {
+                            mGM.setFrameColors(frameColors);
+                        } catch (GlyphException e) {
+                            Log.w(TAG, "Failed to push glyph frame colors", e);
+                        }
+                    }
+                }
+                mLastSendMs = now;
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to push frame colors", e);
+            }
         } catch (Exception e) {
-            Log.w(TAG, "Failed to push frame colors", e);
+            Log.e(TAG, "processFrame fatal error", e);
         }
     }
 
@@ -1919,16 +1975,49 @@ public class AudioCaptureService extends Service {
     }
 
     private void ensureGlyphSession() {
-        if (mGM == null || mSessionOpen) return;
-        try { mGM.openSession(); mSessionOpen = true; } catch (GlyphException ignored) {}
+        if (mGM == null) {
+            Log.w(TAG, "ensureGlyphSession: GlyphManager is null");
+            return;
+        }
+        if (mSessionOpen) return;
+        
+        try { 
+            Log.d(TAG, "Opening Glyph session...");
+            mGM.openSession(); 
+            mSessionOpen = true; 
+            Log.d(TAG, "Glyph session opened successfully");
+        } catch (GlyphException e) {
+            Log.e(TAG, "Failed to open Glyph session", e);
+            mSessionOpen = false;
+        } catch (Exception e) {
+            Log.e(TAG, "Unexpected error opening Glyph session", e);
+            mSessionOpen = false;
+        }
     }
 
     private void clearGlyphSession() {
-        turnOffGlyphs();
-        if (mGM != null && mSessionOpen) {
-            try { mGM.closeSession(); } catch (GlyphException ignored) {}
-            try { mGMM.closeAppMatrix(); } catch (GlyphException ignored) {}
-            mSessionOpen = false;
+        try {
+            turnOffGlyphs();
+            if (mGM != null && mSessionOpen) {
+                Log.d(TAG, "Closing Glyph session...");
+                try { 
+                    mGM.closeSession(); 
+                } catch (GlyphException e) {
+                    Log.e(TAG, "Error closing Glyph session", e);
+                }
+                
+                if (mGMM != null) {
+                    try { 
+                        mGMM.closeAppMatrix(); 
+                    } catch (GlyphException e) {
+                        Log.e(TAG, "Error closing Glyph Matrix app matrix", e);
+                    }
+                }
+                mSessionOpen = false;
+                Log.d(TAG, "Glyph session cleared");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Unexpected error in clearGlyphSession", e);
         }
     }
 

@@ -2,6 +2,7 @@ package com.better.nothing.music.vizualizer.logic;
 
 import com.better.nothing.music.vizualizer.model.DeviceProfile;
 
+import android.util.Log;
 import java.util.Arrays;
 
 /**
@@ -94,43 +95,53 @@ public class GlyphRenderer {
     }
 
     public int[] processFrame(float[] uniqueMagnitudes, AudioProcessor.VisualizerConfig config, long nowMs) {
-        if (config == null) {
+        if (config == null || uniqueMagnitudes == null) {
             return new int[0];
         }
 
-        int hardwareCount = DeviceProfile.getLedCount(mDeviceType);
-        int zoneCount = Math.max(config.zones.length, hardwareCount);
+        try {
+            int hardwareCount = DeviceProfile.getLedCount(mDeviceType);
+            int zoneCount = Math.max(config.zones.length, hardwareCount);
 
-        ensureStateArrays(zoneCount, config.uniqueRanges.length);
+            ensureStateArrays(zoneCount, config.uniqueRanges.length);
 
-        float[] nextLightState = computeNextLightState(uniqueMagnitudes, config, zoneCount);
+            float[] nextLightState = computeNextLightState(uniqueMagnitudes, config, zoneCount);
+            if (nextLightState == null) return new int[0];
 
-        // Apply gamma to music state FIRST, before idle breathing, so breathing bypasses gamma
-        for (int i = 0; i < nextLightState.length; i++) {
-            nextLightState[i] = applyGamma(nextLightState[i]);
-        }
-
-        applyIdleBreathing(nextLightState, uniqueMagnitudes, nowMs);
-
-        if (mStrobeEnabled) {
-            boolean phase = (nowMs / 10) % 2 == 0;
+            // Apply gamma to music state FIRST, before idle breathing, so breathing bypasses gamma
             for (int i = 0; i < nextLightState.length; i++) {
-                if ((i % 2 == 0) != phase) {
-                    nextLightState[i] = 0;
+                nextLightState[i] = applyGamma(nextLightState[i]);
+            }
+
+            try {
+                applyIdleBreathing(nextLightState, uniqueMagnitudes, nowMs);
+            } catch (Exception e) {
+                Log.e("GlyphRenderer", "Error applying idle breathing", e);
+            }
+
+            if (mStrobeEnabled) {
+                boolean phase = (nowMs / 10) % 2 == 0;
+                for (int i = 0; i < nextLightState.length; i++) {
+                    if ((i % 2 == 0) != phase) {
+                        nextLightState[i] = 0;
+                    }
                 }
             }
+
+            System.arraycopy(nextLightState, 0, mCurrentLightState, 0, Math.min(nextLightState.length, mCurrentLightState.length));
+
+            int[] frameColors = buildFrameColors(nextLightState, zoneCount);
+            int frameHash = Arrays.hashCode(frameColors);
+            if (frameHash == mLastHash) {
+                return null; // No change
+            }
+
+            mLastHash = frameHash;
+            return frameColors;
+        } catch (Exception e) {
+            Log.e("GlyphRenderer", "processFrame failed", e);
+            return new int[0];
         }
-
-        System.arraycopy(nextLightState, 0, mCurrentLightState, 0, nextLightState.length);
-
-        int[] frameColors = buildFrameColors(nextLightState, zoneCount);
-        int frameHash = Arrays.hashCode(frameColors);
-        if (frameHash == mLastHash) {
-            return null; // No change
-        }
-
-        mLastHash = frameHash;
-        return frameColors;
     }
 
     public float[] getCurrentLightState() {
@@ -138,30 +149,38 @@ public class GlyphRenderer {
     }
 
     private float[] computeNextLightState(float[] uniqueMagnitudes, AudioProcessor.VisualizerConfig config, int totalCount) {
-        float[] decayedFrequencyState = computeDecayedFrequencyState(uniqueMagnitudes, config);
-        float[] nextState = new float[totalCount];
+        try {
+            float[] decayedFrequencyState = computeDecayedFrequencyState(uniqueMagnitudes, config);
+            float[] nextState = new float[totalCount];
 
-        for (int i = 0; i < config.zones.length; i++) {
-            float rawZonePeak = 0f;
-            int[] overlappingRanges = config.zoneToRangeIndices[i];
-            for (int rangeIndex : overlappingRanges) {
-                if (rangeIndex >= 0 && rangeIndex < decayedFrequencyState.length) {
-                    rawZonePeak = Math.max(rawZonePeak, decayedFrequencyState[rangeIndex]);
+            int zonesToProcess = Math.min(config.zones.length, mZonePeaks.length);
+            for (int i = 0; i < zonesToProcess; i++) {
+                float rawZonePeak = 0f;
+                int[] overlappingRanges = config.zoneToRangeIndices[i];
+                if (overlappingRanges != null) {
+                    for (int rangeIndex : overlappingRanges) {
+                        if (rangeIndex >= 0 && rangeIndex < decayedFrequencyState.length) {
+                            rawZonePeak = Math.max(rawZonePeak, decayedFrequencyState[rangeIndex]);
+                        }
+                    }
                 }
+
+                mZonePeaks[i] = Math.max(rawZonePeak, mZonePeaks[i] * PEAK_FALLOFF);
+                if (mZonePeaks[i] < EPSILON) {
+                    mZonePeaks[i] = EPSILON;
+                }
+
+                float normalized = rawZonePeak / mZonePeaks[i];
+                float shaped = normalized * normalized;
+                float mapped = applyPercentSlice(shaped, config.zones[i]);
+                nextState[i] = mapped < EPSILON ? 0f : mapped;
             }
 
-            mZonePeaks[i] = Math.max(rawZonePeak, mZonePeaks[i] * PEAK_FALLOFF);
-            if (mZonePeaks[i] < EPSILON) {
-                mZonePeaks[i] = EPSILON;
-            }
-
-            float normalized = rawZonePeak / mZonePeaks[i];
-            float shaped = normalized * normalized;
-            float mapped = applyPercentSlice(shaped, config.zones[i]);
-            nextState[i] = mapped < EPSILON ? 0f : mapped;
+            return nextState;
+        } catch (Exception e) {
+            Log.e("GlyphRenderer", "computeNextLightState failed", e);
+            return new float[totalCount];
         }
-
-        return nextState;
     }
 
     private float[] computeDecayedFrequencyState(float[] uniqueMagnitudes, AudioProcessor.VisualizerConfig config) {

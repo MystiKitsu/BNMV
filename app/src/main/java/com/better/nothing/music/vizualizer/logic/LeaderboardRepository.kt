@@ -1,5 +1,6 @@
 package com.better.nothing.music.vizualizer.logic
 
+import android.util.Log
 import com.better.nothing.music.vizualizer.model.LeaderboardEntry
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -17,21 +18,52 @@ class LeaderboardRepository {
         val query = database.orderByChild("totalTimeMs").limitToLast(limit)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val entries = snapshot.children.mapNotNull { 
-                    it.getValue(LeaderboardEntry::class.java)
-                }.reversed() // orderByChild is ascending
-                trySend(entries)
+                try {
+                    val entries = snapshot.children.mapNotNull { 
+                        try {
+                            it.getValue(LeaderboardEntry::class.java)
+                        } catch (e: Exception) {
+                            Log.e("LeaderboardRepo", "Error parsing leaderboard entry", e)
+                            null
+                        }
+                    }.reversed() // orderByChild is ascending
+                    trySend(entries)
+                } catch (e: Exception) {
+                    Log.e("LeaderboardRepo", "Error processing leaderboard snapshot", e)
+                    trySend(emptyList())
+                }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                close(error.toException())
+                Log.e("LeaderboardRepo", "onCancelled: ${error.message}")
+                if (!isClosedForSend) {
+                    close(error.toException())
+                }
             }
         }
-        query.addValueEventListener(listener)
-        awaitClose { query.removeEventListener(listener) }
+        try {
+            query.addValueEventListener(listener)
+        } catch (e: Exception) {
+            Log.e("LeaderboardRepo", "Failed to add leaderboard listener", e)
+            close(e)
+        }
+        awaitClose { 
+            try {
+                query.removeEventListener(listener)
+            } catch (e: Exception) {
+                Log.e("LeaderboardRepo", "Error removing leaderboard listener", e)
+            }
+        }
     }
 
     suspend fun updateScore(entry: LeaderboardEntry) {
-        database.child(entry.userId).setValue(entry).await()
+        try {
+            Log.d("LeaderboardRepo", "Updating score for user: ${entry.userId}")
+            database.child(entry.userId).setValue(entry).await()
+            Log.d("LeaderboardRepo", "Score updated successfully")
+        } catch (e: Exception) {
+            Log.e("LeaderboardRepo", "Failed to update score for user: ${entry.userId}", e)
+            throw e
+        }
     }
 }

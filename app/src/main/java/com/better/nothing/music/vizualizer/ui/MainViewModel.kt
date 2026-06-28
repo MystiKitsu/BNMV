@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.tasks.await
+import org.json.JSONException
 import org.json.JSONObject
 import rikka.shizuku.Shizuku
 import java.io.File
@@ -212,19 +213,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun downloadAndInstallUpdate(apkUrl: String, versionName: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            var connection: HttpURLConnection? = null
             try {
+                Log.d("MainViewModel", "Starting update download from $apkUrl")
                 val url = URL(apkUrl)
-                val connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 10000
-                connection.readTimeout = 30000
+                connection = url.openConnection() as HttpURLConnection
+                connection.connectTimeout = 15000
+                connection.readTimeout = 60000
 
-                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                val responseCode = connection.responseCode
+                if (responseCode == HttpURLConnection.HTTP_OK) {
                     val fileLength = connection.contentLength
                     val destinationFile = File(ctx.externalCacheDir, "update_$versionName.apk")
+                    
+                    if (destinationFile.exists()) {
+                        destinationFile.delete()
+                    }
 
                     connection.inputStream.use { input ->
                         FileOutputStream(destinationFile).use { output ->
-                            val buffer = ByteArray(8192)
+                            val buffer = ByteArray(16384)
                             var bytesRead: Int
                             var totalBytesRead = 0L
 
@@ -239,21 +247,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
 
-                    withContext(Dispatchers.Main) {
-                        installApk(destinationFile)
+                    if (destinationFile.exists() && destinationFile.length() > 0) {
+                        Log.d("MainViewModel", "Update downloaded successfully to ${destinationFile.absolutePath}")
+                        withContext(Dispatchers.Main) {
+                            installApk(destinationFile)
+                        }
+                    } else {
+                        throw Exception("Downloaded file is missing or empty")
                     }
                 } else {
+                    Log.e("MainViewModel", "Download failed with HTTP $responseCode")
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(ctx, "Download failed: ${connection.responseCode}", Toast.LENGTH_SHORT).show()
-                        _appUpdateStatus.value = AppUpdateStatus.Error("Download failed")
+                        Toast.makeText(ctx, "Download failed: HTTP $responseCode", Toast.LENGTH_SHORT).show()
+                        _appUpdateStatus.value = AppUpdateStatus.Error("Download failed: HTTP $responseCode")
                     }
                 }
             } catch (e: Exception) {
-                Log.e("MainViewModel", "Download failed", e)
+                Log.e("MainViewModel", "Download failed with error", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(ctx, "Download error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    _appUpdateStatus.value = AppUpdateStatus.Error(e.message ?: "Unknown error")
+                    val errorMsg = e.message ?: "Unknown download error"
+                    Toast.makeText(ctx, "Download error: $errorMsg", Toast.LENGTH_SHORT).show()
+                    _appUpdateStatus.value = AppUpdateStatus.Error(errorMsg)
                 }
+            } finally {
+                connection?.disconnect()
             }
         }
     }
@@ -317,22 +334,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun checkRemoteConfigVersion() {
         viewModelScope.launch(Dispatchers.IO) {
+            var connection: HttpURLConnection? = null
             try {
+                Log.d("MainViewModel", "Checking remote config version...")
                 val url =
                     URL("https://raw.githubusercontent.com/Aleks-Levet/better-nothing-music-visualizer/main/zones.config?t=${System.currentTimeMillis()}")
-                val connection = url.openConnection() as HttpURLConnection
+                connection = url.openConnection() as HttpURLConnection
                 connection.useCaches = false
                 connection.connectTimeout = 5000
                 connection.readTimeout = 5000
 
-                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                val responseCode = connection.responseCode
+                if (responseCode == HttpURLConnection.HTTP_OK) {
                     val content = connection.inputStream.bufferedReader().use { it.readText() }
+                    if (content.isBlank()) {
+                        Log.w("MainViewModel", "Remote config content is empty")
+                        return@launch
+                    }
                     val json = JSONObject(content)
                     val remoteVersion = json.optString("version", "Unknown")
+                    Log.d("MainViewModel", "Remote config version: $remoteVersion")
                     _remoteConfigVersion.value = remoteVersion
+                } else {
+                    Log.w("MainViewModel", "Failed to check remote version: HTTP $responseCode")
                 }
             } catch (e: Exception) {
                 Log.e("MainViewModel", "Failed to check remote version", e)
+            } finally {
+                connection?.disconnect()
             }
         }
     }
@@ -423,22 +452,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     private suspend fun performUpdateAction(): Boolean {
         // This runs on Dispatchers.IO (called from withContext(IO) above)
+        var connection: HttpURLConnection? = null
         return try {
+            Log.d("MainViewModel", "Performing zones.config update...")
             val url = URL("https://raw.githubusercontent.com/Aleks-Levet/better-nothing-music-visualizer/main/zones.config?t=${System.currentTimeMillis()}")
-            val connection = withContext(Dispatchers.IO) {
+            connection = withContext(Dispatchers.IO) {
                 url.openConnection()
             } as HttpURLConnection
             connection.useCaches = false
             connection.connectTimeout = 10000
             connection.readTimeout = 10000
 
-            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+            val responseCode = connection.responseCode
+            if (responseCode == HttpURLConnection.HTTP_OK) {
                 val content = connection.inputStream.bufferedReader().use { it.readText() }
+                if (content.isBlank()) {
+                    throw Exception("Downloaded content is empty")
+                }
+                
                 // Basic validation
-                JSONObject(content)
+                try {
+                    JSONObject(content)
+                } catch (e: Exception) {
+                    throw Exception("Invalid JSON format in zones.config")
+                }
 
                 val file = File(ctx.filesDir, "zones.config")
                 file.writeText(content)
+                Log.d("MainViewModel", "zones.config updated and saved to ${file.absolutePath}")
 
                 // Refresh presets (file IO)
                 refreshPresetsInternal()
@@ -451,16 +492,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 MainActivity.serviceStatic?.reloadConfig()
                 true
             } else {
+                Log.e("MainViewModel", "Update failed with HTTP $responseCode")
                 withContext(Dispatchers.Main) {
-                    _configUpdateStatus.value = ConfigUpdateStatus.Error(ctx.getString(R.string.config_download_error, connection.responseCode))
+                    _configUpdateStatus.value = ConfigUpdateStatus.Error(ctx.getString(R.string.config_download_error, responseCode))
                 }
                 false
             }
         } catch (e: Exception) {
+            Log.e("MainViewModel", "Error during performUpdateAction", e)
             withContext(Dispatchers.Main) {
                 _configUpdateStatus.value = ConfigUpdateStatus.Error(ctx.getString(R.string.config_error_updating, e.message))
             }
             false
+        } finally {
+            connection?.disconnect()
         }
     }
     fun updateProfilePicture(uri: android.net.Uri) {
@@ -1477,20 +1522,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refreshPresetsInternal() {
-        val json = AudioCaptureService.loadZonesConfigText(ctx)
-        if (json != null) {
-            val root = JSONObject(json)
-            val version = root.optString("version", "Unknown")
-            _configVersion.value = version
-            
-            // If it's a "simple" fallback config, don't show any presets in the UI
-            // to encourage the user to update to the full version.
-            if (version.contains(".simple")) {
-                _presetInfos.value = emptyList()
+        try {
+            val json = AudioCaptureService.loadZonesConfigText(ctx)
+            if (json != null) {
+                try {
+                    val root = JSONObject(json)
+                    val version = root.optString("version", "Unknown")
+                    _configVersion.value = version
+                    
+                    // If it's a "simple" fallback config, don't show any presets in the UI
+                    // to encourage the user to update to the full version.
+                    if (version.contains(".simple")) {
+                        Log.d("MainViewModel", "Simple config detected (v$version), clearing preset list")
+                        _presetInfos.value = emptyList()
+                    } else {
+                        val list = AudioCaptureService.loadPresetInfos(ctx, selectedDevice.value)
+                        Log.d("MainViewModel", "Loaded ${list.size} presets from zones.config (v$version)")
+                        _presetInfos.value = list
+                    }
+                } catch (e: JSONException) {
+                    Log.e("MainViewModel", "Invalid JSON in zones.config", e)
+                    _configVersion.value = "Invalid JSON"
+                    _presetInfos.value = emptyList()
+                }
             } else {
-                val list = AudioCaptureService.loadPresetInfos(ctx, selectedDevice.value)
-                _presetInfos.value = list
+                Log.w("MainViewModel", "zones.config text is null")
+                _configVersion.value = "Missing"
+                _presetInfos.value = emptyList()
             }
+        } catch (e: Exception) {
+            Log.e("MainViewModel", "Failed to refresh presets internally", e)
+            _presetInfos.value = emptyList()
         }
     }
 

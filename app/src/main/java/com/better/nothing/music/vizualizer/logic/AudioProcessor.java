@@ -1,5 +1,6 @@
 package com.better.nothing.music.vizualizer.logic;
 
+import android.util.Log;
 import org.jtransforms.fft.DoubleFFT_1D;
 
 /**
@@ -81,10 +82,17 @@ public class AudioProcessor {
     }
 
     public AudioFrameResult processAudioFrame(short[] hopBuffer, VisualizerConfig config, FrequencyRange hapticRange, boolean isInternalSource) {
+        if (hopBuffer == null || ring == null || hann == null || fftData == null) {
+            Log.e("AudioProcessor", "processAudioFrame: One or more buffers are null");
+            return null;
+        }
+
         // Fill ring buffer
         for (short value : hopBuffer) {
-            ring[ringPosition] = value / 32768f;
-            ringPosition = (ringPosition + 1) % analysisWindow;
+            if (ringPosition >= 0 && ringPosition < ring.length) {
+                ring[ringPosition] = value / 32768f;
+                ringPosition = (ringPosition + 1) % analysisWindow;
+            }
         }
         filled = Math.min(filled + hopBuffer.length, analysisWindow);
 
@@ -92,15 +100,31 @@ public class AudioProcessor {
             return null; // Not enough data yet
         }
 
+        if (fftSize <= 0) {
+            Log.e("AudioProcessor", "fftSize is 0 or negative");
+            return null;
+        }
+
         // Process FFT
         // We use realForwardFull which expects real input in the first half of the array
         // and produces complex output in the full array (interleaved).
         for (int i = 0; i < fftSize; i++) {
-            fftData[i] = ring[(ringPosition + i) % analysisWindow] * hann[i];
+            if (i < fftData.length && i < hann.length) {
+                fftData[i] = ring[(ringPosition + i) % analysisWindow] * hann[i];
+            }
         }
 
-        fft.realForwardFull(fftData);
-        for (int i = 0; i <= fftSize / 2; i++) {
+        try {
+            fft.realForwardFull(fftData);
+        } catch (Exception e) {
+            Log.e("AudioProcessor", "FFT processing failed", e);
+            return null;
+        }
+        
+        int halfFftSize = fftSize / 2;
+        for (int i = 0; i <= halfFftSize; i++) {
+            if (2 * i + 1 >= fftData.length) break;
+            
             double re = fftData[2 * i];
             double im = fftData[2 * i + 1];
             // Normalize magnitude by fftSize
@@ -126,9 +150,13 @@ public class AudioProcessor {
                     // Smooth the gain changes to prevent flickering
                     mAutoGain = (mAutoGain * (1f - GAIN_SMOOTHING)) + (desiredGain * GAIN_SMOOTHING);
                 }
-                magnitude[i] = rawMag * mAutoGain;
+                if (i < magnitude.length) {
+                    magnitude[i] = rawMag * mAutoGain;
+                }
             } else {
-                magnitude[i] = rawMag;
+                if (i < magnitude.length) {
+                    magnitude[i] = rawMag;
+                }
             }
         }
 

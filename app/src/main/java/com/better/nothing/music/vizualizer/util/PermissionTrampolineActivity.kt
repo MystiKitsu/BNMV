@@ -65,7 +65,16 @@ class PermissionTrampolineActivity : ComponentActivity() {
             return
         }
 
-        projectionLauncher.launch(projectionManager.createScreenCaptureIntent())
+        try {
+            projectionLauncher.launch(projectionManager.createScreenCaptureIntent())
+        } catch (e: Exception) {
+            analytics.logError("projection_launch_failed", e.message ?: "Unknown")
+            // Fallback to MainActivity if possible
+            val intent = Intent(this, MainActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            finish()
+        }
     }
     
     private fun getDefaultPreset(): String {
