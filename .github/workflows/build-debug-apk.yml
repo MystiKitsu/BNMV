@@ -38,13 +38,12 @@ jobs:
         distribution: 'temurin'
 
     - name: Build Debug APK
-      run: ./gradlew assembleGithubDebug assembleGooglePlayDebug
+      run: ./gradlew assembleDebug
 
     - name: Prepare Artifacts
       run: |
         mkdir -p artifacts
-        find app/build/outputs/apk/github/debug -name "*.apk" ! -name "*-androidTest.apk" -exec cp {} artifacts/app-github-debug.apk \;
-        find app/build/outputs/apk/googlePlay/debug -name "*.apk" ! -name "*-androidTest.apk" -exec cp {} artifacts/app-googleplay-debug.apk \;
+        find app/build/outputs/apk/debug -name "*.apk" ! -name "*-androidTest.apk" -exec cp {} artifacts/app-debug.apk \;
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4

@@ -19,18 +19,6 @@ android {
         buildConfigField "boolean", "SHOW_SHIZUKU", "true"
     }
 
-    flavorDimensions = ["distribution"]
-    productFlavors {
-        googlePlay {
-            dimension "distribution"
-            buildConfigField "boolean", "SHOW_SHIZUKU", "false"
-        }
-        github {
-            dimension "distribution"
-            buildConfigField "boolean", "SHOW_SHIZUKU", "true"
-        }
-    }
-
     buildTypes {
         release {
             minifyEnabled true
