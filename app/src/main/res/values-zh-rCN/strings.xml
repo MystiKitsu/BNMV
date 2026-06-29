@@ -133,8 +133,10 @@
     <string name="idle_pattern_pulse">脉冲</string>
     <string name="idle_pattern_wave">波形</string>
     <string name="idle_pattern_cylon">赛隆</string>
-    <string name="idle_pattern_static">静态</string>
     <string name="idle_pattern_zebra">斑马纹</string>
+    <string name="idle_pattern_heartbeat">心跳</string>
+    <string name="idle_pattern_orbit">轨道</string>
+    <string name="idle_pattern_rain">雨</string>
     <string name="strobe_mode">频闪模式</string>
     <string name="strobe_mode_desc">Glyph 的交替闪烁模式</string>
     <string name="developer_access">开发者权限</string>

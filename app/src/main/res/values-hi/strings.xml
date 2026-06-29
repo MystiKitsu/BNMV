@@ -129,8 +129,10 @@
     <string name="idle_pattern_pulse">पल्स</string>
     <string name="idle_pattern_wave">वेव</string>
     <string name="idle_pattern_cylon">सिलोन</string>
-    <string name="idle_pattern_static">स्टेटिक</string>
     <string name="idle_pattern_zebra">जेब्रा</string>
+    <string name="idle_pattern_heartbeat">दिल की धड़कन</string>
+    <string name="idle_pattern_orbit">ऑर्बिट</string>
+    <string name="idle_pattern_rain">बारिश</string>
     <string name="strobe_mode">स्ट्रोब मोड</string>
     <string name="strobe_mode_desc">ग्लिफ़ के लिए वैकल्पिक फ्लैश पैटर्न</string>
     <string name="developer_access">डेवलपर एक्सेस</string>

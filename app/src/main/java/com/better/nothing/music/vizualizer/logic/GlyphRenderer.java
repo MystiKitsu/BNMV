@@ -252,7 +252,29 @@ public class GlyphRenderer {
                         double sinVal = Math.sin(2.0 * Math.PI * timeProg);
                         yield even ? (float) (0.5 + 0.5 * sinVal) : (float) (0.5 - 0.5 * sinVal);
                     }
-                    case "static" -> 0.2f;
+                    case "heartbeat" -> {
+                        double t = (double) (nowMs % 2000L) / 2000L;
+                        float val = 0f;
+                        if (t < 0.12) val = (float) Math.sin(Math.PI * t / 0.12);
+                        else if (t > 0.22 && t < 0.34) val = (float) Math.sin(Math.PI * (t - 0.22) / 0.12) * 0.7f;
+                        yield val;
+                    }
+                    case "orbit" -> {
+                        double t = (double) (nowMs % 3000L) / 3000L;
+                        float pos1 = (float) t;
+                        float pos2 = 1.0f - (float) t;
+                        float ledPos = (float) i / zoneCount;
+                        float d1 = Math.abs(ledPos - pos1);
+                        float d2 = Math.abs(ledPos - pos2);
+                        yield (float) (Math.exp(-d1 * d1 * 60.0) + Math.exp(-d2 * d2 * 60.0));
+                    }
+                    case "rain" -> {
+                        double t = (double) (nowMs % 2000L) / 2000L;
+                        float ledPos = (float) i / zoneCount;
+                        float dropPos = (float) t;
+                        float dist = Math.abs(ledPos - dropPos);
+                        yield (float) Math.exp(-dist * dist * 100.0);
+                    }
                     case "pulse" -> {
                         double timeProg = (double) (nowMs % 3000L) / 3000L;
                         float phaseShift = (float) i * 0.02f;

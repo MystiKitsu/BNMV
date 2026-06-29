@@ -133,8 +133,10 @@
     <string name="idle_pattern_pulse">Puls</string>
     <string name="idle_pattern_wave">Welle</string>
     <string name="idle_pattern_cylon">Cylon</string>
-    <string name="idle_pattern_static">Statisch</string>
     <string name="idle_pattern_zebra">Zebra</string>
+    <string name="idle_pattern_heartbeat">Herzschlag</string>
+    <string name="idle_pattern_orbit">Orbit</string>
+    <string name="idle_pattern_rain">Regen</string>
     <string name="strobe_mode">Stroboskop-Modus</string>
     <string name="strobe_mode_desc">Abwechselndes Blitzmuster für Glyphen</string>
     <string name="developer_access">Entwicklerzugang</string>

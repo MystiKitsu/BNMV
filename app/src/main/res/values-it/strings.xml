@@ -133,8 +133,10 @@
     <string name="idle_pattern_pulse">Pulsazione</string>
     <string name="idle_pattern_wave">Onda</string>
     <string name="idle_pattern_cylon">Cylon</string>
-    <string name="idle_pattern_static">Statico</string>
     <string name="idle_pattern_zebra">Zebra</string>
+    <string name="idle_pattern_heartbeat">Battito cardiaco</string>
+    <string name="idle_pattern_orbit">Orbita</string>
+    <string name="idle_pattern_rain">Pioggia</string>
     <string name="strobe_mode">Modalità strobo</string>
     <string name="strobe_mode_desc">Modello di lampeggio alternato per i Glyph</string>
     <string name="developer_access">Accesso sviluppatore</string>

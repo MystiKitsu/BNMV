@@ -133,8 +133,10 @@
     <string name="idle_pattern_pulse">Pulso</string>
     <string name="idle_pattern_wave">Onda</string>
     <string name="idle_pattern_cylon">Cylon</string>
-    <string name="idle_pattern_static">Estático</string>
     <string name="idle_pattern_zebra">Cebra</string>
+    <string name="idle_pattern_heartbeat">Latido del corazón</string>
+    <string name="idle_pattern_orbit">Órbita</string>
+    <string name="idle_pattern_rain">Lluvia</string>
     <string name="strobe_mode">Modo estroboscópico</string>
     <string name="strobe_mode_desc">Patrón de destello alterno para los Glyphs</string>
     <string name="developer_access">Acceso de desarrollador</string>

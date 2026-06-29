@@ -133,8 +133,10 @@
     <string name="idle_pattern_pulse">パルス</string>
     <string name="idle_pattern_wave">ウェーブ</string>
     <string name="idle_pattern_cylon">サイロン</string>
-    <string name="idle_pattern_static">スタティック</string>
     <string name="idle_pattern_zebra">ゼブラ</string>
+    <string name="idle_pattern_heartbeat">ハートビート</string>
+    <string name="idle_pattern_orbit">軌道</string>
+    <string name="idle_pattern_rain">雨</string>
     <string name="strobe_mode">ストロボモード</string>
     <string name="strobe_mode_desc">Glyphの交互点滅パターン</string>
     <string name="developer_access">開発者アクセス</string>

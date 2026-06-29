@@ -141,8 +141,10 @@
     <string name="idle_pattern_pulse">Pulsation</string>
     <string name="idle_pattern_wave">Vague</string>
     <string name="idle_pattern_cylon">Cylon</string>
-    <string name="idle_pattern_static">Statique</string>
     <string name="idle_pattern_zebra">Zèbre</string>
+    <string name="idle_pattern_heartbeat">Battement de coeur</string>
+    <string name="idle_pattern_orbit">Orbite</string>
+    <string name="idle_pattern_rain">Pluie</string>
     <string name="strobe_mode">Mode Stroboscope</string>
     <string name="strobe_mode_desc">Alternance de clignotement pour les Glyphs</string>
     <string name="developer_access">Accès Développeur</string>

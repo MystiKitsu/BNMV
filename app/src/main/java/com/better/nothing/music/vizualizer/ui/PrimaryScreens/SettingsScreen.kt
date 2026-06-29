@@ -534,8 +534,10 @@ internal fun SettingsScreen(
                             "pulse" to stringResource(R.string.idle_pattern_pulse),
                             "wave" to stringResource(R.string.idle_pattern_wave),
                             "scanner" to stringResource(R.string.idle_pattern_cylon),
-                            "static" to stringResource(R.string.idle_pattern_static),
-                            "zebra" to stringResource(R.string.idle_pattern_zebra)
+                            "zebra" to stringResource(R.string.idle_pattern_zebra),
+                            "heartbeat" to stringResource(R.string.idle_pattern_heartbeat),
+                            "orbit" to stringResource(R.string.idle_pattern_orbit),
+                            "rain" to stringResource(R.string.idle_pattern_rain)
                         )
 
                         ExpressiveSplitButton(

@@ -133,8 +133,10 @@
     <string name="idle_pattern_pulse">Пульс</string>
     <string name="idle_pattern_wave">Волна</string>
     <string name="idle_pattern_cylon">Сайлон</string>
-    <string name="idle_pattern_static">Статика</string>
     <string name="idle_pattern_zebra">Зебра</string>
+    <string name="idle_pattern_heartbeat">Сердцебиение</string>
+    <string name="idle_pattern_orbit">Орбита</string>
+    <string name="idle_pattern_rain">Дождь</string>
     <string name="strobe_mode">Режим стробоскопа</string>
     <string name="strobe_mode_desc">Чередующийся паттерн вспышек для глифов</string>
     <string name="developer_access">Доступ разработчика</string>

@@ -140,8 +140,10 @@
     <string name="idle_pattern_pulse">Pulse</string>
     <string name="idle_pattern_wave">Wave</string>
     <string name="idle_pattern_cylon">Cylon</string>
-    <string name="idle_pattern_static">Static</string>
     <string name="idle_pattern_zebra">Zebra</string>
+    <string name="idle_pattern_heartbeat">Heartbeat</string>
+    <string name="idle_pattern_orbit">Orbit</string>
+    <string name="idle_pattern_rain">Rain</string>
     <string name="strobe_mode">Strobe Mode</string>
     <string name="strobe_mode_desc">Alternating flash pattern for Glyphs</string>
     <string name="developer_access">Developer Access</string>

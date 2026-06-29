@@ -133,8 +133,10 @@
     <string name="idle_pattern_pulse">Nabız</string>
     <string name="idle_pattern_wave">Dalga</string>
     <string name="idle_pattern_cylon">Cylon</string>
-    <string name="idle_pattern_static">Statik</string>
     <string name="idle_pattern_zebra">Zebra</string>
+    <string name="idle_pattern_heartbeat">Kalp Atışı</string>
+    <string name="idle_pattern_orbit">Yörünge</string>
+    <string name="idle_pattern_rain">Yağmur</string>
     <string name="strobe_mode">Strobo Modu</string>
     <string name="strobe_mode_desc">Glifler için alternatif flaş deseni</string>
     <string name="developer_access">Geliştirici Erişimi</string>
