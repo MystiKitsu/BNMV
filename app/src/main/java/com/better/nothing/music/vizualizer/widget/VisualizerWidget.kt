@@ -32,18 +32,35 @@ class VisualizerWidget : AppWidgetProvider() {
     private fun updateAppWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
         val views = RemoteViews(context.packageName, R.layout.visualizer_widget)
 
+        val prefs = context.getSharedPreferences("viz_prefs", Context.MODE_PRIVATE)
+        val isRunning = AudioCaptureService.isRunning()
+        
+        // Current states
+        val currentSource = prefs.getString("capture_source", AudioCaptureService.CaptureSource.INTERNAL.name)
+        val hapticEnabled = prefs.getBoolean("haptic_motor_enabled", false)
+        val flashlightEnabled = prefs.getBoolean("flashlight_enabled", false)
+        val maxBrightness = prefs.getInt("max_brightness", 4500)
+        val glyphsEnabled = maxBrightness > 0
+
         // Source buttons
+        updateButtonState(views, R.id.btn_source_internal, currentSource == AudioCaptureService.CaptureSource.INTERNAL.name)
+        updateButtonState(views, R.id.btn_source_mic, currentSource == AudioCaptureService.CaptureSource.MIC.name)
+        updateButtonState(views, R.id.btn_source_viz, currentSource == AudioCaptureService.CaptureSource.VIZUALIZER.name)
+
         views.setOnClickPendingIntent(R.id.btn_source_internal, createSourcePendingIntent(context, AudioCaptureService.CaptureSource.INTERNAL))
         views.setOnClickPendingIntent(R.id.btn_source_mic, createSourcePendingIntent(context, AudioCaptureService.CaptureSource.MIC))
         views.setOnClickPendingIntent(R.id.btn_source_viz, createSourcePendingIntent(context, AudioCaptureService.CaptureSource.VIZUALIZER))
 
         // Viz output buttons
+        updateButtonState(views, R.id.btn_viz_haptics, hapticEnabled)
+        updateButtonState(views, R.id.btn_viz_glyphs, glyphsEnabled)
+        updateButtonState(views, R.id.btn_viz_torch, flashlightEnabled)
+
         views.setOnClickPendingIntent(R.id.btn_viz_haptics, createActionPendingIntent(context, AudioCaptureService.ACTION_TOGGLE_HAPTICS, 10))
         views.setOnClickPendingIntent(R.id.btn_viz_glyphs, createActionPendingIntent(context, AudioCaptureService.ACTION_TOGGLE_GLYPHS, 11))
         views.setOnClickPendingIntent(R.id.btn_viz_torch, createActionPendingIntent(context, AudioCaptureService.ACTION_TOGGLE_TORCH, 12))
 
         // Start/Stop button
-        val isRunning = AudioCaptureService.isRunning()
         val startStopIntent = if (isRunning) {
             Intent(context, AudioCaptureService::class.java).apply { action = AudioCaptureService.ACTION_STOP }
         } else {
@@ -60,11 +77,19 @@ class VisualizerWidget : AppWidgetProvider() {
         
         views.setOnClickPendingIntent(R.id.btn_start_stop, startStopPI)
         views.setImageViewResource(R.id.btn_start_stop, if (isRunning) R.drawable.ic_stop else R.drawable.ic_play)
+        updateButtonState(views, R.id.btn_start_stop, isRunning)
 
-        // Update states (simple highlighting if possible, though standard widgets are limited)
-        // For simplicity, we'll just set the texts or icons.
-        
         appWidgetManager.updateAppWidget(appWidgetId, views)
+    }
+
+    private fun updateButtonState(views: RemoteViews, viewId: Int, isActive: Boolean) {
+        if (isActive) {
+            views.setInt(viewId, "setBackgroundResource", R.drawable.widget_button_bg_selected)
+            views.setInt(viewId, "setColorFilter", android.graphics.Color.BLACK)
+        } else {
+            views.setInt(viewId, "setBackgroundResource", R.drawable.widget_button_bg)
+            views.setInt(viewId, "setColorFilter", android.graphics.Color.WHITE)
+        }
     }
 
     private fun createSourcePendingIntent(context: Context, source: AudioCaptureService.CaptureSource): PendingIntent {

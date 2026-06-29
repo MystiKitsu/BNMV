@@ -58,6 +58,7 @@ class PermissionTrampolineActivity : ComponentActivity() {
 
         if (source == AudioCaptureService.CaptureSource.MIC || source == AudioCaptureService.CaptureSource.VIZUALIZER) {
             val serviceIntent = Intent(this, AudioCaptureService::class.java).apply {
+                action = AudioCaptureService.ACTION_START
                 putExtra(AudioCaptureService.EXTRA_PRESET_KEY, getDefaultPreset())
             }
             ContextCompat.startForegroundService(this, serviceIntent)

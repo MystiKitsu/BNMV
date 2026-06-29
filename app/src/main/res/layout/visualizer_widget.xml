@@ -29,7 +29,7 @@
             android:layout_weight="1"
             android:layout_marginEnd="4dp"
             android:background="@drawable/widget_button_bg"
-            android:src="@drawable/ic_launcher_foreground"
+            android:src="@drawable/ic_phone"
             android:scaleType="centerInside"
             android:padding="8dp"
             android:contentDescription="Internal Source" />
@@ -41,7 +41,7 @@
             android:layout_weight="1"
             android:layout_marginHorizontal="4dp"
             android:background="@drawable/widget_button_bg"
-            android:src="@drawable/ic_play"
+            android:src="@drawable/ic_mic"
             android:scaleType="centerInside"
             android:padding="8dp"
             android:contentDescription="Mic Source" />
@@ -53,7 +53,7 @@
             android:layout_weight="1"
             android:layout_marginStart="4dp"
             android:background="@drawable/widget_button_bg"
-            android:src="@drawable/ic_nav_glyphs"
+            android:src="@drawable/ic_graphic_eq"
             android:scaleType="centerInside"
             android:padding="8dp"
             android:contentDescription="Visualizer Source" />
@@ -107,7 +107,7 @@
             android:layout_weight="1"
             android:layout_marginStart="4dp"
             android:background="@drawable/widget_button_bg"
-            android:src="@drawable/ic_stop"
+            android:src="@drawable/ic_flashlight"
             android:scaleType="centerInside"
             android:padding="8dp"
             android:contentDescription="Toggle Torch" />

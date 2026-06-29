@@ -101,6 +101,7 @@ public class AudioCaptureService extends Service {
     private volatile CaptureSource mCaptureSource = CaptureSource.INTERNAL;
 
     public static final String ACTION_STOP = "com.better.nothing.music.vizualizer.action.STOP";
+    public static final String ACTION_START = "com.better.nothing.music.vizualizer.action.START";
     public static final String ACTION_TOGGLE_HAPTICS = "com.better.nothing.music.vizualizer.action.TOGGLE_HAPTICS";
     public static final String ACTION_TOGGLE_TORCH = "com.better.nothing.music.vizualizer.action.TOGGLE_TORCH";
     public static final String ACTION_TOGGLE_GLYPHS = "com.better.nothing.music.vizualizer.action.TOGGLE_GLYPHS";
@@ -519,12 +520,15 @@ public class AudioCaptureService extends Service {
                 stopCapture();
                 stopSelf();
                 return START_NOT_STICKY;
+            } else if (ACTION_START.equals(intent.getAction())) {
+                startVisualizer();
             } else if (ACTION_TOGGLE_HAPTICS.equals(intent.getAction())) {
                 boolean newState = !mHapticEnabled;
                 setHapticEnabled(newState);
                 getSharedPreferences(APP_PREFS_NAME, MODE_PRIVATE)
                         .edit().putBoolean("haptic_motor_enabled", newState).apply();
                 requestTileRefresh();
+                requestWidgetRefresh(this);
                 return START_NOT_STICKY;
             } else if (ACTION_TOGGLE_TORCH.equals(intent.getAction())) {
                 boolean newState = !mFlashlightEnabled;
@@ -532,6 +536,7 @@ public class AudioCaptureService extends Service {
                 getSharedPreferences(APP_PREFS_NAME, MODE_PRIVATE)
                         .edit().putBoolean("flashlight_enabled", newState).apply();
                 requestTileRefresh();
+                requestWidgetRefresh(this);
                 return START_NOT_STICKY;
             } else if (ACTION_TOGGLE_GLYPHS.equals(intent.getAction())) {
                 boolean newState = mMaxBrightness <= 0;
@@ -539,6 +544,7 @@ public class AudioCaptureService extends Service {
                 getSharedPreferences(APP_PREFS_NAME, MODE_PRIVATE)
                         .edit().putInt("max_brightness", mMaxBrightness).apply();
                 requestTileRefresh();
+                requestWidgetRefresh(this);
                 return START_NOT_STICKY;
             } else if (ACTION_SET_SOURCE.equals(intent.getAction())) {
                 String sourceName = intent.getStringExtra(EXTRA_SOURCE);
@@ -562,6 +568,7 @@ public class AudioCaptureService extends Service {
                                 startVizualizerCapture();
                             }
                         }
+                        requestWidgetRefresh(this);
                     } catch (Exception ignored) {}
                 }
                 return START_NOT_STICKY;
@@ -815,6 +822,7 @@ public class AudioCaptureService extends Service {
                     mWorkerHandler.post(this::restartCapture);
                 }
             }
+            requestWidgetRefresh();
         }
     }
 
@@ -2059,10 +2067,14 @@ public class AudioCaptureService extends Service {
         TileService.requestListeningState(this, new ComponentName(this, HapticsTileService.class));
     }
 
-    private void requestWidgetRefresh() {
+    public static void requestWidgetRefresh(Context context) {
         Intent intent = new Intent("com.better.nothing.music.vizualizer.REFRESH_WIDGET");
-        intent.setPackage(getPackageName());
-        sendBroadcast(intent);
+        intent.setPackage(context.getPackageName());
+        context.sendBroadcast(intent);
+    }
+
+    private void requestWidgetRefresh() {
+        requestWidgetRefresh(this);
     }
 
     private void refreshPresetCatalog() throws IOException, JSONException {
