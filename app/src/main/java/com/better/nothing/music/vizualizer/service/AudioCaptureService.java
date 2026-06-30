@@ -147,11 +147,15 @@ public class AudioCaptureService extends Service {
         return sIsRunningFlow;
     }
 
-    private static void setRunning(boolean running) {
+    private void setRunning(boolean running) {
+        boolean wasRunning = sIsRunning;
         sIsRunning = running;
         sIsRunningFlow.setValue(running);
-        if (sInstance != null) {
-            sInstance.requestWidgetRefresh();
+        requestWidgetRefresh(this);
+        if (running && !wasRunning) {
+            // Restart idle pulse if it was stopped
+            mMainHandler.removeCallbacks(mIdlePulseRunnable);
+            mMainHandler.post(mIdlePulseRunnable);
         }
     }
     public static AudioCaptureService sInstance = null;
@@ -209,7 +213,10 @@ public class AudioCaptureService extends Service {
     };
 
     private void registerGlyphManager() {
-        if (mGM == null || mSelectedDevice == DeviceProfile.DEVICE_UNKNOWN) return;
+        if (mGM == null || mSelectedDevice == DeviceProfile.DEVICE_UNKNOWN) {
+            Log.w(TAG, "registerGlyphManager: GM is null or device unknown: " + mSelectedDevice);
+            return;
+        }
         String deviceStr = switch (mSelectedDevice) {
             case DeviceProfile.DEVICE_NP1 -> Glyph.DEVICE_20111;
             case DeviceProfile.DEVICE_NP2 -> Glyph.DEVICE_22111;
@@ -220,6 +227,7 @@ public class AudioCaptureService extends Service {
             case DeviceProfile.DEVICE_NP3 -> Glyph.DEVICE_23112;
             default -> Glyph.DEVICE_25111;
         };
+        Log.d(TAG, "Registering GlyphManager with device: " + deviceStr);
         mGM.register(deviceStr);
     }
 
@@ -398,6 +406,8 @@ public class AudioCaptureService extends Service {
         }
     }
 
+    private AudioDeviceManager mAudioDeviceManager;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -421,9 +431,14 @@ public class AudioCaptureService extends Service {
         mBeatDetectionEngine = new BeatDetectionHapticEngine(this);
         mFlashlightEngine = new FlashlightEngine(this);
         mAudioProcessor = new AudioProcessor();
-        new AudioDeviceManager(this, this::refreshLatencyForCurrentAudioRoute);
+        mAudioDeviceManager = new AudioDeviceManager(this, this::refreshLatencyForCurrentAudioRoute);
 
         mSelectedDevice = DeviceProfile.detectDevice();
+        if (mSelectedDevice == DeviceProfile.DEVICE_UNKNOWN) {
+            // Default to NP2 as a safe bet for modern Nothing devices if detection fails
+            // This ensures we at least try to initialize the Glyph Manager
+            mSelectedDevice = DeviceProfile.DEVICE_NP2;
+        }
         mLatencyCompensationMs = loadLatencyCompensationMs(this, mSelectedDevice);
         mGamma = loadGamma(this);
 
@@ -498,7 +513,7 @@ public class AudioCaptureService extends Service {
             refreshPresetCatalog();
             if (!mAvailablePresetKeys.isEmpty()) {
                 mPresetKey = chooseDefaultPresetKey(phoneModelForDevice(mSelectedDevice), mAvailablePresetKeys);
-                mVisualizerConfig = loadVisualizerConfig(mPresetKey);
+                mVisualizerConfig = loadVisualizerConfig(mPresetKey, SAMPLE_RATE);
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to load zones.config", e);
@@ -506,11 +521,8 @@ public class AudioCaptureService extends Service {
         }
         resetVisualizerState();
 
-        if (mSelectedDevice != DeviceProfile.DEVICE_UNKNOWN && Build.VERSION.SDK_INT >= 33) {
-            mGM = GlyphManager.getInstance(getApplicationContext());
-            mGM.init(mGlyphCallback);
-            mGMM = GlyphMatrixManager.getInstance(getApplicationContext());
-            mGMM.init(mGlyphMatrixCallback);
+        if (mSelectedDevice != DeviceProfile.DEVICE_UNKNOWN && Build.VERSION.SDK_INT >= 31) {
+            ensureGlyphManagerInitialized();
         }
 
         mMainHandler.post(mIdlePulseRunnable);
@@ -537,7 +549,6 @@ public class AudioCaptureService extends Service {
                         .edit().putBoolean("haptic_motor_enabled", newState).apply();
                 requestTileRefresh();
                 requestWidgetRefresh(this);
-                return START_NOT_STICKY;
             } else if (ACTION_TOGGLE_TORCH.equals(intent.getAction())) {
                 boolean newState = !mFlashlightEnabled;
                 setFlashlightEnabled(newState);
@@ -545,7 +556,6 @@ public class AudioCaptureService extends Service {
                         .edit().putBoolean("flashlight_enabled", newState).apply();
                 requestTileRefresh();
                 requestWidgetRefresh(this);
-                return START_NOT_STICKY;
             } else if (ACTION_TOGGLE_GLYPHS.equals(intent.getAction())) {
                 boolean newState = mMaxBrightness <= 0;
                 setMaxBrightness(newState ? 4095 : 0);
@@ -553,13 +563,10 @@ public class AudioCaptureService extends Service {
                         .edit().putInt("max_brightness", mMaxBrightness).apply();
                 requestTileRefresh();
                 requestWidgetRefresh(this);
-                return START_NOT_STICKY;
             } else if (ACTION_PREV_PRESET.equals(intent.getAction())) {
                 prevPreset();
-                return START_NOT_STICKY;
             } else if (ACTION_NEXT_PRESET.equals(intent.getAction())) {
                 nextPreset();
-                return START_NOT_STICKY;
             } else if (ACTION_SET_SOURCE.equals(intent.getAction())) {
                 String sourceName = intent.getStringExtra(EXTRA_SOURCE);
                 if (sourceName != null) {
@@ -608,26 +615,18 @@ public class AudioCaptureService extends Service {
             }
         }
 
-        if (mCaptureSource == CaptureSource.MIC && sIsRunning) {
+        // Only call startForeground here if we haven't already started it in startCaptureInternal
+        if (!sIsRunning) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+                startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+            } else {
+                startForeground(NOTIF_ID, buildNotification());
+            }
         } else {
-            startForeground(NOTIF_ID, buildNotification());
+            // Service is running, just refresh notification if needed
+            refreshNotification();
         }
-        } else if ((mCaptureSource == CaptureSource.INTERNAL || mCaptureSource == CaptureSource.SHIZUKU) && sIsRunning) {
-            int type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION | ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIF_ID, buildNotification(), type);
-        } else {
-            startForeground(NOTIF_ID, buildNotification());
-        }
-        } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIF_ID, buildNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
-        } else {
-            startForeground(NOTIF_ID, buildNotification());
-        }
-        }
+
         return START_STICKY;
     }
 
@@ -978,7 +977,7 @@ public class AudioCaptureService extends Service {
                     String fallback = resolvePresetKey(null, mAvailablePresetKeys);
                     applyPresetSelection(fallback);
                 } else {
-                    mVisualizerConfig = loadVisualizerConfig(mPresetKey);
+                    mVisualizerConfig = loadVisualizerConfig(mPresetKey, mAudioRecord != null ? mAudioRecord.getSampleRate() : SAMPLE_RATE);
                     mPresetConfigVersion.incrementAndGet();
                     resetVisualizerState();
                     refreshNotification();
@@ -994,6 +993,11 @@ public class AudioCaptureService extends Service {
         if (mGlyphRenderer != null) {
             mGlyphRenderer.setDeviceType(device);
         }
+        
+        if (device != DeviceProfile.DEVICE_UNKNOWN && Build.VERSION.SDK_INT >= 31) {
+            ensureGlyphManagerInitialized();
+        }
+        
         registerGlyphManager();
         registerGlyphMatrixManager();
         setLatencyCompensationMs(loadLatencyCompensationMs(this, device));
@@ -1004,6 +1008,29 @@ public class AudioCaptureService extends Service {
             }
         } catch (Exception e) {
             Log.w(TAG, "Unable to refresh presets after device change", e);
+        }
+    }
+
+    private void ensureGlyphManagerInitialized() {
+        if (mGM == null && Build.VERSION.SDK_INT >= 31) {
+            try {
+                mGM = GlyphManager.getInstance(getApplicationContext());
+                if (mGM != null) {
+                    mGM.init(mGlyphCallback);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to initialize GlyphManager", e);
+            }
+        }
+        if (mGMM == null && Build.VERSION.SDK_INT >= 31) {
+            try {
+                mGMM = GlyphMatrixManager.getInstance(getApplicationContext());
+                if (mGMM != null) {
+                    mGMM.init(mGlyphMatrixCallback);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to initialize GlyphMatrixManager", e);
+            }
         }
     }
 
@@ -1478,23 +1505,33 @@ public class AudioCaptureService extends Service {
                                 bufferSize);
                     }
 
-                    if (localRecord != null) {
-                        if (localRecord.getState() != AudioRecord.STATE_INITIALIZED) {
-                            localRecord.release();
-                            throw new IllegalStateException("AudioRecord failed to initialize.");
-                        }
-
-                        synchronized (mCaptureLock) {
-                            if (!mCapturing) {
-                                localRecord.release();
-                                return;
-                            }
-                            mAudioRecord = localRecord;
-                        }
-
-                        localRecord.startRecording();
-                        runCaptureLoop(localRecord);
+                if (localRecord != null) {
+                    if (localRecord.getState() != AudioRecord.STATE_INITIALIZED) {
+                        localRecord.release();
+                        Log.e(TAG, "AudioRecord failed to initialize: state=" + localRecord.getState());
+                        return;
                     }
+
+                    synchronized (mCaptureLock) {
+                        if (!mCapturing) {
+                            localRecord.release();
+                            return;
+                        }
+                        mAudioRecord = localRecord;
+                    }
+
+                    try {
+                        localRecord.startRecording();
+                        if (localRecord.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
+                            Log.e(TAG, "AudioRecord failed to start recording: state=" + localRecord.getRecordingState());
+                            return;
+                        }
+                        Log.d(TAG, "AudioRecord started successfully: source=" + localRecord.getAudioSource() + ", rate=" + localRecord.getSampleRate());
+                        runCaptureLoop(localRecord);
+                    } catch (IllegalStateException e) {
+                        Log.e(TAG, "Failed to start AudioRecord", e);
+                    }
+                }
 
                 } catch (Exception e) {
                     Log.e(TAG, "Audio capture failed", e);
@@ -1553,6 +1590,13 @@ public class AudioCaptureService extends Service {
     }
 
     private void runCaptureLoop(AudioRecord record) {
+        try {
+            mVisualizerConfig = loadVisualizerConfig(mPresetKey, record.getSampleRate());
+            mPresetConfigVersion.incrementAndGet();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to rebuild config for sample rate", e);
+        }
+
         AudioProcessor.VisualizerConfig initialConfig = mVisualizerConfig;
         if (initialConfig == null) {
             return;
@@ -1640,21 +1684,25 @@ public class AudioCaptureService extends Service {
     private void dispatchDueFrames(ArrayDeque<PendingFrame> pendingFrames) {
         if (pendingFrames == null) return;
         long nowMs = SystemClock.elapsedRealtime();
+        
+        PendingFrame latestDueFrame = null;
         while (!pendingFrames.isEmpty()) {
-            try {
-                PendingFrame pendingFrame = pendingFrames.peekFirst();
-                if (pendingFrame == null || pendingFrame.dueAtMs > nowMs) {
-                    return;
-                }
-                pendingFrames.removeFirst();
+            PendingFrame frame = pendingFrames.peekFirst();
+            if (frame == null || frame.dueAtMs > nowMs) {
+                break;
+            }
+            latestDueFrame = pendingFrames.removeFirst();
+        }
 
+        if (latestDueFrame != null) {
+            try {
                 synchronized (mFftLock) {
-                    mLatestMagnitudes = pendingFrame.magnitude;
+                    mLatestMagnitudes = latestDueFrame.magnitude;
                 }
 
                 if (mOverlayView != null) {
                     try {
-                        mOverlayView.updateMagnitudes(pendingFrame.magnitude);
+                        mOverlayView.updateMagnitudes(latestDueFrame.magnitude);
                     } catch (Exception e) {
                         Log.e(TAG, "Error updating overlay magnitudes", e);
                     }
@@ -1664,11 +1712,11 @@ public class AudioCaptureService extends Service {
                     try {
                         if (mHapticMode == HapticMode.BASS_TO_AMPLITUDE) {
                             if (mContinuousHapticEngine != null) {
-                                mContinuousHapticEngine.performHapticFeedback(pendingFrame.hapticPeak, pendingFrame.config);
+                                mContinuousHapticEngine.performHapticFeedback(latestDueFrame.hapticPeak, latestDueFrame.config);
                             }
                         } else {
                             if (mBeatDetectionEngine != null) {
-                                mBeatDetectionEngine.performHapticFeedback(pendingFrame.magnitude, mHapticRange);
+                                mBeatDetectionEngine.performHapticFeedback(latestDueFrame.magnitude, mHapticRange);
                             }
                         }
                     } catch (Exception e) {
@@ -1679,9 +1727,9 @@ public class AudioCaptureService extends Service {
                 if (mFlashlightEnabled && mFlashlightEngine != null) {
                     try {
                         mFlashlightEngine.performFlashlightFeedback(
-                                pendingFrame.flashlightPeak,
-                                pendingFrame.config,
-                                pendingFrame.magnitude,
+                                latestDueFrame.flashlightPeak,
+                                latestDueFrame.config,
+                                latestDueFrame.magnitude,
                                 mFlashlightRange != null ? mFlashlightRange.binLo : 0,
                                 mFlashlightRange != null ? mFlashlightRange.binHi : 0
                         );
@@ -1690,10 +1738,9 @@ public class AudioCaptureService extends Service {
                     }
                 }
 
-                processFrame(pendingFrame.uniqueMagnitudes, pendingFrame.hapticPeak, pendingFrame.config, pendingFrame.configVersion);
+                processFrame(latestDueFrame.uniqueMagnitudes, latestDueFrame.hapticPeak, latestDueFrame.config, latestDueFrame.configVersion);
             } catch (Exception e) {
                 Log.e(TAG, "Error dispatching frame", e);
-                if (!pendingFrames.isEmpty()) pendingFrames.removeFirst();
             }
         }
     }
@@ -1707,19 +1754,26 @@ public class AudioCaptureService extends Service {
             float gain = mGlyphRenderer.getSpectrumGain();
 
             boolean hasActivity = false;
-            for (float mag : uniqueMagnitudes) {
-                if (mag * gain > 0.002f) {
-                    hasActivity = true;
-                    break;
+            if (uniqueMagnitudes != null && uniqueMagnitudes.length > 0) {
+                for (float mag : uniqueMagnitudes) {
+                    if (mag * gain > 0.0005f) { // More sensitive activity check
+                        hasActivity = true;
+                        break;
+                    }
                 }
             }
-            if (!hasActivity && hapticPeak * gain > 0.002f) hasActivity = true;
+            if (!hasActivity && hapticPeak * gain > 0.0005f) hasActivity = true;
 
-            if (hasActivity) {
+            // If we are currently "breathing" or have audio, ensure session is open
+            if (hasActivity || (mIdleBreathingEnabled && (mMaxBrightness > 0))) {
                 mLastAudioActivityMs = now;
-                if (!mSessionOpen) ensureGlyphSession();
+                if (!mSessionOpen) {
+                    Log.d(TAG, "Audio activity detected, ensuring session...");
+                    ensureGlyphSession();
+                }
             } else {
-                if (mDisableGlyphsWhenSilent && mSessionOpen && (now - mLastAudioActivityMs > 2000)) {
+                if (mDisableGlyphsWhenSilent && mSessionOpen && (now - mLastAudioActivityMs > 3000)) {
+                    Log.d(TAG, "Silence timeout, closing session");
                     clearGlyphSession();
                 }
             }
@@ -1793,7 +1847,7 @@ public class AudioCaptureService extends Service {
             refreshPresetCatalog();
             String resolvedPresetKey = resolvePresetKey(presetSelection, mAvailablePresetKeys);
             if (!resolvedPresetKey.equals(mPresetKey) || mVisualizerConfig == null) {
-                mVisualizerConfig = loadVisualizerConfig(resolvedPresetKey);
+                mVisualizerConfig = loadVisualizerConfig(resolvedPresetKey, mAudioRecord != null ? mAudioRecord.getSampleRate() : SAMPLE_RATE);
                 mPresetKey = resolvedPresetKey;
                 mPresetConfigVersion.incrementAndGet();
                 resetVisualizerState();
@@ -1829,7 +1883,7 @@ public class AudioCaptureService extends Service {
         return availablePresetKeys.get(0);
     }
 
-    private AudioProcessor.VisualizerConfig loadVisualizerConfig(String presetKey) throws IOException, JSONException {
+    private AudioProcessor.VisualizerConfig loadVisualizerConfig(String presetKey, int sampleRate) throws IOException, JSONException {
         JSONObject root = loadZonesConfigRoot(this);
         JSONObject preset = root.optJSONObject(presetKey);
         if (preset == null) throw new JSONException("Preset not found");
@@ -1838,7 +1892,11 @@ public class AudioCaptureService extends Service {
 
         double decayAlpha = preset.has("decay-alpha") ? preset.optDouble("decay-alpha", 0.8) : root.optDouble("decay-alpha", 0.8);
         AudioProcessor.ZoneSpec[] zones = parseZoneSpecs(zonesArray);
-        return buildVisualizerConfig(presetKey, preset.optString("description", presetKey), decayAlpha, zones, (float) SAMPLE_RATE / 4096, 4096);
+        
+        int fftSize = mAudioProcessor != null ? mAudioProcessor.getFFTSize() : 2048;
+        float hzPerBin = (float) sampleRate / fftSize;
+        
+        return buildVisualizerConfig(presetKey, preset.optString("description", presetKey), decayAlpha, zones, hzPerBin, fftSize);
     }
 
     private AudioProcessor.VisualizerConfig buildVisualizerConfig(String presetKey, String description, double decayAlpha, AudioProcessor.ZoneSpec[] zones, float hzPerBin, int fftSize) {

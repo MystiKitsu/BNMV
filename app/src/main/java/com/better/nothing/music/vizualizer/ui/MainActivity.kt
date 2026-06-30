@@ -157,53 +157,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
-
-    private val mediaSessionManager by lazy {
-        getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
-    }
-    private var activeMediaController: MediaController? = null
-    private val mediaCallback = object : MediaController.Callback() {
-        override fun onMetadataChanged(metadata: MediaMetadata?) {
-            val artwork = getArtworkBitmap(metadata)
-            viewModel.setMusicArtwork(artwork)
-        }
-
-        override fun onPlaybackStateChanged(state: PlaybackState?) {
-        }
-    }
-
-    private fun updateActiveMediaController() {
-        try {
-            val controllers = mediaSessionManager.getActiveSessions(
-                ComponentName(this, GlyphNotificationListener::class.java)
-            )
-            val newController = controllers.firstOrNull()
-
-            if (activeMediaController?.packageName != newController?.packageName) {
-                activeMediaController?.unregisterCallback(mediaCallback)
-                activeMediaController = newController
-                activeMediaController?.registerCallback(mediaCallback)
-
-                val artwork = getArtworkBitmap(activeMediaController?.metadata)
-                viewModel.setMusicArtwork(artwork)
-            }
-        } catch (_: SecurityException) {
-            Log.w("MainActivity", "No notification access to get media sessions")
-        }
-    }
-
-    private fun getArtworkBitmap(metadata: MediaMetadata?): Bitmap? {
-        if (metadata == null) return null
-        return try {
-            metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
-                ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
-                ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
-        } catch (_: Exception) {
-            null
-        }
-    }
-
     private val overlayPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (Settings.canDrawOverlays(this)) {
             viewModel.setOverlayEnabled(true)
@@ -227,6 +180,7 @@ class MainActivity : ComponentActivity() {
 
         audioManager.registerAudioDeviceCallback(audioDeviceCallback, mainHandler)
 
+        val mediaSessionManager = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
         if (isNotificationServiceEnabled()) {
             mediaSessionManager.addOnActiveSessionsChangedListener(
                 musicThemeHandler.sessionsChangedListener,
@@ -418,6 +372,7 @@ class MainActivity : ComponentActivity() {
         unbindService(serviceConnection)
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         musicThemeHandler.onDestroy()
+        val mediaSessionManager = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
         if (isNotificationServiceEnabled()) {
             mediaSessionManager.removeOnActiveSessionsChangedListener(musicThemeHandler.sessionsChangedListener)
         }

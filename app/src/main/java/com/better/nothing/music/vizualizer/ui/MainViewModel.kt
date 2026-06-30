@@ -615,18 +615,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    val _musicThemeColor = MutableStateFlow(Color.White)
+    val _musicThemeColor = MutableStateFlow(Color(0xFFD71921))
     val musicThemeColor = _musicThemeColor.asStateFlow()
 
     fun setMusicArtwork(bitmap: Bitmap?) {
         if (bitmap == null) {
-            _musicThemeColor.value = Color.White
+            _musicThemeColor.value = Color(0xFFD71921)
             return
         }
         Palette.from(bitmap).generate { palette ->
-            val extracted = palette?.getVibrantColor(0xFFD71921.toInt())
-                ?: palette?.getDominantColor(0xFFD71921.toInt())
-                ?: 0xFFD71921.toInt()
+            // Try to get a good color in order of preference
+            val extracted = palette?.let { p ->
+                p.getVibrantColor(0).takeIf { it != 0 }
+                    ?: p.getDarkVibrantColor(0).takeIf { it != 0 }
+                    ?: p.getLightVibrantColor(0).takeIf { it != 0 }
+                    ?: p.getMutedColor(0).takeIf { it != 0 }
+                    ?: p.getDominantColor(0).takeIf { it != 0 }
+            } ?: 0xFFD71921.toInt()
+
             _musicThemeColor.value = Color(extracted)
         }
     }

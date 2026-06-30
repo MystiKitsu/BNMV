@@ -26,13 +26,13 @@ public class AudioProcessor {
     private DoubleFFT_1D fft;
 
     // Improved Autogain state
-    private float mRunningMax = 0.05f;
-    private float mTargetPeak = 0.18f;
+    private float mRunningMax = 0.005f;
+    private float mTargetPeak = 0.28f;
     private float mAutoGain = 1.0f;
     private boolean mAutoGainEnabled = false;
 
-    private static final float DECAY_SLOW = 0.9998f;
-    private static final float GAIN_SMOOTHING = 0.15f; // Alpha for gain smoothing
+    private static final float DECAY_SLOW = 0.995f;
+    private static final float GAIN_SMOOTHING = 0.25f; // Alpha for gain smoothing
 
     public AudioProcessor() {
         updateFFTSize(); // Default
@@ -127,25 +127,27 @@ public class AudioProcessor {
             
             double re = fftData[2 * i];
             double im = fftData[2 * i + 1];
-            // Normalize magnitude by fftSize
-            float mag = (float) (Math.hypot(re, im) / fftSize);
+            // Normalize magnitude. For Hann window, the sum of weights is fftSize/2.
+            // Using 2.0/fftSize for normalized amplitude.
+            float mag = (float) (Math.hypot(re, im) / (fftSize / 2.0));
 
-            // Amplify high frequencies: linear boost from 1.0x at 0Hz to ~4.0x at 20kHz
+            // Amplify high frequencies: linear boost from 1.0x at 0Hz to ~6.0x at 20kHz
             float freq = i * hzPerBin;
-            float boost = 1f + (freq / 15000f) * 5f;
+            float boost = 1f + (freq / 12000f) * 5f;
             float rawMag = mag * boost;
 
-            // Internal sources (MediaProjection) are already normalized by the system.
-            // Applying auto-gain to them often causes clipping/overshoot.
-            if (mAutoGainEnabled && !isInternalSource) {
+            // Apply auto-gain to all sources. Internal sources can often be very quiet
+            // depending on the app's internal volume levels.
+            if (mAutoGainEnabled) {
                 // Update running max with adaptive decay: faster if we're way above target, slower if we're below
-                float decay = rawMag > mRunningMax ? 0.95f : DECAY_SLOW;
+                float decay = rawMag > mRunningMax ? 0.85f : DECAY_SLOW;
                 mRunningMax = Math.max(mRunningMax * decay, rawMag);
                 
-                if (mRunningMax > 0.0001f) {
-                    float desiredGain = mTargetPeak / Math.max(mRunningMax, 0.005f);
-                    // Clamp gain to reasonable range [0.5, 20.0] for high quality normalization
-                    desiredGain = Math.max(0.5f, Math.min(20.0f, desiredGain));
+                if (mRunningMax > 0.00001f) {
+                    float targetPeak = isInternalSource ? 0.35f : mTargetPeak;
+                    float desiredGain = targetPeak / Math.max(mRunningMax, 0.001f);
+                    // Clamp gain to reasonable range
+                    desiredGain = Math.max(0.1f, Math.min(100.0f, desiredGain));
                     
                     // Smooth the gain changes to prevent flickering
                     mAutoGain = (mAutoGain * (1f - GAIN_SMOOTHING)) + (desiredGain * GAIN_SMOOTHING);

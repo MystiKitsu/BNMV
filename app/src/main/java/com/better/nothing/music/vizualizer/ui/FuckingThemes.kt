@@ -69,11 +69,19 @@ fun BetterVizTheme(
                 ColorUtils.colorToHSL(baseColor.toArgb(), hsl)
                 
                 if (isDark) {
-                    // In dark mode, ensure lightness is at least 0.6 for visibility on black
+                    // In dark mode, ensure color is visible against black but not pure white
                     if (hsl[2] < 0.6f) hsl[2] = 0.6f
+                    if (hsl[2] > 0.85f) hsl[2] = 0.85f
+                    if (hsl[1] < 0.1f) { // If it's too grey/white, boost saturation and use a default hue
+                        hsl[1] = 0.5f 
+                    }
                 } else {
-                    // In light mode, ensure lightness is at most 0.4 for visibility on white
-                    if (hsl[2] > 0.4f) hsl[2] = 0.4f
+                    // In light mode, ensure color is visible against white but not pure black
+                    if (hsl[2] > 0.45f) hsl[2] = 0.45f
+                    if (hsl[2] < 0.15f) hsl[2] = 0.15f
+                    if (hsl[1] < 0.1f) {
+                        hsl[1] = 0.5f
+                    }
                 }
                 
                 val adjustedPrimary = Color(ColorUtils.HSLToColor(hsl))
@@ -389,13 +397,36 @@ internal class MusicThemeHandler(
 
     fun getArtworkBitmap(metadata: MediaMetadata?): Bitmap? {
         if (metadata == null) return null
-        return try {
+        
+        // Try direct bitmap first
+        val bitmap = try {
             metadata.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
                 ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_ART)
                 ?: metadata.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
         } catch (_: Exception) {
             null
         }
+        
+        if (bitmap != null) return bitmap
+        
+        // If no bitmap, try loading from URI (some players only provide URIs)
+        val uriString = metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI)
+            ?: metadata.getString(MediaMetadata.METADATA_KEY_ART_URI)
+            ?: metadata.getString(MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI)
+            
+        if (uriString != null) {
+            try {
+                val uri = android.net.Uri.parse(uriString)
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val decoded = android.graphics.BitmapFactory.decodeStream(inputStream)
+                inputStream?.close()
+                return decoded
+            } catch (e: Exception) {
+                Log.w("MusicThemeHandler", "Failed to load artwork from URI: $uriString", e)
+            }
+        }
+        
+        return null
     }
 
     fun onDestroy() {

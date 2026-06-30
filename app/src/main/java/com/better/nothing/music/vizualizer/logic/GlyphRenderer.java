@@ -11,10 +11,10 @@ import java.util.Arrays;
 public class GlyphRenderer {
 
     private static final int MAX_BRIGHTNESS = 4500;
-    private static final float PEAK_FALLOFF = 0.9995f;
+    private static final float PEAK_FALLOFF = 0.998f;
     private static final float EPSILON = 0.000001f;
-    private static final float SILENCE_THRESHOLD = 0.002f;
-    private static final long BREATH_DELAY_MS = 3000L;
+    private static final float SILENCE_THRESHOLD = 0.0005f;
+    private static final long BREATH_DELAY_MS = 2500L;
 
     private float mGamma;
     private float mSpectrumGain = 4f;
