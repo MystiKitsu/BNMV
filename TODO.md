@@ -14,10 +14,6 @@
 
 * Last viewed screen should be kept in memory
 
-* Remove haptic tab AND DISABLE ALL CODE RELATED TO IT if device doesn't have a haptic motor
-
-* same for flashlight
-
 * Check if auto update works
 
 ---
@@ -92,7 +88,9 @@
 
 ---
 
-## Done
+## Done!
+* Remove haptic tab AND DISABLE ALL CODE RELATED TO IT if device doesn't have a haptic motor
+* same for flashlight
 * Remove notification detection
 * Add disclaimer that this app uses Google Analytics
 * Say that BNMV is DETERMINISTIC (add to readme)
