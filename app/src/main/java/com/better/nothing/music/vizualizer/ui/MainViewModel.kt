@@ -3,6 +3,10 @@ package com.better.nothing.music.vizualizer.ui
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.content.ComponentName
+import android.os.Build
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.graphics.Bitmap
 import android.content.pm.PackageManager
 import android.media.AudioManager
@@ -63,6 +67,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val leaderboardRepository = LeaderboardRepository()
     val userRepository = UserRepository()
     val analytics = AnalyticsHelper(application)
+
+    val hasHapticMotor: Boolean by lazy {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        vibrator?.hasVibrator() == true
+    }
+
+    val hasFlashlight: Boolean by lazy {
+        ctx.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH)
+    }
 
     val _userProfile = MutableStateFlow<UserProfile?>(null)
     val userProfile = _userProfile.asStateFlow()
@@ -851,12 +870,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _userId.value = auth.currentUser?.uid
         }
 
+        // Disable Haptic Tile if no motor
+        try {
+            val hapticTileComponent = ComponentName(ctx, "com.better.nothing.music.vizualizer.service.HapticsTileService")
+            ctx.packageManager.setComponentEnabledSetting(
+                hapticTileComponent,
+                if (hasHapticMotor) PackageManager.COMPONENT_ENABLED_STATE_ENABLED 
+                else PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.DONT_KILL_APP
+            )
+        } catch (e: Exception) {
+            Log.e("MainViewModel", "Failed to disable HapticsTileService", e)
+        }
+
         // Track app openings and show thanks messages
         val openCount = prefs.getInt("app_open_count", 0) + 1
         prefs.edit().putInt("app_open_count", openCount).apply()
         analytics.logAppOpen(openCount)
 
         viewModelScope.launch {
+            if (!hasFlashlight) return@launch
             while (true) {
                 MainActivity.serviceStatic?.let { s ->
                     _flashlightIntensityLevels.value = s.flashlightIntensityLevels
@@ -872,6 +905,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val selectedTab = _selectedTab.asStateFlow()
     fun selectTab(tab: Tab) {
         if (selectedDevice.value == DeviceProfile.DEVICE_UNKNOWN && tab == Tab.Glyphs) return
+        if (!hasHapticMotor && tab == Tab.Haptics) return
+        if (!hasFlashlight && tab == Tab.Flashlight) return
         _selectedTab.value = tab
         analytics.logTabSelected(tab.name)
     }

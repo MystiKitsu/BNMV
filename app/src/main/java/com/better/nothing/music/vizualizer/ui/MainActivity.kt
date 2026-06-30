@@ -420,11 +420,18 @@ internal fun BetterVizApp(
     val context = LocalContext.current
 
     val visibleTabs = remember(selectedDevice) {
-        if (selectedDevice == com.better.nothing.music.vizualizer.model.DeviceProfile.DEVICE_UNKNOWN) {
+        var tabs = if (selectedDevice == com.better.nothing.music.vizualizer.model.DeviceProfile.DEVICE_UNKNOWN) {
             Tab.entries.filter { it != Tab.Glyphs }
         } else {
             Tab.entries.toList()
         }
+        if (!viewModel.hasHapticMotor) {
+            tabs = tabs.filter { it != Tab.Haptics }
+        }
+        if (!viewModel.hasFlashlight) {
+            tabs = tabs.filter { it != Tab.Flashlight }
+        }
+        tabs
     }
 
     val pagerState = rememberPagerState(initialPage = visibleTabs.indexOf(selectedTab).coerceAtLeast(0)) { visibleTabs.size }

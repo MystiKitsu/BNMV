@@ -36,6 +36,8 @@ import android.media.AudioRecord;
 import android.media.audiofx.Visualizer;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
@@ -427,9 +429,14 @@ public class AudioCaptureService extends Service {
             mAudioManager.registerAudioDeviceCallback(mAudioDeviceCallback, mWorkerHandler);
         }
 
-        mContinuousHapticEngine = new ContinuousHapticEngine(this);
-        mBeatDetectionEngine = new BeatDetectionHapticEngine(this);
-        mFlashlightEngine = new FlashlightEngine(this);
+        if (hasHapticMotor(this)) {
+            mContinuousHapticEngine = new ContinuousHapticEngine(this);
+            mBeatDetectionEngine = new BeatDetectionHapticEngine(this);
+        }
+        if (hasFlashlight(this)) {
+            mFlashlightEngine = new FlashlightEngine(this);
+        }
+
         mAudioProcessor = new AudioProcessor();
         mAudioDeviceManager = new AudioDeviceManager(this, this::refreshLatencyForCurrentAudioRoute);
 
@@ -462,7 +469,7 @@ public class AudioCaptureService extends Service {
         float spectrumGain = appPrefs.getFloat("spectrum_gain", 4.0f);
         mGlyphRenderer.setSpectrumGain(spectrumGain);
 
-        mHapticEnabled = appPrefs.getBoolean("haptic_motor_enabled", false);
+        mHapticEnabled = hasHapticMotor(this) && appPrefs.getBoolean("haptic_motor_enabled", false);
         String hapticModeName = appPrefs.getString("haptic_mode", HapticMode.BASS_TO_AMPLITUDE.name());
         try {
             mHapticMode = HapticMode.valueOf(hapticModeName);
@@ -472,37 +479,44 @@ public class AudioCaptureService extends Service {
         mHapticMinHz = appPrefs.getInt("haptic_freq_min", 60);
         mHapticMaxHz = appPrefs.getInt("haptic_freq_max", 250);
 
-        mFlashlightEnabled = appPrefs.getBoolean("flashlight_enabled", false);
+        mFlashlightEnabled = hasFlashlight(this) && appPrefs.getBoolean("flashlight_enabled", false);
         mFlashlightMinHz = appPrefs.getInt("flashlight_freq_min", 60);
         mFlashlightMaxHz = appPrefs.getInt("flashlight_freq_max", 250);
         
         boolean forcedMulti = appPrefs.getBoolean("flashlight_multi_intensity_forced", false);
         if (mFlashlightEngine != null) {
             mFlashlightEngine.setForceMultiIntensity(forcedMulti);
+            mFlashlightIntensityLevels = mFlashlightEngine.getTorchIntensityLevels();
+            mFlashlightThreshold = appPrefs.getFloat(
+                    "flashlight_threshold",
+                    mFlashlightIntensityLevels > 1 ? 1.0f : 0.15f
+            );
+            mFlashlightSpeedMs = loadFlashlightSpeedMs(appPrefs);
+            mFlashlightEngine.setFlashlightThreshold(mFlashlightThreshold);
+            mFlashlightEngine.setFlashlightSpeedMs(mFlashlightSpeedMs);
+        } else {
+            mFlashlightIntensityLevels = 1;
+            mFlashlightThreshold = 0.15f;
+            mFlashlightSpeedMs = loadFlashlightSpeedMs(appPrefs);
         }
-
-        mFlashlightIntensityLevels = mFlashlightEngine.getTorchIntensityLevels();
-        mFlashlightThreshold = appPrefs.getFloat(
-                "flashlight_threshold",
-                mFlashlightIntensityLevels > 1 ? 1.0f : 0.15f
-        );
-        mFlashlightSpeedMs = loadFlashlightSpeedMs(appPrefs);
-        mFlashlightEngine.setFlashlightThreshold(mFlashlightThreshold);
-        mFlashlightEngine.setFlashlightSpeedMs(mFlashlightSpeedMs);
 
         float hapticMultiplier = appPrefs.getFloat("haptic_multiplier", 1.0f);
         float hapticGamma = appPrefs.getFloat("haptic_gamma", 2.0f);
         mHapticAudioGain = appPrefs.getFloat("haptic_audio_gain", 1.0f);
         mHapticBeatSensitivity = appPrefs.getFloat("haptic_beat_sensitivity", 1.0f);
         mHapticBeatGamma = appPrefs.getFloat("haptic_beat_gamma", 8.0f);
-        
-        mContinuousHapticEngine.setHapticMultiplier(hapticMultiplier);
-        mContinuousHapticEngine.setHapticAudioGain(mHapticAudioGain);
-        mContinuousHapticEngine.setHapticGamma(hapticGamma);
-        
-        mBeatDetectionEngine.setHapticMultiplier(hapticMultiplier);
-        mBeatDetectionEngine.setHapticGamma(mHapticBeatGamma);
-        mBeatDetectionEngine.setHapticSensitivity(mHapticBeatSensitivity);
+
+        if (mContinuousHapticEngine != null) {
+            mContinuousHapticEngine.setHapticMultiplier(hapticMultiplier);
+            mContinuousHapticEngine.setHapticAudioGain(mHapticAudioGain);
+            mContinuousHapticEngine.setHapticGamma(hapticGamma);
+        }
+
+        if (mBeatDetectionEngine != null) {
+            mBeatDetectionEngine.setHapticMultiplier(hapticMultiplier);
+            mBeatDetectionEngine.setHapticGamma(mHapticBeatGamma);
+            mBeatDetectionEngine.setHapticSensitivity(mHapticBeatSensitivity);
+        }
         
         String idlePattern = appPrefs.getString("idle_pattern", "pulse");
         mGlyphRenderer.setIdlePattern(idlePattern);
@@ -1065,7 +1079,7 @@ public class AudioCaptureService extends Service {
     }
 
     public void setHapticMotorEnabled(boolean enabled) {
-        mHapticEnabled = enabled;
+        mHapticEnabled = hasHapticMotor(this) && enabled;
     }
 
     public void setHapticMode(HapticMode mode) {
@@ -1223,10 +1237,10 @@ public class AudioCaptureService extends Service {
     }
 
     public void setHapticEnabled(boolean enabled) {
-        mHapticEnabled = enabled;
-        if (!enabled) {
-            mContinuousHapticEngine.stopHaptics();
-            mBeatDetectionEngine.stopHaptics();
+        mHapticEnabled = hasHapticMotor(this) && enabled;
+        if (!mHapticEnabled) {
+            if (mContinuousHapticEngine != null) mContinuousHapticEngine.stopHaptics();
+            if (mBeatDetectionEngine != null) mBeatDetectionEngine.stopHaptics();
         }
         requestTileRefresh();
         requestWidgetRefresh();
@@ -1262,8 +1276,8 @@ public class AudioCaptureService extends Service {
     }
 
     public void setHapticMultiplier(float multiplier) {
-        mContinuousHapticEngine.setHapticMultiplier(multiplier);
-        mBeatDetectionEngine.setHapticMultiplier(multiplier);
+        if (mContinuousHapticEngine != null) mContinuousHapticEngine.setHapticMultiplier(multiplier);
+        if (mBeatDetectionEngine != null) mBeatDetectionEngine.setHapticMultiplier(multiplier);
     }
 
     public void setHapticAudioGain(float gain) {
@@ -1294,8 +1308,8 @@ public class AudioCaptureService extends Service {
     }
 
     public void setFlashlightEnabled(boolean enabled) {
-        mFlashlightEnabled = enabled;
-        if (!enabled && mFlashlightEngine != null) {
+        mFlashlightEnabled = hasFlashlight(this) && enabled;
+        if (!mFlashlightEnabled && mFlashlightEngine != null) {
             mFlashlightEngine.stopFlashlight();
         }
         requestWidgetRefresh();
@@ -1653,7 +1667,7 @@ public class AudioCaptureService extends Service {
                     continue;
                 }
 
-                AudioProcessor.AudioFrameResult result = mAudioProcessor.processAudioFrame(hop, config, mHapticRange, mCaptureSource != CaptureSource.MIC);
+                AudioProcessor.AudioFrameResult result = mAudioProcessor.processAudioFrame(hop, config, mHapticEnabled ? mHapticRange : null, mCaptureSource != CaptureSource.MIC);
                 if (result == null) continue;
 
                 float flashlightPeak = 0f;
@@ -1835,8 +1849,8 @@ public class AudioCaptureService extends Service {
     }
 
     private void resetVisualizerState() {
-        mContinuousHapticEngine.stopHaptics();
-        mBeatDetectionEngine.stopHaptics();
+        if (mContinuousHapticEngine != null) mContinuousHapticEngine.stopHaptics();
+        if (mBeatDetectionEngine != null) mBeatDetectionEngine.stopHaptics();
         if (mFlashlightEngine != null) mFlashlightEngine.stopFlashlight();
         mGlyphRenderer.resetState(mVisualizerConfig);
         mLastSendMs = 0L;
@@ -2031,7 +2045,7 @@ public class AudioCaptureService extends Service {
             hop[i] = (short) (((waveform[i] & 0xFF) - 128) << 8);
         }
 
-        AudioProcessor.AudioFrameResult result = mAudioProcessor.processAudioFrame(hop, mVisualizerConfig, mHapticRange, false);
+        AudioProcessor.AudioFrameResult result = mAudioProcessor.processAudioFrame(hop, mVisualizerConfig, mHapticEnabled ? mHapticRange : null, false);
         if (result == null) return;
 
         float flashlightPeak = 0f;
@@ -2218,6 +2232,20 @@ public class AudioCaptureService extends Service {
         NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Glyph Visualizer", NotificationManager.IMPORTANCE_LOW);
         channel.setDescription("Keeps the visualizer alive while audio capture is active");
         notificationManager.createNotificationChannel(channel);
+    }
+
+    public static boolean hasHapticMotor(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            VibratorManager vm = (VibratorManager) context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+            return vm != null && vm.getDefaultVibrator().hasVibrator();
+        } else {
+            Vibrator v = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
+            return v != null && v.hasVibrator();
+        }
+    }
+
+    public static boolean hasFlashlight(Context context) {
+        return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
     }
 
     private void refreshNotification() {

@@ -983,12 +983,14 @@ internal fun SettingsScreen(
                             isSelected = dynamicGainEnabled,
                             onClick = { viewModel.setDynamicGainEnabled(!dynamicGainEnabled) }
                         )
-                        OptionTile(
-                            label = stringResource(R.string.flashlight_multi_intensity_forced_title),
-                            icon = Icons.Default.FlashlightOn,
-                            isSelected = flashlightMultiIntensityForced,
-                            onClick = { viewModel.setFlashlightMultiIntensityForced(!flashlightMultiIntensityForced) }
-                        )
+                        if (viewModel.hasFlashlight) {
+                            OptionTile(
+                                label = stringResource(R.string.flashlight_multi_intensity_forced_title),
+                                icon = Icons.Default.FlashlightOn,
+                                isSelected = flashlightMultiIntensityForced,
+                                onClick = { viewModel.setFlashlightMultiIntensityForced(!flashlightMultiIntensityForced) }
+                            )
+                        }
                         if (selectedDevice != DeviceProfile.DEVICE_UNKNOWN) {
                             OptionTile(
                                 label = stringResource(R.string.strobe_mode),

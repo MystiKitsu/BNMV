@@ -52,6 +52,12 @@ class VisualizerWidget : AppWidgetProvider() {
         views.setOnClickPendingIntent(R.id.btn_source_viz, createSourcePendingIntent(context, AudioCaptureService.CaptureSource.VIZUALIZER))
 
         // Viz output buttons
+        val hasHaptic = AudioCaptureService.hasHapticMotor(context)
+        val hasFlashlight = AudioCaptureService.hasFlashlight(context)
+
+        views.setViewVisibility(R.id.btn_viz_haptics, if (hasHaptic) android.view.View.VISIBLE else android.view.View.GONE)
+        views.setViewVisibility(R.id.btn_viz_torch, if (hasFlashlight) android.view.View.VISIBLE else android.view.View.GONE)
+
         updateButtonState(views, R.id.btn_viz_haptics, hapticEnabled)
         updateButtonState(views, R.id.btn_viz_glyphs, glyphsEnabled)
         updateButtonState(views, R.id.btn_viz_torch, flashlightEnabled)
